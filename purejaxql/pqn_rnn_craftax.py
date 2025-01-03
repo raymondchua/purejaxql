@@ -587,6 +587,12 @@ def make_train(config):
             )
             metrics.update(done_infos)
 
+            # loop over the infos dictionary. If the key contains "achievement" then we log it by taking the sum of the
+            # values.
+            for k, v in infos.items():
+                if "achievement" in k.lower():
+                    metrics[k] = v.sum()
+
             if config.get("TEST_DURING_TRAINING", False):
                 rng, _rng = jax.random.split(rng)
                 test_metrics = jax.lax.cond(
