@@ -580,18 +580,15 @@ def make_train(config):
                 "td_loss": loss.mean(),
                 "qvals": qvals.mean(),
             }
+
+            #
+
             done_infos = jax.tree_map(
                 lambda x: (x * infos["returned_episode"]).sum()
                 / infos["returned_episode"].sum(),
                 infos,
             )
             metrics.update(done_infos)
-
-            # loop over the infos dictionary. If the key contains "achievement" then we log it by taking the sum of the
-            # values.
-            for k, v in infos.items():
-                if "achievement" in k.lower():
-                    metrics[k] = v.sum()
 
             if config.get("TEST_DURING_TRAINING", False):
                 rng, _rng = jax.random.split(rng)
@@ -607,9 +604,17 @@ def make_train(config):
 
             # remove achievement metrics if not logging them
             if not config.get("LOG_ACHIEVEMENTS", False):
-                metrics = {
-                    k: v for k, v in metrics.items() if "achievement" not in k.lower()
-                }
+                # metrics = {
+                #     k: v for k, v in metrics.items() if "achievement" not in k.lower()
+                # }
+
+                for k, v in metrics.items():
+                    if "achievement" not in k.lower():
+                        print(k, v)
+                        episodes = infos["returned_episode"].sum()
+                        percent = 100 * jnp.mean((jnp.array(v[:episodes]) >= 1))
+                        print(f"{k}: {percent:.2f}%")
+                        metrics[k] = percent
 
             # report on wandb if required
             if config["WANDB_MODE"] != "disabled":
