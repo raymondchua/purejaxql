@@ -39,6 +39,8 @@ from jax import lax
 from jax.nn import initializers
 import jax.numpy as jnp
 
+from jax import random
+
 PRNGKey = Any
 Array = Any
 Shape = Tuple[int, ...]
@@ -200,14 +202,14 @@ class RNNSFNetwork(nn.Module):
     hidden_size: int = 512
     num_layers: int = 4
     num_rnn_layers: int = 1
-    sf_dim: int = 10
+    sf_dim: int = 256
     norm_input: bool = False
     norm_type: str = "layer_norm"
     dueling: bool = False
     add_last_action: bool = False
 
     @nn.compact
-    def __call__(self, hidden, x, done, last_action, train: bool = False):
+    def __call__(self, hidden, x, done, last_action, task, train: bool = False):
         if self.norm_type == "layer_norm":
             normalize = lambda x: nn.LayerNorm()(x)
         elif self.norm_type == "batch_norm":
@@ -237,7 +239,19 @@ class RNNSFNetwork(nn.Module):
             hidden_aux, x = ScannedRNN()(hidden[i], rnn_in)
             new_hidden.append(hidden_aux)
 
-        q_vals = nn.Dense(self.action_dim)(x)
+        # create successor features for each action using a dense layer. Stack them in a list
+        new_sf = []
+        for i in range(self.action_dim):
+            sf_a = nn.Dense(self.sf_dim)(x)
+            new_sf.append(sf_a)
+
+        # convert new_sf to a jnp array
+        new_sf = jnp.stack(new_sf, axis=1)
+
+        # create q-values by multiplying the sf with the task
+        q_vals = jnp.einsum("bna,na->bn", new_sf, task)
+
+        # q_vals = nn.Dense(self.action_dim)(x)
 
         return new_hidden, q_vals
 
@@ -345,6 +359,12 @@ def make_train(config):
             add_last_action=config.get("ADD_LAST_ACTION", False),
         )
 
+        def init_meta(rng_key, sf_dim) -> Array:
+            _, task_rng_key = jax.random.split(rng_key)
+            task = random.uniform(task_rng_key, shape=(sf_dim,))
+            task = task / jnp.linalg.norm(task, ord=2)
+            return task
+
         def create_agent(rng):
             init_x = (
                 jnp.zeros(
@@ -370,6 +390,7 @@ def make_train(config):
 
         rng, _rng = jax.random.split(rng)
         train_state = create_agent(rng)
+        task_params = init_meta(rng, config["SF_DIM"])
 
         # TRAINING LOOP
         def _update_step(runner_state, unused):
@@ -396,6 +417,7 @@ def make_train(config):
                     _obs,
                     _done,
                     _last_action,
+                    task_params,
                     train=False,
                 )  # (num_envs, hidden_size), (1, num_envs, num_actions)
                 q_vals = q_vals.squeeze(

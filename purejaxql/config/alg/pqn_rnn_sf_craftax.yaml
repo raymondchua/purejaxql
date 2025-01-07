@@ -21,6 +21,7 @@ LR_LINEAR_DECAY: True
 REW_SCALE: 1.
 GAMMA: 0.99
 LAMBDA: 0.5
+SF_DIM: 256 # dimension of the successor features
 
 # env specific
 ENV_NAME: "Craftax-Symbolic-v1"
