@@ -246,12 +246,13 @@ class RNNSFNetwork(nn.Module):
             new_sf.append(sf_a)
 
         # convert new_sf to a jnp array
-        new_sf = jnp.stack(new_sf, axis=1)
+        new_sf = jnp.stack(new_sf, axis=1) # (1, batch_size, action_dim, sf_dim)
+
+        # swap the axes of new_sf to have the batch dimension first
+        new_sf = jnp.swapaxes(new_sf, 1, 2) # (batch_size, 1, action_dim, sf_dim)
 
         # create q-values by multiplying the sf with the task
-        q_vals = jnp.einsum("bna,na->bn", new_sf, task)
-
-        # q_vals = nn.Dense(self.action_dim)(x)
+        q_vals = jnp.einsum("bmna,a->bmn", new_sf, task)    # (batch_size, NUM_ENVS, num_actions)
 
         return new_hidden, q_vals
 
@@ -522,6 +523,7 @@ def make_train(config):
                             {"params": params, "batch_stats": train_state.batch_stats},
                             hs,
                             *agent_in,
+                            task_params,
                         )  # (num_steps, batch_size, num_actions)
 
                         # lambda returns are computed using NUM_STEPS as the horizon, and optimizing from t=0 to NUM_STEPS-1
@@ -673,6 +675,7 @@ def make_train(config):
                     _obs,
                     _done,
                     _last_action,
+                    task_params,
                     train=False,
                 )  # (num_envs, hidden_size), (1, num_envs, num_actions)
                 q_vals = q_vals.squeeze(
@@ -740,6 +743,7 @@ def make_train(config):
                 _obs,
                 _done,
                 _last_action,
+                task_params,
                 train=False,
             )  # (num_envs, hidden_size), (1, num_envs, num_actions)
             q_vals = q_vals.squeeze(
