@@ -610,10 +610,8 @@ def make_train(config):
 
                 for k, v in metrics.items():
                     if "achievement" not in k.lower():
-                        print(k, v)
                         episodes = infos["returned_episode"].sum()
                         percent = 100 * jnp.mean((jnp.array(v[:episodes]) >= 1))
-                        print(f"{k}: {percent:.2f}%")
                         metrics[k] = percent
 
             # report on wandb if required
