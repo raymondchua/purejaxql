@@ -237,7 +237,7 @@ class RNNQNetwork(nn.Module):
             hidden_aux, x = ScannedRNN()(hidden[i], rnn_in)
             new_hidden.append(hidden_aux)
 
-        q_vals = nn.Dense(self.action_dim)(x)
+        q_vals = nn.Dense(self.action_dim)(x)   # (batch_size, NUM_ENVS, num_actions)
 
         return new_hidden, q_vals
 
