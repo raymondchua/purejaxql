@@ -604,15 +604,9 @@ def make_train(config):
 
             # remove achievement metrics if not logging them
             if not config.get("LOG_ACHIEVEMENTS", False):
-                # metrics = {
-                #     k: v for k, v in metrics.items() if "achievement" not in k.lower()
-                # }
-
-                for k, v in metrics.items():
-                    if "achievement" not in k.lower():
-                        episodes = infos["returned_episode"].sum()
-                        percent = 100 * jnp.mean((jnp.array(v[:episodes]) >= 1))
-                        metrics[k] = percent
+                metrics = {
+                    k: v for k, v in metrics.items() if "achievement" not in k.lower()
+                }
 
             # report on wandb if required
             if config["WANDB_MODE"] != "disabled":
