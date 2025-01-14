@@ -374,7 +374,8 @@ def make_train(config):
                 jnp.zeros((1, 1)),  # (time_step, batch size)
             )  # (obs, dones, last_actions)
             init_hs = network.initialize_carry(1)  # (batch_size, hidden_dim)
-            network_variables = network.init(rng, init_hs, *init_x, train=False)
+            init_task = init_meta(rng, config["SF_DIM"])
+            network_variables = network.init(rng, init_hs, *init_x, init_task, train=False)
             tx = optax.chain(
                 optax.clip_by_global_norm(config["MAX_GRAD_NORM"]),
                 optax.radam(learning_rate=lr),
