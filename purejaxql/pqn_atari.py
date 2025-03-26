@@ -412,6 +412,7 @@ def make_train(config):
                         # check if values are of type numpy.ndarray, if so convert them to float or int using item()
                         if isinstance(v, jnp.ndarray):
                             metrics[k] = v.item()
+                        print("key:", k, "value:", v, "type:", type(v))
 
                     wandb.log(metrics, step=metrics["update_steps"])
 
