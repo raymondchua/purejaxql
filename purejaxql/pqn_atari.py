@@ -407,10 +407,9 @@ def make_train(config):
                             }
                         )
 
-                    # loop through all the items in metrics and print the key and value type:
                     for k, v in metrics.items():
                         # check if values are of type numpy.ndarray, if so convert them to float or int using item()
-                        if isinstance(v, numpy.ndarray):
+                        if isinstance(v, np.ndarray):
                             metrics[k] = v.item()
                         print("key:", k, "value:", v, "type:", type(v))
 
