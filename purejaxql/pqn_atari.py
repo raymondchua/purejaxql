@@ -406,6 +406,10 @@ def make_train(config):
                                 for k, v in metrics.items()
                             }
                         )
+
+                    # loop through all the items in metrics and print the key and value type:
+                    for k, v in metrics.items():
+                        print(f"{k}: {type(v)}")
                     wandb.log(metrics, step=metrics["update_steps"])
 
                 jax.debug.callback(callback, metrics, original_seed)
