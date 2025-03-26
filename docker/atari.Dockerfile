@@ -1,4 +1,5 @@
-FROM nvcr.io/nvidia/jax:25.01-py3
+# envpool it's not compatible with newer versions of jax
+FROM nvcr.io/nvidia/jax:24.04-py3
 
 # run stuff as non-root, comment if you want to run as root
 ARG UID
@@ -10,7 +11,7 @@ USER $USERNAME
 WORKDIR /app/
 COPY . .
 
-RUN pip install -e .[jax_envs]
+RUN pip install -e .[atari] 
 
 # put your wandb api key here
 ENV WANDB_API_KEY=""
