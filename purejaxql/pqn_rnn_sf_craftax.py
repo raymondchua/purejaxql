@@ -358,6 +358,7 @@ def make_train(config):
             norm_type=config["NORM_TYPE"],
             norm_input=config.get("NORM_INPUT", False),
             add_last_action=config.get("ADD_LAST_ACTION", False),
+            sf_dim=config["SF_DIM"],
         )
 
         def init_meta(rng_key, sf_dim) -> Array:
@@ -799,7 +800,7 @@ def make_train(config):
 def single_run(config):
     config = {**config, **config["alg"]}
 
-    alg_name = config.get("ALG_NAME", "pqn_rnn")
+    alg_name = config.get("ALG_NAME", "pqn_sf_rnn")
     env_name = config["ENV_NAME"]
 
     wandb.init(
@@ -849,7 +850,7 @@ def tune(default_config):
     """Hyperparameter sweep with wandb."""
 
     default_config = {**default_config, **default_config["alg"]}
-    alg_name = default_config.get("ALG_NAME", "pqn")
+    alg_name = default_config.get("ALG_NAME", "pqn_sf")
     env_name = default_config["ENV_NAME"]
 
     def wrapped_make_train():

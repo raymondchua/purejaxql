@@ -47,8 +47,6 @@ class SFNetwork(nn.Module):
         else:
             normalize = lambda x: x
 
-        print(x.shape)
-
         # if x and task are not the same shape, we need to broadcast task to the shape of x
         if task.ndim == 1:
             task = jnp.expand_dims(task, axis=0)
@@ -57,18 +55,18 @@ class SFNetwork(nn.Module):
         # concatenate the task to the input so that the input is (NUM_env, obs_dim+sf_dim)
         x = jnp.concatenate([x, task], axis=-1)
 
-        print(x.shape)
-
         for l in range(self.num_layers):
             x = nn.Dense(self.hidden_size)(x)
             x = normalize(x)
             x = nn.relu(x)
 
-        basis_features = x # (NUM_env, sf_dim)
+        basis_features = x  # (NUM_env, sf_dim)
 
         # normalize the basis features using the L2 norm
-        basis_features = basis_features / jnp.linalg.norm(basis_features, ord=2, axis=-1, keepdims=True)
-        basis_features = jax.stop_gradient(basis_features)
+        basis_features = basis_features / jnp.linalg.norm(
+            basis_features, ord=2, axis=-1, keepdims=True
+        )
+        basis_features = jax.lax.stop_gradient(basis_features)
 
         # create successor features for each action using a dense layer. Stack them in a list
         new_sf = []
@@ -201,17 +199,27 @@ def make_train(config):
         rng, _rng = jax.random.split(rng)
         train_state = create_agent(rng)
         task_params = init_meta(rng, config["SF_DIM"])
+        task_opt = optax.adam(learning_rate=config["REWARD_PREDICTION_LR"])
+        opt_state_task = task_opt.init(task_params)
 
         # TRAINING LOOP
         def _update_step(runner_state, unused):
 
-            train_state, expl_state, test_metrics, rng = runner_state
+            (
+                train_state,
+                expl_state,
+                test_metrics,
+                rng,
+                task_opt,
+                opt_state_task,
+                task_params,
+            ) = runner_state
 
             # SAMPLE PHASE
             def _step_env(carry, _):
                 last_obs, env_state, rng = carry
                 rng, rng_a, rng_s = jax.random.split(rng, 3)
-                q_vals, _  = network.apply(
+                q_vals, _ = network.apply(
                     {
                         "params": train_state.params,
                         "batch_stats": train_state.batch_stats,
@@ -297,17 +305,20 @@ def make_train(config):
 
                 def _learn_phase(carry, minibatch_and_target):
 
-                    train_state, rng = carry
+                    train_state, rng, task_params = carry
                     minibatch, target = minibatch_and_target
 
                     def _loss_fn(params):
-                        q_vals, _ , updates = network.apply(
+                        q_vals, updates = network.apply(
                             {"params": params, "batch_stats": train_state.batch_stats},
                             minibatch.obs,
                             task_params,
                             train=True,
                             mutable=["batch_stats"],
                         )  # (batch_size*2, num_actions)
+
+                        # use only the q-values of the actions taken
+                        q_vals = q_vals[0]
 
                         chosen_action_qvals = jnp.take_along_axis(
                             q_vals,
@@ -319,6 +330,30 @@ def make_train(config):
 
                         return loss, (updates, chosen_action_qvals)
 
+                    def _loss_reward_prediction_fn(params):
+                        q_vals, updates = network.apply(
+                            {"params": params, "batch_stats": train_state.batch_stats},
+                            minibatch.obs,
+                            task_params,
+                            train=True,
+                            mutable=["batch_stats"],
+                        )  # (batch_size*2, num_actions)
+
+                        # use only the basis features
+                        basis_features = q_vals[1]
+
+                        # predict the reward by taking the dot product of the basis features with the task_params
+                        reward_prediction = jnp.einsum(
+                            "ba,b->b", basis_features, task_params
+                        )
+
+                        reward_prediction_losses = (
+                            0.5
+                            * jnp.square(minibatch.reward - reward_prediction).mean()
+                        )
+
+                        return reward_prediction_losses, (reward_prediction)
+
                     (loss, (updates, qvals)), grads = jax.value_and_grad(
                         _loss_fn, has_aux=True
                     )(train_state.params)
@@ -327,9 +362,24 @@ def make_train(config):
                         grad_steps=train_state.grad_steps + 1,
                         batch_stats=updates["batch_stats"],
                     )
-                    return (train_state, rng), (loss, qvals)
 
+                    # update the task_params using the reward prediction loss
+                    (
+                        reward_prediction_losses,
+                        (reward_prediction),
+                    ), grads = jax.value_and_grad(
+                        _loss_reward_prediction_fn, has_aux=True
+                    )(
+                        train_state.params
+                    )
+                    task_params = task_params - config["REWARD_PREDICTION_LR"] * grads
 
+                    return (train_state, rng), (
+                        loss,
+                        qvals,
+                        reward_prediction_losses,
+                        reward_prediction,
+                    )
 
                 def preprocess_transition(x, rng):
                     x = x.reshape(
@@ -351,13 +401,20 @@ def make_train(config):
 
                 rng, _rng = jax.random.split(rng)
                 (train_state, rng), (loss, qvals) = jax.lax.scan(
-                    _learn_phase, (train_state, rng), (minibatches, targets)
+                    _learn_phase,
+                    (train_state, rng, task_params),
+                    (minibatches, targets),
                 )
 
                 return (train_state, rng), (loss, qvals)
 
             rng, _rng = jax.random.split(rng)
-            (train_state, rng), (loss, qvals) = jax.lax.scan(
+            (train_state, rng), (
+                loss,
+                qvals,
+                reward_prediction_losses,
+                reward_prediction,
+            ) = jax.lax.scan(
                 _learn_epoch, (train_state, rng), None, config["NUM_EPOCHS"]
             )
 
@@ -368,6 +425,8 @@ def make_train(config):
                 "grad_steps": train_state.grad_steps,
                 "td_loss": loss.mean(),
                 "qvals": qvals.mean(),
+                "reward_prediction_loss": reward_prediction_losses.mean(),
+                "reward_prediction": reward_prediction.mean(),
             }
             metrics.update({k: v.mean() for k, v in infos.items()})
 
@@ -455,7 +514,15 @@ def make_train(config):
 
         # train
         rng, _rng = jax.random.split(rng)
-        runner_state = (train_state, expl_state, test_metrics, _rng)
+        runner_state = (
+            train_state,
+            expl_state,
+            test_metrics,
+            _rng,
+            task_opt,
+            opt_state_task,
+            task_params,
+        )
 
         runner_state, metrics = jax.lax.scan(
             _update_step, runner_state, None, config["NUM_UPDATES"]
