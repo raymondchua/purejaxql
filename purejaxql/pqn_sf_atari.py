@@ -136,7 +136,7 @@ class MultiTrainState:
     network_state: CustomTrainState
     task_state: TrainState
 
-def convert_variable_into_batch(variable, batch_size: int) -> Array:
+def convert_variable_into_batch(variable, batch_size: int) -> chex.Array:
     var_batch = jnp.tile(variable, batch_size)
     var_batch = jnp.reshape(var_batch, (batch_size, -1))
     return var_batch
