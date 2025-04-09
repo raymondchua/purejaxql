@@ -543,35 +543,31 @@ def main(config):
     start_time = time.time()
     config = OmegaConf.to_container(config)
     print("Config:\n", OmegaConf.to_yaml(config))
-    if config["HYP_TUNE"]:
-        tune(config)
-    else:
-        single_run(config, start_time)
+
     # Get list of environments
-    # env_names = config["alg"]["ENV_NAME"]
-    #
-    # if config["alg"]["NUM_TASKS"] == 3:
-    #     env_names = "Pong-v5, Breakout-v5, SpaceInvaders-v5"
-    # elif config["alg"]["NUM_TASKS"] > 3:
-    #     raise NotImplementedError("More than 3 games not supported yet.")
-    #
-    # if isinstance(env_names, str):
-    #     env_names = [e.strip() for e in env_names.split(",")]
-    #
-    # # Number of exposures to repeat the environments
-    # num_exposures = config["alg"].get("NUM_EXPOSURES", 1)
-    # start_time = time.time()
-    #
-    # for cycle in range(num_exposures):
-    #     print(f"\n=== Cycle {cycle + 1}/{num_exposures} ===")
-    #     for env_name in env_names:
-    #         print(f"\n--- Running environment: {env_name} ---")
-    #         run_config = copy.deepcopy(config)
-    #         run_config["alg"]["ENV_NAME"] = env_name
-    #         if run_config["HYP_TUNE"]:
-    #             tune(run_config)
-    #         else:
-    #             single_run(run_config, start_time)
+    env_names = config["alg"]["ENV_NAME"]
+
+    if config["alg"]["NUM_TASKS"] == 3:
+        env_names = "Pong-v5, Breakout-v5, SpaceInvaders-v5"
+    elif config["alg"]["NUM_TASKS"] > 3:
+        raise NotImplementedError("More than 3 games not supported yet.")
+
+    if isinstance(env_names, str):
+        env_names = [e.strip() for e in env_names.split(",")]
+
+    # Number of exposures to repeat the environments
+    num_exposures = config["alg"].get("NUM_EXPOSURES", 1)
+
+    for cycle in range(num_exposures):
+        print(f"\n=== Cycle {cycle + 1}/{num_exposures} ===")
+        for env_name in env_names:
+            print(f"\n--- Running environment: {env_name} ---")
+            run_config = copy.deepcopy(config)
+            run_config["alg"]["ENV_NAME"] = env_name
+            if run_config["HYP_TUNE"]:
+                tune(run_config)
+            else:
+                single_run(run_config, start_time)
 
 if __name__ == "__main__":
     main()
