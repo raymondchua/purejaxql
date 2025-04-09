@@ -179,7 +179,6 @@ def make_train(config):
             * config["NUM_EPOCHS"],
         )
         lr = lr_scheduler if config.get("LR_LINEAR_DECAY", False) else config["LR"]
-        eps_scheduler = eps_scheduler if exposure == 0 else config["EPS_FINISH"]
 
         # INIT NETWORK AND OPTIMIZER
         network = QNetwork(
@@ -228,7 +227,10 @@ def make_train(config):
 
                 # different eps for each env
                 _rngs = jax.random.split(rng_a, total_envs)
-                eps = jnp.full(config["NUM_ENVS"], eps_scheduler(train_state.n_updates))
+                if exposure == 0:
+                    eps = jnp.full(config["NUM_ENVS"], eps_scheduler(train_state.n_updates))
+                else:
+                    eps = jnp.full(config["NUM_ENVS"], config["EPS_FINISH"])
 
                 if config.get("TEST_DURING_TRAINING", False):
                     eps = jnp.concatenate((eps, jnp.zeros(config["TEST_ENVS"])))
