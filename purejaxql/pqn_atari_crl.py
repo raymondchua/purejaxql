@@ -395,7 +395,7 @@ def make_train(config):
                 "qvals": qvals.mean(),
                 "eps": eps_scheduler(train_state.n_updates) if exposure == 0 else config["EPS_FINISH"],
                 "lr": lr,
-
+                "exposure": exposure,
             }
 
             metrics.update({k: v.mean() for k, v in infos.items()})
@@ -566,7 +566,7 @@ def main(config):
 
     for cycle in range(num_exposures):
         print(f"\n=== Cycle {cycle + 1}/{num_exposures} ===")
-        for env_name in env_names:
+        for env_name in enumerate(env_names):
             print(f"\n--- Running environment: {env_name} ---")
             run_config = copy.deepcopy(config)
             run_config["alg"]["ENV_NAME"] = env_name
