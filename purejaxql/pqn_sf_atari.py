@@ -136,6 +136,11 @@ class MultiTrainState:
     network_state: CustomTrainState
     task_state: TrainState
 
+def convert_variable_into_batch(variable, batch_size: int) -> Array:
+    var_batch = jnp.tile(variable, batch_size)
+    var_batch = jnp.reshape(var_batch, (batch_size, -1))
+    return var_batch
+
 
 def make_train(config):
 
@@ -272,7 +277,7 @@ def make_train(config):
             def _step_env(carry, _):
                 last_obs, env_state, rng = carry
                 rng, rng_a, rng_s = jax.random.split(rng, 3)
-                task_batch = jnp.ones__like(last_obs) * multi_train_state.task_state.params["w"]
+                task_batch = convert_variable_into_batch(multi_train_state.task_state.params["w"], config["NUM_ENVS"] * config["NUM_STEPS"])
                 q_vals, _ = network.apply(
                     {
                         "params": multi_train_state.network_state.params,
@@ -325,7 +330,7 @@ def make_train(config):
                 + config["NUM_STEPS"] * config["NUM_ENVS"]
             )  # update timesteps count
 
-            task_batch = jnp.ones__like(transitions.obs) * multi_train_state.task_state.params["w"]
+            task_batch = convert_variable_into_batch(multi_train_state.task_state.params["w"], config["NUM_ENVS"] * config["NUM_STEPS"])
 
             last_q, _ = network.apply(
                 {
@@ -381,7 +386,7 @@ def make_train(config):
                             minibatch.obs,
                             train=True,
                             mutable=["batch_stats"],
-                            task=jnp.ones_like(minibatch.obs) * multi_train_state.task_state.params["w"],
+                            task=convert_variable_into_batch(multi_train_state.task_state.params["w"], config["NUM_ENVS"] * config["NUM_STEPS"]),
 
                         )  # (batch_size*2, num_actions)
 
