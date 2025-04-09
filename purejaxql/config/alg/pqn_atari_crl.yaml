@@ -17,7 +17,8 @@ LAMBDA: 0.65
 NUM_EXPOSURES: 4 # number of exposures for all games
 
 # env specific, see https://envpool.readthedocs.io/en/latest/env/atari.html
-ENV_NAME: "Pong-v5, Breakout-v5, SpaceInvaders-v5"
+ENV_NAME: "Pong-v5"
+NUM_TASKS: 3 # number of tasks
 ENV_KWARGS:
   episodic_life: True # lost life -> done, increases sample efficiency, may hurt in some games
   reward_clip: True # reward into -1, 1
