@@ -18,6 +18,7 @@ from flax.training.train_state import TrainState
 import hydra
 from omegaconf import OmegaConf
 import wandb
+from dataclasses import dataclass
 
 import envpool
 
@@ -483,6 +484,8 @@ def make_train(config):
                         # check if values are of type numpy.ndarray, if so convert them to float or int using item()
                         if isinstance(v, np.ndarray):
                             metrics[k] = v.item()
+
+                        print(f"{k}: {v}")
 
                     wandb.log(metrics, step=metrics["update_steps"])
 
