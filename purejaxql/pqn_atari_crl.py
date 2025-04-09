@@ -161,7 +161,7 @@ def make_train(config):
     # here reset must be out of vmap and jit
     init_obs, env_state = env.reset()
 
-    def train(rng):
+    def train(rng, exposure):
 
         original_seed = rng[0]
 
@@ -179,6 +179,7 @@ def make_train(config):
             * config["NUM_EPOCHS"],
         )
         lr = lr_scheduler if config.get("LR_LINEAR_DECAY", False) else config["LR"]
+        eps_scheduler = eps_scheduler if exposure == 0 else config["EPS_FINISH"]
 
         # INIT NETWORK AND OPTIMIZER
         network = QNetwork(
@@ -228,6 +229,7 @@ def make_train(config):
                 # different eps for each env
                 _rngs = jax.random.split(rng_a, total_envs)
                 eps = jnp.full(config["NUM_ENVS"], eps_scheduler(train_state.n_updates))
+
                 if config.get("TEST_DURING_TRAINING", False):
                     eps = jnp.concatenate((eps, jnp.zeros(config["TEST_ENVS"])))
                 new_action = jax.vmap(eps_greedy_exploration)(_rngs, q_vals, eps)
@@ -442,7 +444,7 @@ def make_train(config):
     return train
 
 
-def single_run(config, start_time):
+def single_run(config, start_time, exposure: int):
 
     config = {**config, **config["alg"]}
 
@@ -468,7 +470,7 @@ def single_run(config, start_time):
     else:
         # outs = jax.jit(make_train(config))(rng)
         train_fn = make_train(config)
-        outs = jax.jit(lambda rng: train_fn(rng))(rng)
+        outs = jax.jit(lambda rng: train_fn(rng, exposure))(rng)
     print(f"Took {time.time()-start_time} seconds to complete.")
 
     # save params
@@ -569,7 +571,7 @@ def main(config):
             if run_config["HYP_TUNE"]:
                 tune(run_config)
             else:
-                single_run(run_config, start_time)
+                single_run(run_config, start_time, cycle)
 
 if __name__ == "__main__":
     # main()
