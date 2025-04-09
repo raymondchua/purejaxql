@@ -412,7 +412,7 @@ def make_train(config):
                         if isinstance(v, np.ndarray):
                             metrics[k] = v.item()
 
-                        jax.debug.print(k, v)
+                        print(f"{k}: {v}")
 
                     wandb.log(metrics, step=metrics["update_steps"])
 
