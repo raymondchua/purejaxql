@@ -442,7 +442,7 @@ def make_train(config):
     return train
 
 
-def single_run(config):
+def single_run(config, start_time):
 
     config = {**config, **config["alg"]}
 
@@ -463,13 +463,11 @@ def single_run(config):
     )
 
     rng = jax.random.PRNGKey(config["SEED"])
-
-    t0 = time.time()
     if config["NUM_SEEDS"] > 1:
         raise NotImplementedError("Vmapped seeds not supported yet.")
     else:
         outs = jax.jit(make_train(config))(rng)
-    print(f"Took {time.time()-t0} seconds to complete.")
+    print(f"Took {time.time()-start_time} seconds to complete.")
 
     # save params
     if config.get("SAVE_PATH", None) is not None:
@@ -552,6 +550,7 @@ def main(config):
 
     # Number of exposures to repeat the environments
     num_exposures = config["alg"].get("NUM_EXPOSURES", 1)
+    start_time = time.time()
 
     for cycle in range(num_exposures):
         print(f"\n=== Cycle {cycle + 1}/{num_exposures} ===")
@@ -562,7 +561,7 @@ def main(config):
             if run_config["HYP_TUNE"]:
                 tune(run_config)
             else:
-                single_run(run_config)
+                single_run(run_config, start_time)
 
 if __name__ == "__main__":
     main()
