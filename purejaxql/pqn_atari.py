@@ -395,9 +395,6 @@ def make_train(config):
             if config.get("TEST_DURING_TRAINING", False):
                 metrics.update({f"test/{k}": v.mean() for k, v in test_infos.items()})
 
-            for k, v in metrics.items():
-                jax.debug.print("{}: {}", k, v)
-
             # report on wandb if required
             if config["WANDB_MODE"] != "disabled":
 
@@ -414,6 +411,8 @@ def make_train(config):
                         # check if values are of type numpy.ndarray, if so convert them to float or int using item()
                         if isinstance(v, np.ndarray):
                             metrics[k] = v.item()
+
+                        jax.debug.print(k, v)
 
                     wandb.log(metrics, step=metrics["update_steps"])
 
