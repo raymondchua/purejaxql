@@ -216,6 +216,7 @@ def make_train(config):
             * config["NUM_EPOCHS"],
         )
         lr = lr_scheduler if config.get("LR_LINEAR_DECAY", False) else config["LR"]
+        lr_task = config["LR_TASK"]
 
         # INIT NETWORK AND OPTIMIZER
         network = SFNetwork(
@@ -245,7 +246,7 @@ def make_train(config):
 
             tx_task = optax.chain(
                 optax.clip_by_global_norm(config["MAX_GRAD_NORM"]),
-                optax.radam(learning_rate=lr),
+                optax.radam(learning_rate=lr_task),
             )
 
             network_state = CustomTrainState.create(
