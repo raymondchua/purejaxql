@@ -257,7 +257,7 @@ def make_train(config):
             )
 
             return MultiTrainState(
-                network=network_state,
+                network_state=network_state,
                 task_state=task_state
             )
 
@@ -389,14 +389,14 @@ def make_train(config):
 
                         loss = 0.5 * jnp.square(chosen_action_qvals - target).mean()
 
-                        return loss, (updates, chosen_action_qvals)
+                        return loss, (updates, chosen_action_qvals, basis_features)
 
                     def _reward_loss_fn(task_params, basis_features, reward):
-                        loss = 0.5 * jnp.square(jnp.dot(s_t, task_params["w"]) - reward).mean()
+                        loss = 0.5 * jnp.square(jnp.dot(basis_features, task_params["w"]) - reward).mean()
 
                         return loss
 
-                    (loss, (updates, qvals)), grads = jax.value_and_grad(
+                    (loss, (updates, qvals, basis_features)), grads = jax.value_and_grad(
                         _loss_fn, has_aux=True
                     )(multi_train_state.network_state.params)
                     multi_train_state.network_state = multi_train_state.network_state.apply_gradients(grads=grads)
