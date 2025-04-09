@@ -18,7 +18,6 @@ from flax.training.train_state import TrainState
 import hydra
 from omegaconf import OmegaConf
 import wandb
-from dataclasses import dataclass
 
 import envpool
 
@@ -132,7 +131,7 @@ class CustomTrainState(TrainState):
     n_updates: int = 0
     grad_steps: int = 0
 
-@dataclass
+@chex.dataclass
 class MultiTrainState:
     network_state: CustomTrainState
     task_state: TrainState
