@@ -548,6 +548,8 @@ def main(config):
 
     if config["NUM_TASKS"] == 3:
         env_names = "Pong-v5, Breakout-v5, SpaceInvaders-v5"
+    elif config["NUM_TASKS"] > 3:
+        raise NotImplementedError("More than 3 games not supported yet.")
 
     if isinstance(env_names, str):
         env_names = [e.strip() for e in env_names.split(",")]
