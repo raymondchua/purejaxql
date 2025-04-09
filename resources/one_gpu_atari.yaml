@@ -1,0 +1,44 @@
+# @package _global_
+defaults:
+  - override /hydra/launcher: submitit_slurm
+hydra:
+  mode: MULTIRUN
+  sweep:
+    dir: /home/chuaraym/scratch/exp_sweep/${now:%Y.%m.%d}/${now:%H%M}_continual_rl_atari_three_games
+    subdir: ${hydra.job.num}
+  launcher:
+    account: rrg-tyrell-ab # using Blake's account on Narval
+    additional_parameters:
+      mail-type: BEGIN,END,FAIL,REQUEUE
+      mail-user: raymond.chua@mail.mcgill.ca
+      output: ${hydra.sweep.dir}/.submitit/slurm-%j.out
+      time: 23:00:00
+    comment: null
+    constraint: null
+    cpus_per_gpu: null
+    cpus_per_task: 4
+    exclude: null
+    gres: gpu:1
+    gpus_per_node: null
+    gpus_per_task: null
+    max_num_timeout: 0
+    mem_gb: 4
+    mem_per_cpu: null
+    mem_per_gpu: null
+    name: ${hydra.job.name}
+    nodes: 1
+    partition: null
+    qos: null
+    setup: null
+    signal_delay_s: 120
+    stderr_to_stdout: True
+    submitit_folder: ${hydra.sweep.dir}/.submitit/%j
+    tasks_per_node: 1
+    timeout_min: 4300
+
+
+wandb_dir: ./wandb
+work_dir: /home/chuaraym/scratch/atari_three_games_benchmark/full_train/
+
+snapshot_dir:  /home/chuaraym/scratch/atari_three_games_benchmark/${LOGGING.MODE}/models/${alg.ALG_NAME}/${SEED}
+save_snapshot_after_each_task: true

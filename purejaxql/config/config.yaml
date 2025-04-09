@@ -1,9 +1,15 @@
+defaults:
+  - _self_
+  - resources: null
+
 # experiment params
 NUM_SEEDS: 1
 SEED: 0
 
 # if  hyperparameters tuning
 HYP_TUNE: False
+LOGGING:
+  MODE: "full_train" # full_train, test, train
 
 # wandb params
 WANDB_MODE: "disabled"  # set to online to activate wandb
