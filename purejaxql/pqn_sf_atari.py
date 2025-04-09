@@ -272,13 +272,14 @@ def make_train(config):
             def _step_env(carry, _):
                 last_obs, env_state, rng = carry
                 rng, rng_a, rng_s = jax.random.split(rng, 3)
+                task_batch = jnp.ones__like(last_obs) * multi_train_state.task_state.params["w"]
                 q_vals, _ = network.apply(
                     {
                         "params": multi_train_state.network_state.params,
                         "batch_stats": multi_train_state.network_state.batch_stats,
                     },
                     last_obs,
-                    multi_train_state.task_state.params["w"],
+                    task_batch,
                     train=False,
                 )
 
@@ -324,6 +325,8 @@ def make_train(config):
                 + config["NUM_STEPS"] * config["NUM_ENVS"]
             )  # update timesteps count
 
+            task_batch = jnp.ones__like(transitions.obs) * multi_train_state.task_state.params["w"]
+
             last_q, _ = network.apply(
                 {
                     "params": multi_train_state.network_state.params,
@@ -331,7 +334,7 @@ def make_train(config):
                 },
                 transitions.next_obs[-1],
                 train=False,
-                task=multi_train_state.task_state.params["w"],
+                task=task_batch,
             )
             last_q = jnp.max(last_q, axis=-1)
 
@@ -378,6 +381,8 @@ def make_train(config):
                             minibatch.obs,
                             train=True,
                             mutable=["batch_stats"],
+                            task=jnp.ones_like(minibatch.obs) * multi_train_state.task_state.params["w"],
+
                         )  # (batch_size*2, num_actions)
 
                         chosen_action_qvals = jnp.take_along_axis(
