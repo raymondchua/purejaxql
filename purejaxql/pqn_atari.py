@@ -396,7 +396,7 @@ def make_train(config):
                 metrics.update({f"test/{k}": v.mean() for k, v in test_infos.items()})
 
             for k, v in metrics.items():
-                jax.debug.print(f"{k}: {v}")
+                jax.debug.print("{}: {}", k, v)
 
             # report on wandb if required
             if config["WANDB_MODE"] != "disabled":
