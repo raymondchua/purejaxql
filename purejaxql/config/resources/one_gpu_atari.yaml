@@ -4,11 +4,6 @@ defaults:
 hydra:
 #  mode: MULTIRUN
   mode: RUN
-  job:
-    chdir: True
-    env_set:
-      PYTHONHASHSEED: "random"
-      FLAX_FORK_SAFE: "1"
   sweep:
     dir: /home/chuaraym/scratch/exp_sweep/${now:%Y.%m.%d}/${now:%H%M}_continual_rl_atari_three_games
     subdir: ${hydra.job.num}
