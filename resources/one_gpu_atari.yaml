@@ -36,9 +36,5 @@ hydra:
     tasks_per_node: 1
     timeout_min: 4300
 
-
-wandb_dir: ./wandb
-work_dir: /home/chuaraym/scratch/atari_three_games_benchmark/full_train/
-
-snapshot_dir:  /home/chuaraym/scratch/atari_three_games_benchmark/${LOGGING.MODE}/models/${alg.ALG_NAME}/${SEED}
-save_snapshot_after_each_task: true
+# where to save the params (if None, will not save)
+SAVE_PATH: /home/chuaraym/scratch/atari_three_games_benchmark/models/
