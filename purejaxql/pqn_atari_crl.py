@@ -543,19 +543,19 @@ def main(config):
     print("Config:\n", OmegaConf.to_yaml(config))
 
     # Get list of environments
-    env_names = config["ENV_NAME"]
+    env_names = config["ALG"]["ENV_NAME"]
     if isinstance(env_names, str):
         env_names = [e.strip() for e in env_names.split(",")]
 
     # Number of exposures to repeat the environments
-    num_exposures = config.get("NUM_EXPOSURES", 1)
+    num_exposures = config["ALG"].get("NUM_EXPOSURES", 1)
 
     for cycle in range(num_exposures):
         print(f"\n=== Cycle {cycle + 1}/{num_exposures} ===")
         for env_name in env_names:
             print(f"\n--- Running environment: {env_name} ---")
             run_config = copy.deepcopy(config)
-            run_config["ENV_NAME"] = env_name
+            run_config["ALG"]["ENV_NAME"] = env_name
             if run_config["HYP_TUNE"]:
                 tune(run_config)
             else:
