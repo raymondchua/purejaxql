@@ -325,7 +325,7 @@ def make_train(config):
                     lambda x: x[:, : -config["TEST_ENVS"]], transitions
                 )
 
-            multi_train_state = multi_train_state.network_state.replace(
+            multi_train_state.network_state = multi_train_state.network_state.replace(
                 timesteps=multi_train_state.network_state.timesteps
                 + config["NUM_STEPS"] * config["NUM_ENVS"]
             )  # update timesteps count
