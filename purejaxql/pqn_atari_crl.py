@@ -556,7 +556,6 @@ def main(config):
             print(f"\n--- Running environment: {env_name} ---")
             run_config = copy.deepcopy(config)
             run_config["ENV_NAME"] = env_name
-            run_config["alg"]["ENV_NAME"] = env_name
             if run_config["HYP_TUNE"]:
                 tune(run_config)
             else:
