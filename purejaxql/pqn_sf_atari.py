@@ -90,6 +90,7 @@ class SFNetwork(nn.Module):
         rep = nn.Dense(self.sf_dim)(x)
         basis_features = l2_normalize()(rep)
 
+        task = convert_variable_into_batch(task, batch_size=x.shape[0])
         task_normalized = l2_normalize()(task)
         rep_task = jnp.concatenate([rep, task_normalized], axis=1)
 
@@ -277,14 +278,13 @@ def make_train(config):
             def _step_env(carry, _):
                 last_obs, env_state, rng = carry
                 rng, rng_a, rng_s = jax.random.split(rng, 3)
-                task_batch = convert_variable_into_batch(multi_train_state.task_state.params["w"], config["NUM_ENVS"] * config["NUM_STEPS"])
                 q_vals, _ = network.apply(
                     {
                         "params": multi_train_state.network_state.params,
                         "batch_stats": multi_train_state.network_state.batch_stats,
                     },
                     last_obs,
-                    task_batch,
+                    multi_train_state.task_state.params["w"],
                     train=False,
                 )
 
@@ -330,8 +330,6 @@ def make_train(config):
                 + config["NUM_STEPS"] * config["NUM_ENVS"]
             )  # update timesteps count
 
-            task_batch = convert_variable_into_batch(multi_train_state.task_state.params["w"], config["NUM_ENVS"] * config["NUM_STEPS"])
-
             last_q, _ = network.apply(
                 {
                     "params": multi_train_state.network_state.params,
@@ -339,7 +337,7 @@ def make_train(config):
                 },
                 transitions.next_obs[-1],
                 train=False,
-                task=task_batch,
+                task=multi_train_state.task_state.params["w"],
             )
             last_q = jnp.max(last_q, axis=-1)
 
@@ -386,7 +384,7 @@ def make_train(config):
                             minibatch.obs,
                             train=True,
                             mutable=["batch_stats"],
-                            task=convert_variable_into_batch(multi_train_state.task_state.params["w"], config["NUM_ENVS"] * config["NUM_STEPS"]),
+                            task=multi_train_state.task_state.params["w"],
 
                         )  # (batch_size*2, num_actions)
 
