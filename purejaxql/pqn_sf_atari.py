@@ -221,7 +221,7 @@ def make_train(config):
             feature_dim=config["FEATURE_DIM"],
         )
 
-        def init_meta(rng, sf_dim) -> Array:
+        def init_meta(rng, sf_dim) -> chex.Array:
             _, task_rng_key = jax.random.split(rng)
             task = random.uniform(task_rng_key, sf_dim,)
             task = task / jnp.linalg.norm(task, ord=2)
@@ -231,7 +231,7 @@ def make_train(config):
             init_x = jnp.zeros((1, *env.single_observation_space.shape))
             init_task = jnp.zeros((1, config["SF_DIM"]))
             network_variables = network.init(rng, init_x, init_task, train=False)
-            task_params = {"w": init_task(rng, config["SF_DIM"])}
+            task_params = {"w": init_meta(rng, config["SF_DIM"])}
 
             tx = optax.chain(
                 optax.clip_by_global_norm(config["MAX_GRAD_NORM"]),
