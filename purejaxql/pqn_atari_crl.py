@@ -572,4 +572,11 @@ def main(config):
                 single_run(run_config, start_time)
 
 if __name__ == "__main__":
-    main()
+    # main()
+    try:
+        main()
+    except Exception as e:
+        import traceback
+        print("Uncaught Exception in Hydra Job:")
+        traceback.print_exc()
+        raise e
