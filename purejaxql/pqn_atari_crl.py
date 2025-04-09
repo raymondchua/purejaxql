@@ -546,9 +546,9 @@ def main(config):
     # Get list of environments
     env_names = config["alg"]["ENV_NAME"]
 
-    if config["NUM_TASKS"] == 3:
+    if config["alg"]["NUM_TASKS"] == 3:
         env_names = "Pong-v5, Breakout-v5, SpaceInvaders-v5"
-    elif config["NUM_TASKS"] > 3:
+    elif config["alg"]["NUM_TASKS"] > 3:
         raise NotImplementedError("More than 3 games not supported yet.")
 
     if isinstance(env_names, str):
