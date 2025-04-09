@@ -466,7 +466,9 @@ def single_run(config, start_time):
     if config["NUM_SEEDS"] > 1:
         raise NotImplementedError("Vmapped seeds not supported yet.")
     else:
-        outs = jax.jit(make_train(config))(rng)
+        # outs = jax.jit(make_train(config))(rng)
+        train_fn = make_train(config)
+        outs = jax.jit(lambda rng: train_fn(rng))(rng)
     print(f"Took {time.time()-start_time} seconds to complete.")
 
     # save params
