@@ -2,7 +2,8 @@
 defaults:
   - override /hydra/launcher: submitit_slurm
 hydra:
-  mode: MULTIRUN
+#  mode: MULTIRUN
+  mode: RUN
   job:
     chdir: True
     env_set:
