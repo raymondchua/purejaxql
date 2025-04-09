@@ -91,7 +91,7 @@ class SFNetwork(nn.Module):
         rep = nn.Dense(self.sf_dim)(x)
         basis_features = l2_normalize()(rep)
 
-        task_normalized = normalize()(task)
+        task_normalized = l2_normalize()(task)
         rep_task = jnp.concatenate([rep, task_normalized], axis=1)
 
         # features for SF
