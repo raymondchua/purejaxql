@@ -204,8 +204,8 @@ def make_train(config):
                 tx=tx,
             )
 
-            train_state = train_state.replace(timesteps=env_steps_taken)
-            train_state = train_state.replace(n_updates=updates_taken)
+            # train_state = train_state.replace(timesteps=env_steps_taken)
+            # train_state = train_state.replace(n_updates=updates_taken)
 
             return train_state
 
