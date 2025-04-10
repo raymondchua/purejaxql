@@ -438,7 +438,7 @@ def make_train(config):
                         if isinstance(v, np.ndarray):
                             metrics[k] = v.item()
 
-                        print(f"{k}: {v}")
+                        # print(f"{k}: {v}")
 
                     wandb.log(metrics, step=metrics["update_steps"])
 
@@ -524,6 +524,9 @@ def single_run(config):
             metrics = outs["metrics"]
             env_steps_taken += metrics["env_step"][-1]
             updates_taken += metrics["update_steps"][1]
+
+            print(f"Env steps taken: {env_steps_taken}")
+            print(f"Updates taken: {updates_taken}")
 
             # save params
             if config.get("SAVE_PATH", None) is not None:
