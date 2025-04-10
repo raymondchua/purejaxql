@@ -16,3 +16,16 @@ alg:
 
 # where to save the params (if None, will not save)
 SAVE_PATH: "./models"
+
+hydra:
+  run:
+    dir: ./exp_local/${now:%Y.%m.%d}/${now:%H%M%S}
+  sweep:
+    dir: ./exp_sweep/${now:%Y.%m.%d}/${now:%H%M}_Atari_Three_Games
+    subdir: ${hydra.job.num}
+  launcher:
+    timeout_min: 4300
+    cpus_per_task: 10
+    mem_gb: 16
+    nodes: 1
+    submitit_folder: ./exp_sweep/${now:%Y.%m.%d}/${now:%H%M}_Atari_Three_Games/.slurm
