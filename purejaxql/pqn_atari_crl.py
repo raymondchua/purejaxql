@@ -204,8 +204,8 @@ def make_train(config):
                 tx=tx,
             )
 
-            # train_state = train_state.replace(timesteps=env_steps_taken)
-            # train_state = train_state.replace(n_updates=updates_taken)
+            train_state = train_state.replace(timesteps=env_steps_taken)
+            train_state = train_state.replace(n_updates=updates_taken)
 
             return train_state
 
@@ -521,15 +521,8 @@ def single_run(config):
             print(f"Took {time.time()-start_time} seconds to complete.")
 
             metrics = outs["metrics"]
-            env_steps_taken += metrics["env_step"][0]
-            updates_taken += metrics["update_steps"][0]
-
-            print("env_steps_taken:", env_steps_taken)
-            print("type(env_steps_taken):", type(env_steps_taken))
-
-            print("updates_taken:", updates_taken)
-            print("type(updates_taken):", type(updates_taken))
-
+            env_steps_taken += metrics["env_step"][-1]
+            updates_taken += metrics["update_steps"][1]
 
             # save params
             if config.get("SAVE_PATH", None) is not None:
