@@ -524,6 +524,13 @@ def single_run(config):
             env_steps_taken += metrics["env_step"]
             updates_taken += metrics["update_steps"]
 
+            print("env_steps_taken:", env_steps_taken)
+            print("type(env_steps_taken):", type(env_steps_taken))
+
+            print("updates_taken:", updates_taken)
+            print("type(updates_taken):", type(updates_taken))
+
+
             # save params
             if config.get("SAVE_PATH", None) is not None:
 
