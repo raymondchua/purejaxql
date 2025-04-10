@@ -6,7 +6,6 @@
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=8G
-#SBATCH --job-name=atari_seed${1}
 
 # Set SEED from argument
 SEED=$1
@@ -24,7 +23,7 @@ mkdir -p "$OUT_DIR"
 exec > "${OUT_DIR}/slurm-${SLURM_JOB_ID}.out" 2>&1
 
 echo "Running Atari experiment with SEED=${SEED}"
-echo "Output directory: ${SEED_DIR}"
+echo "Output directory: ${OUT_DIR}"
 
 # Load required modules
 module load StdEnv/2023
@@ -44,4 +43,4 @@ source /home/chuaraym/pqn_atari_env311/bin/activate
 cd /home/chuaraym/purejaxql/
 
 # Run the experiment
-python purejaxql/pqn_atari_crl.py +alg=pqn_atari_crl SEED=${SEED} SAVE_PATH=${SEED_DIR}
+python purejaxql/pqn_atari_crl.py +alg=pqn_atari_crl SEED=${SEED} SAVE_PATH=${OUT_DIR}
