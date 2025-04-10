@@ -399,20 +399,20 @@ def make_train(config):
 
             metrics = {
                 "env_step": train_state.timesteps,
-                "update_steps": train_state.n_updates,
-                "env_frame": train_state.timesteps
-                * env.observation_space.shape[
-                    0
-                ],  # first dimension of the observation space is number of stacked frames
+                # "update_steps": train_state.n_updates,
+                # "env_frame": train_state.timesteps
+                # * env.observation_space.shape[
+                #     0
+                # ],  # first dimension of the observation space is number of stacked frames
                 "grad_steps": train_state.grad_steps,
                 "td_loss": loss.mean(),
                 "qvals": qvals.mean(),
-                # "eps": eps_scheduler(train_state.exploration_updates)
-                # if exposure == 0
-                # else config["EPS_FINISH"],
-                # "lr": lr,
-                # "exposure": exposure,
-                # "task_id": task_id,
+                "eps": eps_scheduler(train_state.exploration_updates)
+                if exposure == 0
+                else config["EPS_FINISH"],
+                "lr": lr,
+                "exposure": exposure,
+                "task_id": task_id,
             }
 
             metrics.update({k: v.mean() for k, v in infos.items()})
