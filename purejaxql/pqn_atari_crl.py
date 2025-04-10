@@ -72,9 +72,10 @@ class CNN(nn.Module):
 
 class QNetwork(nn.Module):
     action_dim: int
+    seed: int
     norm_type: str = "layer_norm"
     norm_input: bool = False
-    seed: int
+
 
     def setup(self):
         self.name = self.name or f"QNet_{self.seed}"
