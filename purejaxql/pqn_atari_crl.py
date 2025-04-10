@@ -162,7 +162,7 @@ def make_train(config):
     # here reset must be out of vmap and jit
     init_obs, env_state = env.reset()
 
-    def train(rng, exposure, env_steps_taken_so_far, task_id):
+    def train(rng, exposure, env_steps_taken, updates_taken, task_id):
 
         original_seed = rng[0]
 
@@ -204,7 +204,8 @@ def make_train(config):
                 tx=tx,
             )
 
-            # train_state = train_state.replace(n_updates=env_steps_taken_so_far)
+            train_state = train_state.replace(timesteps=env_steps_taken)
+            train_state = train_state.replace(n_updates=updates_taken)
 
             return train_state
 
@@ -499,14 +500,13 @@ def single_run(config):
     max_steps_per_exposure = (
         config["alg"]["NUM_TASKS"] * config["alg"]["TOTAL_TIMESTEPS"]
     )
+    env_steps_taken = 0
+    updates_taken = 0
 
     for cycle in range(num_exposures):
         print(f"\n=== Cycle {cycle + 1}/{num_exposures} ===")
         for idx, env_name in enumerate(env_names):
             print(f"\n--- Running environment: {env_name} ---")
-            env_steps_taken_so_far = (cycle * max_steps_per_exposure) + (
-                idx * config["alg"]["TOTAL_TIMESTEPS"]
-            )
             task_id = cycle * config["alg"]["NUM_TASKS"] + idx
             run_config = copy.deepcopy(config)
             run_config["alg"]["ENV_NAME"] = env_name
@@ -516,9 +516,13 @@ def single_run(config):
             else:
                 # outs = jax.jit(make_train(config))(rng, exposure)
                 outs = jax.jit(
-                    lambda rng: make_train(config)(rng, cycle, env_steps_taken_so_far, task_id)
+                    lambda rng: make_train(config)(rng, cycle, env_steps_taken, updates_taken, task_id)
                 )(rng)
             print(f"Took {time.time()-start_time} seconds to complete.")
+
+            metrics = outs["metrics"]
+            env_steps_taken += metrics["env_step"]
+            updates_taken += metrics["update_steps"]
 
             # save params
             if config.get("SAVE_PATH", None) is not None:
