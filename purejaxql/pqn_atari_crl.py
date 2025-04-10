@@ -72,13 +72,8 @@ class CNN(nn.Module):
 
 class QNetwork(nn.Module):
     action_dim: int
-    seed: int
     norm_type: str = "layer_norm"
     norm_input: bool = False
-
-
-    def setup(self):
-        self.name = self.name or f"QNet_{self.seed}"
 
     @nn.compact
     def __call__(self, x: jnp.ndarray, train: bool):
@@ -190,7 +185,6 @@ def make_train(config):
             action_dim=env.single_action_space.n,
             norm_type=config["NORM_TYPE"],
             norm_input=config.get("NORM_INPUT", False),
-            seed=config["SEED"],
         )
 
         def create_agent(rng):
