@@ -43,7 +43,5 @@ source /home/chuaraym/pqn_atari_env311/bin/activate
 # Change to project root (so purejaxql is importable)
 cd /home/chuaraym/purejaxql/
 
-wandb login 6c26b2dbbed0f6f58c49aacf99829e25d9e40d41
-
 # Run the experiment
 python purejaxql/pqn_atari_crl.py +alg=pqn_atari_crl SEED=${SEED} SAVE_PATH=${SEED_DIR}

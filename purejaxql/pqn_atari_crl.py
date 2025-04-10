@@ -104,6 +104,7 @@ class CustomTrainState(TrainState):
     timesteps: int = 0
     n_updates: int = 0
     grad_steps: int = 0
+    exploration_updates: int = 0
 
 
 def make_train(config):
@@ -161,7 +162,7 @@ def make_train(config):
     # here reset must be out of vmap and jit
     init_obs, env_state = env.reset()
 
-    def train(rng, exposure):
+    def train(rng, exposure, env_steps_taken_so_far):
 
         original_seed = rng[0]
 
@@ -202,6 +203,9 @@ def make_train(config):
                 batch_stats=network_variables["batch_stats"],
                 tx=tx,
             )
+
+            train_state = train_state.replace(n_updates=env_steps_taken_so_far)
+
             return train_state
 
         rng, _rng = jax.random.split(rng)
@@ -228,7 +232,10 @@ def make_train(config):
                 # different eps for each env
                 _rngs = jax.random.split(rng_a, total_envs)
                 if exposure == 0:
-                    eps = jnp.full(config["NUM_ENVS"], eps_scheduler(train_state.n_updates))
+                    eps = jnp.full(
+                        config["NUM_ENVS"],
+                        eps_scheduler(train_state.exploration_updates),
+                    )
                 else:
                     eps = jnp.full(config["NUM_ENVS"], config["EPS_FINISH"])
 
@@ -377,10 +384,17 @@ def make_train(config):
             )
 
             train_state = train_state.replace(n_updates=train_state.n_updates + 1)
+            train_state = train_state.replace(
+                exploration_updates=train_state.exploration_updates + 1
+            )
 
             if config.get("TEST_DURING_TRAINING", False):
-                test_infos = jax.tree_util.tree_map(lambda x: x[:, -config["TEST_ENVS"] :], infos)
-                infos = jax.tree_util.tree_map(lambda x: x[:, : -config["TEST_ENVS"]], infos)
+                test_infos = jax.tree_util.tree_map(
+                    lambda x: x[:, -config["TEST_ENVS"] :], infos
+                )
+                infos = jax.tree_util.tree_map(
+                    lambda x: x[:, : -config["TEST_ENVS"]], infos
+                )
                 infos.update({"test/" + k: v for k, v in test_infos.items()})
 
             metrics = {
@@ -393,7 +407,9 @@ def make_train(config):
                 "grad_steps": train_state.grad_steps,
                 "td_loss": loss.mean(),
                 "qvals": qvals.mean(),
-                "eps": eps_scheduler(train_state.n_updates) if exposure == 0 else config["EPS_FINISH"],
+                "eps": eps_scheduler(train_state.exploration_updates)
+                if exposure == 0
+                else config["EPS_FINISH"],
                 "lr": lr,
                 "exposure": exposure,
             }
@@ -446,56 +462,82 @@ def make_train(config):
     return train
 
 
-def single_run(config, start_time, exposure: int):
+def single_run(config):
 
     config = {**config, **config["alg"]}
 
     alg_name = config.get("ALG_NAME", "pqn")
-    env_name = config["ENV_NAME"]
+
+    start_time = time.time()
 
     wandb.init(
         entity=config["ENTITY"],
-        project=config["PROJECT"],
+        project=Atari_three_games,
         tags=[
             alg_name.upper(),
-            env_name.upper(),
             f"jax_{jax.__version__}",
         ],
-        name=f'{config["ALG_NAME"]}_{config["ENV_NAME"]}',
+        name=f'{config["ALG_NAME"]}',
         config=config,
         mode=config["WANDB_MODE"],
     )
 
-    rng = jax.random.PRNGKey(config["SEED"])
-    if config["NUM_SEEDS"] > 1:
-        raise NotImplementedError("Vmapped seeds not supported yet.")
-    else:
-        # outs = jax.jit(make_train(config))(rng, exposure)
-        outs = jax.jit(lambda rng: make_train(config)(rng, exposure))(rng)
-    print(f"Took {time.time()-start_time} seconds to complete.")
+    # Get list of environments
+    env_names = config["alg"]["ENV_NAME"]
 
-    # save params
-    if config.get("SAVE_PATH", None) is not None:
+    if config["alg"]["NUM_TASKS"] == 3:
+        env_names = "Pong-v5, Breakout-v5, SpaceInvaders-v5"
+    elif config["alg"]["NUM_TASKS"] > 3:
+        raise NotImplementedError("More than 3 games not supported yet.")
 
-        from purejaxql.utils.save_load import save_params
+    if isinstance(env_names, str):
+        env_names = [e.strip() for e in env_names.split(",")]
 
-        model_state = outs["runner_state"][0]
-        save_dir = os.path.join(config["SAVE_PATH"], env_name)
-        os.makedirs(save_dir, exist_ok=True)
-        OmegaConf.save(
-            config,
-            os.path.join(
-                save_dir, f'{alg_name}_{env_name}_seed{config["SEED"]}_config.yaml'
-            ),
-        )
+    # Number of exposures to repeat the environments
+    num_exposures = config["alg"].get("NUM_EXPOSURES", 1)
+    max_steps_per_exposure = (
+        config["alg"]["NUM_TASKS"] * config["alg"]["TOTAL_TIMESTEPS"]
+    )
 
-        # assumes not vmpapped seeds
-        params = model_state.params
-        save_path = os.path.join(
-            save_dir,
-            f'{alg_name}_{env_name}_seed{config["SEED"]}.safetensors',
-        )
-        save_params(params, save_path)
+    for cycle in range(num_exposures):
+        print(f"\n=== Cycle {cycle + 1}/{num_exposures} ===")
+        for idx, env_name in enumerate(env_names):
+            print(f"\n--- Running environment: {env_name} ---")
+            env_steps_taken_so_far = (cycle * max_steps_per_exposure) + (
+                idx * config["alg"]["TOTAL_TIMESTEPS"]
+            )
+            run_config = copy.deepcopy(config)
+            run_config["alg"]["ENV_NAME"] = env_name
+            rng = jax.random.PRNGKey(config["SEED"])
+            if config["NUM_SEEDS"] > 1:
+                raise NotImplementedError("Vmapped seeds not supported yet.")
+            else:
+                # outs = jax.jit(make_train(config))(rng, exposure)
+                outs = jax.jit(
+                    lambda rng: make_train(config)(rng, cycle, env_steps_taken_so_far)
+                )(rng)
+            print(f"Took {time.time()-start_time} seconds to complete.")
+
+            # save params
+            if config.get("SAVE_PATH", None) is not None:
+
+                from purejaxql.utils.save_load import save_params
+
+                model_state = outs["runner_state"][0]
+                save_dir = os.path.join(config["SAVE_PATH"], env_name)
+                os.makedirs(save_dir, exist_ok=True)
+                OmegaConf.save(
+                    config,
+                    os.path.join(save_dir, f'{alg_name}_exposure{cycle}_task{idx}_seed{config["SEED"]}_config.yaml'),
+                )
+
+                # assumes not vmpapped seeds
+                params = model_state.params
+                save_path = os.path.join(
+                    save_dir,
+                    f'{alg_name}_exposure{cycle}_task{idx}_seed{config["SEED"]}.safetensors',
+                )
+                save_params(params, save_path)
 
 
 def tune(default_config):
@@ -545,34 +587,13 @@ def tune(default_config):
 
 @hydra.main(version_base=None, config_path="./config", config_name="config")
 def main(config):
-    start_time = time.time()
     config = OmegaConf.to_container(config)
     print("Config:\n", OmegaConf.to_yaml(config))
+    if config["HYP_TUNE"]:
+        tune(config)
+    else:
+        single_run(config)
 
-    # Get list of environments
-    env_names = config["alg"]["ENV_NAME"]
-
-    if config["alg"]["NUM_TASKS"] == 3:
-        env_names = "Pong-v5, Breakout-v5, SpaceInvaders-v5"
-    elif config["alg"]["NUM_TASKS"] > 3:
-        raise NotImplementedError("More than 3 games not supported yet.")
-
-    if isinstance(env_names, str):
-        env_names = [e.strip() for e in env_names.split(",")]
-
-    # Number of exposures to repeat the environments
-    num_exposures = config["alg"].get("NUM_EXPOSURES", 1)
-
-    for cycle in range(num_exposures):
-        print(f"\n=== Cycle {cycle + 1}/{num_exposures} ===")
-        for env_name in env_names:
-            print(f"\n--- Running environment: {env_name} ---")
-            run_config = copy.deepcopy(config)
-            run_config["alg"]["ENV_NAME"] = env_name
-            if run_config["HYP_TUNE"]:
-                tune(run_config)
-            else:
-                single_run(run_config, start_time, cycle)
 
 if __name__ == "__main__":
     # main()
@@ -580,6 +601,7 @@ if __name__ == "__main__":
         main()
     except Exception as e:
         import traceback
+
         print("Uncaught Exception in Hydra Job:")
         traceback.print_exc()
         raise e
