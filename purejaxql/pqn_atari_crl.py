@@ -399,7 +399,7 @@ def make_train(config):
 
             metrics = {
                 "env_step": train_state.timesteps,
-                # "update_steps": train_state.n_updates,
+                "update_steps": train_state.n_updates,
                 # "env_frame": train_state.timesteps
                 # * env.observation_space.shape[
                 #     0
