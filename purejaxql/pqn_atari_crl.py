@@ -439,6 +439,11 @@ def make_train(config):
                             metrics[k] = v.item()
 
                         # print(f"{k}: {v}")
+                        if k == "env_step":
+                            print(f"{k}: {v}")
+
+                        if k == "update_steps":
+                            print(f"{k}: {v}")
 
                     wandb.log(metrics, step=metrics["update_steps"])
 
