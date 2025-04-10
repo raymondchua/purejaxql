@@ -6,23 +6,21 @@
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=8G
+#SBATCH --job-name=atari_seed${1}
 
 # Set SEED from argument
 SEED=$1
 
 # -- Create timestamped output directory
 NOW=$(date "+%Y.%m.%d_%H%M")
-OUT_DIR="/home/chuaraym/scratch/exp_sweep/${NOW}_continual_rl_atari_three_games"
-
-# Create a seed-specific folder named {JobID}_{SEED}
-SEED_DIR="${OUT_DIR}/${SLURM_JOB_ID}_${SEED}"
-mkdir -p "$SEED_DIR"
+OUT_DIR="/home/chuaraym/scratch/exp_sweep/${NOW}/${SLURM_JOB_ID}_${SEED}"
+mkdir -p "$OUT_DIR"
 
 # -- Set job name (optional, works on some clusters only *before* job starts)
 # scontrol update JobName="atari_seed${SEED}" JobId=$SLURM_JOB_ID
 
 # -- Redirect SLURM output (stdout + stderr)
-exec > "${SEED_DIR}/slurm-${SLURM_JOB_ID}.out" 2>&1
+exec > "${OUT_DIR}/slurm-${SLURM_JOB_ID}.out" 2>&1
 
 echo "Running Atari experiment with SEED=${SEED}"
 echo "Output directory: ${SEED_DIR}"
@@ -43,6 +41,8 @@ source /home/chuaraym/pqn_atari_env311/bin/activate
 
 # Change to project root (so purejaxql is importable)
 cd /home/chuaraym/purejaxql/
+
+wandb login 6c26b2dbbed0f6f58c49aacf99829e25d9e40d41
 
 # Run the experiment
 python purejaxql/pqn_atari_crl.py +alg=pqn_atari_crl SEED=${SEED} SAVE_PATH=${SEED_DIR}
