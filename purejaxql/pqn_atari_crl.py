@@ -204,7 +204,7 @@ def make_train(config):
                 tx=tx,
             )
 
-            train_state = train_state.replace(n_updates=env_steps_taken_so_far)
+            # train_state = train_state.replace(n_updates=env_steps_taken_so_far)
 
             return train_state
 
@@ -400,10 +400,10 @@ def make_train(config):
             metrics = {
                 "env_step": train_state.timesteps,
                 "update_steps": train_state.n_updates,
-                # "env_frame": train_state.timesteps
-                # * env.observation_space.shape[
-                #     0
-                # ],  # first dimension of the observation space is number of stacked frames
+                "env_frame": train_state.timesteps
+                * env.observation_space.shape[
+                    0
+                ],  # first dimension of the observation space is number of stacked frames
                 "grad_steps": train_state.grad_steps,
                 "td_loss": loss.mean(),
                 "qvals": qvals.mean(),
