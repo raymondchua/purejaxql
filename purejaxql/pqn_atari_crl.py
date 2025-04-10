@@ -473,7 +473,7 @@ def single_run(config):
 
     wandb.init(
         entity=config["ENTITY"],
-        project=Atari_three_games,
+        project=config["PROJECT"],
         tags=[
             alg_name.upper(),
             f"jax_{jax.__version__}",
