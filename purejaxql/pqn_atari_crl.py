@@ -162,7 +162,7 @@ def make_train(config):
     # here reset must be out of vmap and jit
     init_obs, env_state = env.reset()
 
-    def train(rng, exposure, env_steps_taken_so_far):
+    def train(rng, exposure, env_steps_taken_so_far, task_id):
 
         original_seed = rng[0]
 
@@ -412,6 +412,7 @@ def make_train(config):
                 else config["EPS_FINISH"],
                 "lr": lr,
                 "exposure": exposure,
+                "task_id": task_id,
             }
 
             metrics.update({k: v.mean() for k, v in infos.items()})
@@ -506,6 +507,7 @@ def single_run(config):
             env_steps_taken_so_far = (cycle * max_steps_per_exposure) + (
                 idx * config["alg"]["TOTAL_TIMESTEPS"]
             )
+            task_id = cycle * config["alg"]["NUM_TASKS"] + idx
             run_config = copy.deepcopy(config)
             run_config["alg"]["ENV_NAME"] = env_name
             rng = jax.random.PRNGKey(config["SEED"])
@@ -514,7 +516,7 @@ def single_run(config):
             else:
                 # outs = jax.jit(make_train(config))(rng, exposure)
                 outs = jax.jit(
-                    lambda rng: make_train(config)(rng, cycle, env_steps_taken_so_far)
+                    lambda rng: make_train(config)(rng, cycle, env_steps_taken_so_far, task_id)
                 )(rng)
             print(f"Took {time.time()-start_time} seconds to complete.")
 
