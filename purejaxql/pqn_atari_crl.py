@@ -445,6 +445,9 @@ def make_train(config):
                         if k == "update_steps":
                             print(f"{k}: {v}")
 
+                        if k == "eps":
+                            print(f"{k}: {v}")
+
                     wandb.log(metrics, step=metrics["update_steps"])
 
                 jax.debug.callback(callback, metrics, original_seed)
