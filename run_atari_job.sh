@@ -35,6 +35,10 @@ module load blis
 module load scipy-stack
 
 export FLEXIBLAS=blis
-source pqn_atari_env311/bin/activate
+source /home/chuaraym/pqn_atari_env311/bin/activate
 
+# Change to project root so `purejaxql` is on PYTHONPATH
+cd /home/chuaraym/purejaxql/
+
+# Run the experiment
 python purejaxql/pqn_atari_crl.py +alg=pqn_atari_crl SEED=${SEED}
