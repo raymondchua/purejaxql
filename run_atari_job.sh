@@ -7,25 +7,27 @@
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=8G
 
-# Set job name dynamically using environment variable
-export SEED=$1
+# Set SEED from argument
+SEED=$1
 
 # -- Create timestamped output directory
-NOW=$(date "+%Y.%m.%d/%H%M")
+NOW=$(date "+%Y.%m.%d_%H%M")
 OUT_DIR="/home/chuaraym/scratch/exp_sweep/${NOW}_continual_rl_atari_three_games"
-mkdir -p "${OUT_DIR}"
 
-# -- Set job name dynamically
-JOB_NAME="atari_seed${SEED}"
-scontrol update JobName=$JOB_NAME JobId=$SLURM_JOB_ID
+# Create a seed-specific folder named {JobID}_{SEED}
+SEED_DIR="${OUT_DIR}/${SLURM_JOB_ID}_${SEED}"
+mkdir -p "$SEED_DIR"
+
+# -- Set job name (optional, works on some clusters only *before* job starts)
+# scontrol update JobName="atari_seed${SEED}" JobId=$SLURM_JOB_ID
 
 # -- Redirect SLURM output (stdout + stderr)
-export SLURM_OUTPUT="${OUT_DIR}/slurm-${SLURM_JOB_ID}.out"
-exec > "$SLURM_OUTPUT" 2>&1
+exec > "${SEED_DIR}/slurm-${SLURM_JOB_ID}.out" 2>&1
 
 echo "Running Atari experiment with SEED=${SEED}"
-echo "Output directory: ${OUT_DIR}"
+echo "Output directory: ${SEED_DIR}"
 
+# Load required modules
 module load StdEnv/2023
 module load cuda/12.2
 module load cudnn/8.9.5.29
@@ -35,10 +37,12 @@ module load blis
 module load scipy-stack
 
 export FLEXIBLAS=blis
+
+# Activate Python environment
 source /home/chuaraym/pqn_atari_env311/bin/activate
 
-# Change to project root so `purejaxql` is on PYTHONPATH
+# Change to project root (so purejaxql is importable)
 cd /home/chuaraym/purejaxql/
 
 # Run the experiment
-python purejaxql/pqn_atari_crl.py +alg=pqn_atari_crl SEED=${SEED}
+python purejaxql/pqn_atari_crl.py +alg=pqn_atari_crl SEED=${SEED} SAVE_PATH=${SEED_DIR}
