@@ -9,7 +9,12 @@
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=8G
 
-echo "Running Atari experiment with SEED=${1}"
+# Set job name dynamically using environment variable
+export SEED=$1
+JOB_NAME="atari_seed${SEED}"
+scontrol update JobName=$JOB_NAME JobId=$SLURM_JOB_ID
+
+echo "Running Atari experiment with SEED=${SEED}"
 
 module load StdEnv/2023
 module load cuda/12.2
@@ -22,4 +27,4 @@ module load scipy-stack
 export FLEXIBLAS=blis
 source pqn_atari_env311/bin/activate
 
-python purejaxql/pqn_atari_crl.py +alg=pqn_atari_crl SEED=${1}
+python purejaxql/pqn_atari_crl.py +alg=pqn_atari_crl SEED=${SEED}
