@@ -414,6 +414,7 @@ def make_train(config):
                 "lr": lr,
                 "exposure": exposure,
                 "task_id": task_id,
+                "exploration_updates": train_state.exploration_updates,
             }
 
             metrics.update({k: v.mean() for k, v in infos.items()})
