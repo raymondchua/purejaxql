@@ -12,7 +12,7 @@ SEED=$1
 
 # -- Create timestamped output directory
 NOW=$(date "+%Y.%m.%d")
-TIME=$(date "+%H.%M")
+TIME=$(date "+%H%M")
 OUT_DIR="/home/chuaraym/scratch/exp_sweep/${NOW}/${TIME}_continual_rl_atari_three_games/${SLURM_JOB_ID}_${SEED}"
 mkdir -p "$OUT_DIR"
 
