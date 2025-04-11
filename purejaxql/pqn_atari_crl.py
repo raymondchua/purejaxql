@@ -108,7 +108,7 @@ class CustomTrainState(TrainState):
     total_returns: int = 0
 
 
-def create_agent(rng, config, max_num_actions):
+def create_agent(rng, config, max_num_actions, observation_space_shape):
     # INIT NETWORK AND OPTIMIZER
     network = QNetwork(
         action_dim=max_num_actions,
@@ -116,7 +116,8 @@ def create_agent(rng, config, max_num_actions):
         norm_input=config.get("NORM_INPUT", False),
     )
 
-    init_x = jnp.zeros((1, *env.single_observation_space.shape))
+    # init_x = jnp.zeros((1, *env.single_observation_space.shape))
+    init_x = jnp.zeros((1, observation_space_shape))
     network_variables = network.init(rng, init_x, train=False)
 
     tx = optax.chain(
@@ -542,15 +543,23 @@ def single_run(config):
 
     # determine the max number of actions
     max_num_actions = 0
+    observation_space_shape = None
     for env_name in env_names:
-        env = envpool.make(env_name, num_envs=1, env_type="gym")
+        total_envs = (
+            (config["NUM_ENVS"] + config["TEST_ENVS"])
+            if config.get("TEST_DURING_TRAINING", False)
+            else config["NUM_ENVS"]
+        )
+        env = envpool.make(env_name, num_envs=total_envs, env_type="gym")
         max_num_actions = max(max_num_actions, env.action_space.n)
         print("current env num actions:", env.action_space.n)
+        observation_space_shape = env.observation_space.shape
+        print("current env observation space shape:", observation_space_shape)
         del env
 
     rng = jax.random.PRNGKey(config["SEED"])
     rng, rng_agent = jax.random.split(rng)
-    train_state, network = create_agent(rng_agent, config, max_num_actions)
+    train_state, network = create_agent(rng_agent, config, max_num_actions, observation_space_shape)
 
     for cycle in range(num_exposures):
         print(f"\n=== Cycle {cycle + 1}/{num_exposures} ===")
