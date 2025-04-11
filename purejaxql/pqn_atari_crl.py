@@ -122,7 +122,7 @@ def create_agent(rng, config, max_num_actions, observation_space_shape):
 
     tx = optax.chain(
         optax.clip_by_global_norm(config["MAX_GRAD_NORM"]),
-        optax.radam(learning_rate=lr),
+        optax.radam(learning_rate=config["LR"]),
     )
 
     train_state = CustomTrainState.create(
