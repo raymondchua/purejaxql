@@ -360,6 +360,7 @@ def make_train(config):
                 "grad_steps": train_state.grad_steps,
                 "td_loss": loss.mean(),
                 "qvals": qvals.mean(),
+                "eps": eps_scheduler(train_state.n_updates),
             }
             done_infos = jax.tree_util.tree_map(
                 lambda x: (x * infos["returned_episode"]).sum()
