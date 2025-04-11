@@ -502,7 +502,7 @@ def make_train(config):
             _update_step, runner_state, None, config["NUM_UPDATES"]
         )
 
-        return {"runner_state": runner_state, "metrics": metrics}
+        return {"runner_state": runner_state, "metrics": metrics, "train_state": train_state}
 
     return train
 
@@ -576,6 +576,7 @@ def single_run(config):
                 )(rng)
             print(f"Took {time.time()-start_time} seconds to complete.")
 
+            train_state = outs["train_state"]
             metrics = outs["metrics"]
             env_step = metrics["env_step"]
             update_steps = metrics["update_steps"]
