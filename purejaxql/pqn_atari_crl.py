@@ -117,7 +117,7 @@ def create_agent(rng, config, max_num_actions, observation_space_shape):
     )
 
     # init_x = jnp.zeros((1, *env.single_observation_space.shape))
-    init_x = jnp.zeros((1, observation_space_shape))
+    init_x = jnp.zeros((1, *observation_space_shape))
     network_variables = network.init(rng, init_x, train=False)
 
     tx = optax.chain(
@@ -559,7 +559,7 @@ def single_run(config):
 
     rng = jax.random.PRNGKey(config["SEED"])
     rng, rng_agent = jax.random.split(rng)
-    train_state, network = create_agent(rng_agent, config, max_num_actions, *observation_space_shape)
+    train_state, network = create_agent(rng_agent, config, max_num_actions, observation_space_shape)
 
     for cycle in range(num_exposures):
         print(f"\n=== Cycle {cycle + 1}/{num_exposures} ===")
