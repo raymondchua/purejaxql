@@ -108,10 +108,10 @@ class CustomTrainState(TrainState):
     total_returns: int = 0
 
 
-def create_agent(rng, config):
+def create_agent(rng, config, max_num_actions):
     # INIT NETWORK AND OPTIMIZER
     network = QNetwork(
-        action_dim=env.single_action_space.n,
+        action_dim=max_num_actions,
         norm_type=config["NORM_TYPE"],
         norm_input=config.get("NORM_INPUT", False),
     )
@@ -550,7 +550,7 @@ def single_run(config):
 
     rng = jax.random.PRNGKey(config["SEED"])
     rng, rng_agent = jax.random.split(rng)
-    train_state, network = create_agent(rng_agent, config)
+    train_state, network = create_agent(rng_agent, config, max_num_actions)
 
     for cycle in range(num_exposures):
         print(f"\n=== Cycle {cycle + 1}/{num_exposures} ===")
