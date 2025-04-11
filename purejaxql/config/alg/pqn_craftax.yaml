@@ -24,7 +24,7 @@ LAMBDA: 0
 ENV_NAME: "Craftax-Symbolic-v1"
 USE_OPTIMISTIC_RESETS: True
 OPTIMISTIC_RESET_RATIO: 16
-LOG_ACHIEVEMENTS: False
+LOG_ACHIEVEMENTS: True
 
 # evaluation
 WANDB_LOG_INTERVAL: 100 # not log each interval since would be too much with this config
