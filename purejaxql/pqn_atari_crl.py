@@ -559,7 +559,7 @@ def single_run(config):
 
     rng = jax.random.PRNGKey(config["SEED"])
     rng, rng_agent = jax.random.split(rng)
-    train_state, network = create_agent(rng_agent, config, max_num_actions, observation_space_shape)
+    train_state, network = create_agent(rng_agent, config, max_num_actions, *observation_space_shape)
 
     for cycle in range(num_exposures):
         print(f"\n=== Cycle {cycle + 1}/{num_exposures} ===")
