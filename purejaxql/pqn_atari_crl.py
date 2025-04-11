@@ -498,7 +498,7 @@ def make_train(config):
         expl_state = (init_obs, env_state)
         runner_state = (train_state, expl_state, test_metrics, _rng)
 
-        runner_state, metrics = jax.lax.scan(
+        runner_state, metrics, train_state = jax.lax.scan(
             _update_step, runner_state, None, config["NUM_UPDATES"]
         )
 
