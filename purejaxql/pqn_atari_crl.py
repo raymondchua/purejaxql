@@ -540,6 +540,13 @@ def single_run(config):
     # Number of exposures to repeat the environments
     num_exposures = config["alg"].get("NUM_EXPOSURES", 1)
 
+    # determine the max number of actions
+    max_num_actions = 0
+    for env_name in env_names:
+        env = envpool.make(env_name, num_envs=1, env_type="gym")
+        max_num_actions = max(max_num_actions, env.single_action_space.n)
+        print("current env num actions:", env.single_action_space.n)
+
     rng = jax.random.PRNGKey(config["SEED"])
     rng, rng_agent = jax.random.split(rng)
     train_state, network = create_agent(rng_agent, config)
