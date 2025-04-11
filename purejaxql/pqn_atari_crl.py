@@ -108,6 +108,32 @@ class CustomTrainState(TrainState):
     total_returns: int = 0
 
 
+def create_agent(rng, config):
+    # INIT NETWORK AND OPTIMIZER
+    network = QNetwork(
+        action_dim=env.single_action_space.n,
+        norm_type=config["NORM_TYPE"],
+        norm_input=config.get("NORM_INPUT", False),
+    )
+
+    init_x = jnp.zeros((1, *env.single_observation_space.shape))
+    network_variables = network.init(rng, init_x, train=False)
+
+    tx = optax.chain(
+        optax.clip_by_global_norm(config["MAX_GRAD_NORM"]),
+        optax.radam(learning_rate=lr),
+    )
+
+    train_state = CustomTrainState.create(
+        apply_fn=network.apply,
+        params=network_variables["params"],
+        batch_stats=network_variables["batch_stats"],
+        tx=tx,
+    )
+
+    return train_state, network
+
+
 def make_train(config):
 
     config["NUM_UPDATES"] = (
@@ -163,7 +189,7 @@ def make_train(config):
     # here reset must be out of vmap and jit
     init_obs, env_state = env.reset()
 
-    def train(rng, exposure, env_steps_taken, updates_taken, grad_steps_taken, task_id):
+    def train(rng, exposure, train_state, network, task_id):
 
         original_seed = rng[0]
 
@@ -182,37 +208,37 @@ def make_train(config):
         )
         lr = lr_scheduler if config.get("LR_LINEAR_DECAY", False) else config["LR"]
 
-        # INIT NETWORK AND OPTIMIZER
-        network = QNetwork(
-            action_dim=env.single_action_space.n,
-            norm_type=config["NORM_TYPE"],
-            norm_input=config.get("NORM_INPUT", False),
-        )
+        # # INIT NETWORK AND OPTIMIZER
+        # network = QNetwork(
+        #     action_dim=env.single_action_space.n,
+        #     norm_type=config["NORM_TYPE"],
+        #     norm_input=config.get("NORM_INPUT", False),
+        # )
 
-        def create_agent(rng):
-            init_x = jnp.zeros((1, *env.single_observation_space.shape))
-            network_variables = network.init(rng, init_x, train=False)
-
-            tx = optax.chain(
-                optax.clip_by_global_norm(config["MAX_GRAD_NORM"]),
-                optax.radam(learning_rate=lr),
-            )
-
-            train_state = CustomTrainState.create(
-                apply_fn=network.apply,
-                params=network_variables["params"],
-                batch_stats=network_variables["batch_stats"],
-                tx=tx,
-            )
-
-            train_state = train_state.replace(timesteps=env_steps_taken)
-            train_state = train_state.replace(n_updates=updates_taken)
-            train_state = train_state.replace(grad_steps=grad_steps_taken)
-
-            return train_state
+        # def create_agent(rng):
+        #     init_x = jnp.zeros((1, *env.single_observation_space.shape))
+        #     network_variables = network.init(rng, init_x, train=False)
+        #
+        #     tx = optax.chain(
+        #         optax.clip_by_global_norm(config["MAX_GRAD_NORM"]),
+        #         optax.radam(learning_rate=lr),
+        #     )
+        #
+        #     train_state = CustomTrainState.create(
+        #         apply_fn=network.apply,
+        #         params=network_variables["params"],
+        #         batch_stats=network_variables["batch_stats"],
+        #         tx=tx,
+        #     )
+        #
+        #     train_state = train_state.replace(timesteps=env_steps_taken)
+        #     train_state = train_state.replace(n_updates=updates_taken)
+        #     train_state = train_state.replace(grad_steps=grad_steps_taken)
+        #
+        #     return train_state
 
         rng, _rng = jax.random.split(rng)
-        train_state = create_agent(rng)
+        # train_state = create_agent(rng)
 
         # TRAINING LOOP
         def _update_step(runner_state, unused):
@@ -513,9 +539,10 @@ def single_run(config):
 
     # Number of exposures to repeat the environments
     num_exposures = config["alg"].get("NUM_EXPOSURES", 1)
-    env_steps_taken = 0
-    updates_taken = 0
-    grad_steps_taken = 0
+
+    rng = jax.random.PRNGKey(config["SEED"])
+    rng, rng_agent = jax.random.split(rng)
+    train_state, network = create_agent(rng_agent, config)
 
     for cycle in range(num_exposures):
         print(f"\n=== Cycle {cycle + 1}/{num_exposures} ===")
@@ -523,20 +550,19 @@ def single_run(config):
             print(f"\n--- Running environment: {env_name} ---")
             task_id = cycle * config["alg"]["NUM_TASKS"] + idx
             config["ENV_NAME"] = env_name
-            rng = jax.random.PRNGKey(config["SEED"])
             if config["NUM_SEEDS"] > 1:
                 raise NotImplementedError("Vmapped seeds not supported yet.")
             else:
                 # outs = jax.jit(make_train(config))(rng, exposure)
                 outs = jax.jit(
-                    lambda rng: make_train(config)(rng, cycle, env_steps_taken, updates_taken, grad_steps_taken, task_id)
+                    lambda rng: make_train(config)(rng, cycle, train_state, network, task_id)
                 )(rng)
             print(f"Took {time.time()-start_time} seconds to complete.")
 
             metrics = outs["metrics"]
-            env_steps_taken = metrics["env_step"][-1]
-            updates_taken = metrics["update_steps"][-1]
-            grad_steps_taken = metrics["grad_steps"][-1]
+            train_state = train_state.replace(timesteps=metrics["env_step"][-1])
+            train_state = train_state.replace(n_updates=metrics["update_steps"][-1])
+            train_state = train_state.replace(grad_steps=metrics["grad_steps"][-1])
 
             # save params
             if config.get("SAVE_PATH", None) is not None:
