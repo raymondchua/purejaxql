@@ -472,15 +472,15 @@ def make_train(config):
                         if isinstance(v, np.ndarray):
                             metrics[k] = v.item()
 
-                        # print(f"{k}: {v}")
-                        # if k == "env_step":
-                        #     print(f"{k}: {v}")
-                        #
-                        # if k == "update_steps":
-                        #     print(f"{k}: {v}")
-                        #
-                        # if k == "eps":
-                        #     print(f"{k}: {v}")
+                        print(f"{k}: {v}")
+                        if k == "env_step":
+                            print(f"{k}: {v}")
+
+                        if k == "update_steps":
+                            print(f"{k}: {v}")
+
+                        if k == "eps":
+                            print(f"{k}: {v}")
 
                     wandb.log(metrics, step=metrics["update_steps"])
 
@@ -575,11 +575,6 @@ def single_run(config):
                     lambda rng: make_train(config)(rng, cycle, train_state, network, task_id)
                 )(rng)
             print(f"Took {time.time()-start_time} seconds to complete.")
-
-            metrics = outs["metrics"]
-            train_state = train_state.replace(timesteps=metrics["env_step"][-1])
-            train_state = train_state.replace(n_updates=metrics["update_steps"][-1])
-            train_state = train_state.replace(grad_steps=metrics["grad_steps"][-1])
 
             # save params
             if config.get("SAVE_PATH", None) is not None:
