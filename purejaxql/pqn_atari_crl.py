@@ -544,8 +544,8 @@ def single_run(config):
     max_num_actions = 0
     for env_name in env_names:
         env = envpool.make(env_name, num_envs=1, env_type="gym")
-        max_num_actions = max(max_num_actions, env.single_action_space.n)
-        print("current env num actions:", env.single_action_space.n)
+        max_num_actions = max(max_num_actions, env.action_space)
+        print("current env num actions:", env.action_space)
         del env
 
     rng = jax.random.PRNGKey(config["SEED"])
