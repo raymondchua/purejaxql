@@ -105,6 +105,7 @@ class CustomTrainState(TrainState):
     n_updates: int = 0
     grad_steps: int = 0
     exploration_updates: int = 0
+    total_returns: int = 0
 
 
 def make_train(config):
@@ -162,7 +163,7 @@ def make_train(config):
     # here reset must be out of vmap and jit
     init_obs, env_state = env.reset()
 
-    def train(rng, exposure, env_steps_taken, updates_taken, task_id):
+    def train(rng, exposure, env_steps_taken, updates_taken, grad_steps_taken, task_id):
 
         original_seed = rng[0]
 
@@ -206,6 +207,7 @@ def make_train(config):
 
             train_state = train_state.replace(timesteps=env_steps_taken)
             train_state = train_state.replace(n_updates=updates_taken)
+            train_state = train_state.replace(grad_steps=grad_steps_taken)
 
             return train_state
 
@@ -278,6 +280,10 @@ def make_train(config):
                 timesteps=train_state.timesteps
                 + config["NUM_STEPS"] * config["NUM_ENVS"]
             )  # update timesteps count
+
+            train_state = train_state.replace(
+                total_returns=train_state.total_returns + transitions.reward.sum()
+            )  # update total returns count
 
             last_q = network.apply(
                 {
@@ -415,6 +421,7 @@ def make_train(config):
                 "exposure": exposure,
                 "task_id": task_id,
                 "exploration_updates": train_state.exploration_updates,
+                "total_returns": train_state.total_returns,
             }
 
             metrics.update({k: v.mean() for k, v in infos.items()})
@@ -508,6 +515,7 @@ def single_run(config):
     num_exposures = config["alg"].get("NUM_EXPOSURES", 1)
     env_steps_taken = 0
     updates_taken = 0
+    grad_steps_taken = 0
 
     for cycle in range(num_exposures):
         print(f"\n=== Cycle {cycle + 1}/{num_exposures} ===")
@@ -521,13 +529,14 @@ def single_run(config):
             else:
                 # outs = jax.jit(make_train(config))(rng, exposure)
                 outs = jax.jit(
-                    lambda rng: make_train(config)(rng, cycle, env_steps_taken, updates_taken, task_id)
+                    lambda rng: make_train(config)(rng, cycle, env_steps_taken, updates_taken, grad_steps_taken, task_id)
                 )(rng)
             print(f"Took {time.time()-start_time} seconds to complete.")
 
             metrics = outs["metrics"]
             env_steps_taken = metrics["env_step"][-1]
             updates_taken = metrics["update_steps"][-1]
+            grad_steps_taken = metrics["grad_steps"][-1]
 
             # save params
             if config.get("SAVE_PATH", None) is not None:
