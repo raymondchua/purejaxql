@@ -576,6 +576,12 @@ def single_run(config):
                 )(rng)
             print(f"Took {time.time()-start_time} seconds to complete.")
 
+            metrics = outs["metrics"]
+            env_step = metrics["env_step"]
+            update_steps = metrics["update_steps"]
+            print(f"env_step: {env_step}")
+            print(f"update_steps: {update_steps}")
+
             # save params
             if config.get("SAVE_PATH", None) is not None:
 
