@@ -530,8 +530,8 @@ def single_run(config):
             print(f"Took {time.time()-start_time} seconds to complete.")
 
             metrics = outs["metrics"]
-            env_steps_taken += metrics["env_step"][-1]
-            updates_taken += metrics["update_steps"][-1]
+            env_steps_taken = metrics["env_step"][-1]
+            updates_taken = metrics["update_steps"][-1]
 
             # print(f"Env steps taken: {env_steps_taken}")
             # print(f"Updates taken: {updates_taken}")
