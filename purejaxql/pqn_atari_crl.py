@@ -577,15 +577,17 @@ def single_run(config):
             print(f"Took {time.time()-start_time} seconds to complete.")
 
             train_state = outs["train_state"]
-            metrics = outs["metrics"]
-            env_step = metrics["env_step"]
-            update_steps = metrics["update_steps"]
-            print(f"env_step: {env_step}")
-            print(f"update_steps: {update_steps}")
 
-            print("train_state timesteps:", train_state.timesteps)
-            print("train_state n_updates:", train_state.n_updates)
-            print("train_state grad_steps:", train_state.grad_steps)
+            # Debug print statements
+            # metrics = outs["metrics"]
+            # env_step = metrics["env_step"]
+            # update_steps = metrics["update_steps"]
+            # print(f"env_step: {env_step}")
+            # print(f"update_steps: {update_steps}")
+            #
+            # print("train_state timesteps:", train_state.timesteps)
+            # print("train_state n_updates:", train_state.n_updates)
+            # print("train_state grad_steps:", train_state.grad_steps)
 
             # save params
             if config.get("SAVE_PATH", None) is not None:
