@@ -506,9 +506,6 @@ def single_run(config):
 
     # Number of exposures to repeat the environments
     num_exposures = config["alg"].get("NUM_EXPOSURES", 1)
-    max_steps_per_exposure = (
-        config["alg"]["NUM_TASKS"] * config["alg"]["TOTAL_TIMESTEPS"]
-    )
     env_steps_taken = 0
     updates_taken = 0
 
@@ -517,8 +514,7 @@ def single_run(config):
         for idx, env_name in enumerate(env_names):
             print(f"\n--- Running environment: {env_name} ---")
             task_id = cycle * config["alg"]["NUM_TASKS"] + idx
-            run_config = copy.deepcopy(config)
-            run_config["alg"]["ENV_NAME"] = env_name
+            config["ENV_NAME"] = env_name
             rng = jax.random.PRNGKey(config["SEED"])
             if config["NUM_SEEDS"] > 1:
                 raise NotImplementedError("Vmapped seeds not supported yet.")
