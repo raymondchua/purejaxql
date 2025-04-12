@@ -458,9 +458,10 @@ def make_train(config):
 
             # report on wandb if required
             if config["WANDB_MODE"] != "disabled":
-                print("action: ", transitions.action)
 
                 def callback(metrics, original_seed):
+                    print("action: ", transitions.action)
+
                     if config.get("WANDB_LOG_ALL_SEEDS", False):
                         metrics.update(
                             {
