@@ -341,7 +341,7 @@ def make_train(config):
                 + config["NUM_STEPS"] * config["NUM_ENVS"]
             )  # update timesteps count
 
-            multi_train_state.network_state = multi_train_state.network_statereplace(
+            multi_train_state.network_state = multi_train_state.network_state.replace(
                 total_returns=multi_train_state.network_state.total_returns + transitions.reward.sum()
             ) # update total returns count
 
