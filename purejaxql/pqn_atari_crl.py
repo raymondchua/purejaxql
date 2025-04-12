@@ -17,7 +17,6 @@ import flax.linen as nn
 from flax.training.train_state import TrainState
 import hydra
 from omegaconf import OmegaConf
-from jax import lax
 import wandb
 
 import envpool
