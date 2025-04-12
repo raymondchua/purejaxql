@@ -17,6 +17,7 @@ import flax.linen as nn
 from flax.training.train_state import TrainState
 import hydra
 from omegaconf import OmegaConf
+from jax import lax
 import wandb
 
 import envpool
@@ -176,7 +177,9 @@ def make_train(config):
         rng_a, rng_e = jax.random.split(
             rng
         )  # a key for sampling random actions and one for picking
-        q_vals_valid_actions = q_vals[:num_valid_actions]
+        start_idx = jnp.array([0])  # slice starting from 0
+        slice_size = jnp.array([num_valid_actions])
+        q_vals_valid_actions = lax.dynamic_slice(q_vals, start_idx, slice_size)
         greedy_actions = jnp.argmax(q_vals_valid_actions, axis=-1)
         chosed_actions = jnp.where(
             jax.random.uniform(rng_e, greedy_actions.shape)
