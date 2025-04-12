@@ -608,7 +608,7 @@ def single_run(config):
             else:
                 # outs = jax.jit(make_train(config))(rng, exposure)
                 outs = jax.jit(
-                    lambda rng: make_train(config)(rng, cycle, train_state, network, task_id)
+                    lambda rng: make_train(config)(rng, cycle, multi_train_state, network, task_id)
                 )(rng)
             print(f"Took {time.time()-start_time} seconds to complete.")
 
