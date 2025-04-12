@@ -172,16 +172,17 @@ def make_train(config):
     env = make_env(total_envs)
 
     # epsilon-greedy exploration
-    def eps_greedy_exploration(rng, q_vals, eps):
+    def eps_greedy_exploration(rng, q_vals, eps, num_valid_actions):
         rng_a, rng_e = jax.random.split(
             rng
         )  # a key for sampling random actions and one for picking
-        greedy_actions = jnp.argmax(q_vals, axis=-1)
+        q_vals_valid_actions = q_vals[:, :num_valid_actions]
+        greedy_actions = jnp.argmax(q_vals_valid_actions, axis=-1)
         chosed_actions = jnp.where(
             jax.random.uniform(rng_e, greedy_actions.shape)
             < eps,  # pick the actions that should be random
             jax.random.randint(
-                rng_a, shape=greedy_actions.shape, minval=0, maxval=q_vals.shape[-1]
+                rng_a, shape=greedy_actions.shape, minval=0, maxval=q_vals_valid_actions.shape[-1]
             ),  # sample random actions,
             greedy_actions,
         )
@@ -272,7 +273,8 @@ def make_train(config):
 
                 if config.get("TEST_DURING_TRAINING", False):
                     eps = jnp.concatenate((eps, jnp.zeros(config["TEST_ENVS"])))
-                new_action = jax.vmap(eps_greedy_exploration)(_rngs, q_vals, eps)
+                num_valid_actions = env.single_action_space.n
+                new_action = jax.vmap(eps_greedy_exploration)(_rngs, q_vals, eps, num_valid_actions)
 
                 new_obs, new_env_state, reward, new_done, info = env.step(
                     env_state, new_action
