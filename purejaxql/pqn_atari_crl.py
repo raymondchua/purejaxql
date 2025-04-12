@@ -546,23 +546,10 @@ def single_run(config):
     num_exposures = config["alg"].get("NUM_EXPOSURES", 1)
 
     # determine the max number of actions
-    max_num_actions = 0
-    observation_space_shape = None
+    max_num_actions = 18 # atari has at most 18 actions
+    observation_space_shape = (4, 84, 84)
 
     config["alg"]["TOTAL_TIMESTEPS_DECAY"] = config["alg"]["TOTAL_TIMESTEPS_DECAY"] * config["NUM_TASKS"]
-
-    for env_name in env_names:
-        total_envs = (
-            (config["NUM_ENVS"] + config["TEST_ENVS"])
-            if config.get("TEST_DURING_TRAINING", False)
-            else config["NUM_ENVS"]
-        )
-        env = envpool.make(env_name, num_envs=total_envs, env_type="gym")
-        max_num_actions = max(max_num_actions, env.action_space.n)
-        print("current env num actions:", env.action_space.n)
-        observation_space_shape = env.observation_space.shape
-        print("current env observation space shape:", observation_space_shape)
-        del env
 
     rng = jax.random.PRNGKey(config["SEED"])
     rng, rng_agent = jax.random.split(rng)
