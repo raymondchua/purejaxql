@@ -667,7 +667,7 @@ def single_run(config):
 
                 from purejaxql.utils.save_load import save_params
 
-                model_state = outs["runner_state"][0]
+                multi_train_state = outs["runner_state"][0]
                 save_dir = os.path.join(config["SAVE_PATH"], env_name)
                 os.makedirs(save_dir, exist_ok=True)
                 OmegaConf.save(
@@ -679,7 +679,7 @@ def single_run(config):
                 )
 
                 # assumes not vmpapped seeds
-                params = model_state.params
+                params = multi_train_state.network_state.params
                 save_path = os.path.join(
                     save_dir,
                     f'{alg_name}_exposure{cycle}_task{idx}_seed{config["SEED"]}.safetensors',
