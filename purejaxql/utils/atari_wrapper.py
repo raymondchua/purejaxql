@@ -18,6 +18,7 @@ ATARI_SCORES = {
     "Asterix-v5": (210.0, 8503.3),
     "Asteroids-v5": (719.1, 47388.7),
     "Atlantis-v5": (12850.0, 29028.1),
+    "Atlantis2-v5": (12850.0, 29028.1),
     "BankHeist-v5": (14.2, 753.1),
     "BattleZone-v5": (2360.0, 37187.5),
     "BeamRider-v5": (363.9, 16926.5),
