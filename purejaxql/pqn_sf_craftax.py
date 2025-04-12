@@ -28,6 +28,7 @@ from purejaxql.utils.craftax_wrappers import (
     BatchEnvWrapper,
 )
 from purejaxql.utils.batch_renorm import BatchRenorm
+from purejaxql.utils.l2_normalize import l2_normalize
 
 
 def convert_variable_into_batch(variable, batch_size: int) -> chex.Array:
