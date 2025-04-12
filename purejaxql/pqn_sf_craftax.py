@@ -185,7 +185,7 @@ def make_train(config):
 
         # INIT NETWORK AND OPTIMIZER
         network = SFNetwork(
-            action_dim=action_space_size,
+            action_dim=env.action_space(env_params).n,
             norm_type=config["NORM_TYPE"],
             norm_input=config.get("NORM_INPUT", False),
             sf_dim=config["SF_DIM"],
