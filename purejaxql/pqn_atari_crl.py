@@ -548,6 +548,9 @@ def single_run(config):
     # determine the max number of actions
     max_num_actions = 0
     observation_space_shape = None
+
+    config["alg"]["TOTAL_TIMESTEPS_DECAY"] = config["alg"]["TOTAL_TIMESTEPS_DECAY"] * config["NUM_TASKS"]
+
     for env_name in env_names:
         total_envs = (
             (config["NUM_ENVS"] + config["TEST_ENVS"])
