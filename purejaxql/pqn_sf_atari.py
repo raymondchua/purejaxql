@@ -131,6 +131,7 @@ class CustomTrainState(TrainState):
     timesteps: int = 0
     n_updates: int = 0
     grad_steps: int = 0
+    exploration_updates: int = 0
 
 @chex.dataclass
 class MultiTrainState:
