@@ -24,6 +24,7 @@ import envpool
 from purejaxql.utils.atari_wrapper import JaxLogEnvPoolWrapper
 from purejaxql.utils.l2_normalize import l2_normalize
 
+
 class CNN(nn.Module):
 
     norm_type: str = "layer_norm"
@@ -134,6 +135,7 @@ class CustomTrainState(TrainState):
     exploration_updates: int = 0
     total_returns: int = 0
 
+
 @chex.dataclass
 class MultiTrainState:
     network_state: CustomTrainState
@@ -184,11 +186,7 @@ def create_agent(rng, config, max_num_actions, observation_space_shape):
         tx=tx_task,
     )
 
-    return MultiTrainState(
-        network_state=network_state,
-        task_state=task_state
-    )
-
+    return MultiTrainState(network_state=network_state, task_state=task_state), network
 
 
 def convert_variable_into_batch(variable, batch_size: int) -> chex.Array:
@@ -298,7 +296,9 @@ def make_train(config):
                 if exposure == 0:
                     eps = jnp.full(
                         config["NUM_ENVS"],
-                        eps_scheduler(multi_train_state.network_state.exploration_updates),
+                        eps_scheduler(
+                            multi_train_state.network_state.exploration_updates
+                        ),
                     )
                 else:
                     eps = jnp.full(config["NUM_ENVS"], config["EPS_FINISH"])
@@ -342,8 +342,9 @@ def make_train(config):
             )  # update timesteps count
 
             multi_train_state.network_state = multi_train_state.network_state.replace(
-                total_returns=multi_train_state.network_state.total_returns + transitions.reward.sum()
-            ) # update total returns count
+                total_returns=multi_train_state.network_state.total_returns
+                + transitions.reward.sum()
+            )  # update total returns count
 
             last_q, _ = network.apply(
                 {
@@ -395,12 +396,14 @@ def make_train(config):
 
                     def _loss_fn(params):
                         (q_vals, basis_features), updates = network.apply(
-                            {"params": params, "batch_stats": multi_train_state.network_state.batch_stats},
+                            {
+                                "params": params,
+                                "batch_stats": multi_train_state.network_state.batch_stats,
+                            },
                             minibatch.obs,
                             train=True,
                             mutable=["batch_stats"],
                             task=multi_train_state.task_state.params["w"],
-
                         )  # (batch_size*2, num_actions)
 
                         chosen_action_qvals = jnp.take_along_axis(
@@ -414,25 +417,41 @@ def make_train(config):
                         return loss, (updates, chosen_action_qvals, basis_features)
 
                     def _reward_loss_fn(task_params, basis_features, reward):
-                        loss = 0.5 * jnp.square(jnp.dot(basis_features, task_params["w"]) - reward).mean()
+                        loss = (
+                            0.5
+                            * jnp.square(
+                                jnp.dot(basis_features, task_params["w"]) - reward
+                            ).mean()
+                        )
 
                         return loss
 
-                    (loss, (updates, qvals, basis_features)), grads = jax.value_and_grad(
-                        _loss_fn, has_aux=True
-                    )(multi_train_state.network_state.params)
-                    multi_train_state.network_state = multi_train_state.network_state.apply_gradients(grads=grads)
-                    multi_train_state.network_state = multi_train_state.network_state.replace(
-                        grad_steps=multi_train_state.network_state.grad_steps + 1,
-                        batch_stats=updates["batch_stats"],
+                    (
+                        loss,
+                        (updates, qvals, basis_features),
+                    ), grads = jax.value_and_grad(_loss_fn, has_aux=True)(
+                        multi_train_state.network_state.params
+                    )
+                    multi_train_state.network_state = (
+                        multi_train_state.network_state.apply_gradients(grads=grads)
+                    )
+                    multi_train_state.network_state = (
+                        multi_train_state.network_state.replace(
+                            grad_steps=multi_train_state.network_state.grad_steps + 1,
+                            batch_stats=updates["batch_stats"],
+                        )
                     )
 
                     # update task params using reward prediction loss
                     basis_features = jax.lax.stop_gradient(basis_features)
-                    reward_loss, grads_task = jax.value_and_grad(
-                        _reward_loss_fn
-                    )(multi_train_state.task_state.params, basis_features, minibatch.reward)
-                    multi_train_state.task_state = multi_train_state.task_state.apply_gradients(grads=grads_task)
+                    reward_loss, grads_task = jax.value_and_grad(_reward_loss_fn)(
+                        multi_train_state.task_state.params,
+                        basis_features,
+                        minibatch.reward,
+                    )
+                    multi_train_state.task_state = (
+                        multi_train_state.task_state.apply_gradients(grads=grads_task)
+                    )
 
                     return (multi_train_state, rng), (loss, reward_loss, qvals)
 
@@ -466,11 +485,17 @@ def make_train(config):
                 _learn_epoch, (multi_train_state, rng), None, config["NUM_EPOCHS"]
             )
 
-            multi_train_state.network_state = multi_train_state.network_state.replace(n_updates=multi_train_state.network_state.n_updates + 1)
+            multi_train_state.network_state = multi_train_state.network_state.replace(
+                n_updates=multi_train_state.network_state.n_updates + 1
+            )
 
             if config.get("TEST_DURING_TRAINING", False):
-                test_infos = jax.tree_util.tree_map(lambda x: x[:, -config["TEST_ENVS"] :], infos)
-                infos = jax.tree_util.tree_map(lambda x: x[:, : -config["TEST_ENVS"]], infos)
+                test_infos = jax.tree_util.tree_map(
+                    lambda x: x[:, -config["TEST_ENVS"] :], infos
+                )
+                infos = jax.tree_util.tree_map(
+                    lambda x: x[:, : -config["TEST_ENVS"]], infos
+                )
                 infos.update({"test/" + k: v for k, v in test_infos.items()})
 
             metrics = {
@@ -483,7 +508,9 @@ def make_train(config):
                 "grad_steps": multi_train_state.network_state.grad_steps,
                 "td_loss": loss.mean(),
                 "qvals": qvals.mean(),
-                "eps": eps_scheduler(multi_train_state.network_state.exploration_updates)
+                "eps": eps_scheduler(
+                    multi_train_state.network_state.exploration_updates
+                )
                 if exposure == 0
                 else config["EPS_FINISH"],
                 "lr": lr,
@@ -545,7 +572,11 @@ def make_train(config):
             _update_step, runner_state, None, config["NUM_UPDATES"]
         )
 
-        return {"runner_state": runner_state, "metrics": metrics, "multi_train_state": runner_state[0]}
+        return {
+            "runner_state": runner_state,
+            "metrics": metrics,
+            "multi_train_state": runner_state[0],
+        }
 
     return train
 
@@ -588,14 +619,18 @@ def single_run(config):
     num_exposures = config["alg"].get("NUM_EXPOSURES", 1)
 
     # determine the max number of actions
-    max_num_actions = 18 # atari has at most 18 actions
+    max_num_actions = 18  # atari has at most 18 actions
     observation_space_shape = (4, 84, 84)
 
-    config["alg"]["TOTAL_TIMESTEPS_DECAY"] = config["alg"]["TOTAL_TIMESTEPS_DECAY"] * config["NUM_TASKS"]
+    config["alg"]["TOTAL_TIMESTEPS_DECAY"] = (
+        config["alg"]["TOTAL_TIMESTEPS_DECAY"] * config["NUM_TASKS"]
+    )
 
     rng = jax.random.PRNGKey(config["SEED"])
     rng, rng_agent = jax.random.split(rng)
-    multi_train_state, network = create_agent(rng_agent, config, max_num_actions, observation_space_shape)
+    multi_train_state, network = create_agent(
+        rng_agent, config, max_num_actions, observation_space_shape
+    )
 
     for cycle in range(num_exposures):
         print(f"\n=== Cycle {cycle + 1}/{num_exposures} ===")
@@ -608,7 +643,9 @@ def single_run(config):
             else:
                 # outs = jax.jit(make_train(config))(rng, exposure)
                 outs = jax.jit(
-                    lambda rng: make_train(config)(rng, cycle, multi_train_state, network, task_id)
+                    lambda rng: make_train(config)(
+                        rng, cycle, multi_train_state, network, task_id
+                    )
                 )(rng)
             print(f"Took {time.time()-start_time} seconds to complete.")
 
@@ -635,7 +672,10 @@ def single_run(config):
                 os.makedirs(save_dir, exist_ok=True)
                 OmegaConf.save(
                     config,
-                    os.path.join(save_dir, f'{alg_name}_exposure{cycle}_task{idx}_seed{config["SEED"]}_config.yaml'),
+                    os.path.join(
+                        save_dir,
+                        f'{alg_name}_exposure{cycle}_task{idx}_seed{config["SEED"]}_config.yaml',
+                    ),
                 )
 
                 # assumes not vmpapped seeds
