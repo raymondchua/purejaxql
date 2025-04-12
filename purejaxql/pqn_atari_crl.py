@@ -119,7 +119,7 @@ def create_agent(rng, config, max_num_actions, observation_space_shape):
 
     # init_x = jnp.zeros((1, *env.single_observation_space.shape))
     init_x = jnp.zeros((1, *observation_space_shape))
-    network_variables = network.init(rng, init_x, train=False, num_valid_actions=max_num_actions)
+    network_variables = network.init(rng, init_x, train=False)
 
     tx = optax.chain(
         optax.clip_by_global_norm(config["MAX_GRAD_NORM"]),
