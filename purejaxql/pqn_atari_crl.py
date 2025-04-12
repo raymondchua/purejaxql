@@ -77,7 +77,7 @@ class QNetwork(nn.Module):
     norm_input: bool = False
 
     @nn.compact
-    def __call__(self, x: jnp.ndarray, train: bool):
+    def __call__(self, x: jnp.ndarray, train: bool, num_valid_actions: int):
         x = jnp.transpose(x, (0, 2, 3, 1))
         if self.norm_input:
             x = nn.BatchNorm(use_running_average=not train)(x)
@@ -87,6 +87,7 @@ class QNetwork(nn.Module):
             x = x / 255.0
         x = CNN(norm_type=self.norm_type)(x, train)
         x = nn.Dense(self.action_dim)(x)
+        x = x[..., :num_valid_actions]
         return x
 
 
@@ -172,55 +173,21 @@ def make_train(config):
     )
     env = make_env(total_envs)
 
-    def eps_greedy_single(rng, q_vals, eps, num_valid_actions):
-        rng_a, rng_e = jax.random.split(rng)
-
-        # Force to int32 scalar
-        num_valid_actions = jnp.asarray(num_valid_actions, dtype=jnp.int32)
-
-        # Slice q_vals to only valid actions
-        q_vals_valid = lax.dynamic_slice(
-            q_vals,
-            start_indices=jnp.array([0]),
-            slice_sizes=jnp.array([num_valid_actions]),
-        )
-
-        # Greedy action
-        greedy_action = jnp.argmax(q_vals_valid, axis=-1)
-
-        # Random action
-        random_action = jax.random.randint(
-            rng_a, shape=(), minval=0, maxval=num_valid_actions
-        )
-
-        # Epsilon-based choice
-        choose_random = jax.random.uniform(rng_e, shape=()) < eps
-        action = jnp.where(choose_random, random_action, greedy_action)
-
-        return action
-
     # epsilon-greedy exploration
-    # def eps_greedy_exploration(rng, q_vals, eps, num_valid_actions):
-    #     rng_a, rng_e = jax.random.split(
-    #         rng
-    #     )  # a key for sampling random actions and one for picking
-    #
-    #     num_valid_actions = jnp.asarray(num_valid_actions, dtype=jnp.int32)
-    #     q_vals_valid = lax.dynamic_slice(
-    #         q_vals,
-    #         start_indices=jnp.array([0]),
-    #         slice_sizes=jnp.array([num_valid_actions]),
-    #     )
-    #     greedy_actions = jnp.argmax(q_vals_valid, axis=-1)
-    #     chosed_actions = jnp.where(
-    #         jax.random.uniform(rng_e, greedy_actions.shape)
-    #         < eps,  # pick the actions that should be random
-    #         jax.random.randint(
-    #             rng_a, shape=greedy_actions.shape, minval=0, maxval=q_vals_valid.shape[-1]
-    #         ),  # sample random actions,
-    #         greedy_actions,
-    #     )
-    #     return chosed_actions
+    def eps_greedy_exploration(rng, q_vals, eps, num_valid_actions):
+        rng_a, rng_e = jax.random.split(
+            rng
+        )  # a key for sampling random actions and one for picking
+        greedy_actions = jnp.argmax(q_vals, axis=-1)
+        chosed_actions = jnp.where(
+            jax.random.uniform(rng_e, greedy_actions.shape)
+            < eps,  # pick the actions that should be random
+            jax.random.randint(
+                rng_a, shape=greedy_actions.shape, minval=0, maxval=q_vals.shape[-1]
+            ),  # sample random actions,
+            greedy_actions,
+        )
+        return chosed_actions
 
     # here reset must be out of vmap and jit
     init_obs, env_state = env.reset()
@@ -293,6 +260,7 @@ def make_train(config):
                     },
                     last_obs,
                     train=False,
+                    num_valid_actions=env.action_space.n,
                 )
 
                 # different eps for each env
@@ -315,8 +283,7 @@ def make_train(config):
                     num_valid_actions = jnp.concatenate(
                         (num_valid_actions, jnp.zeros(config["TEST_ENVS"]))
                     )
-
-                new_action = jax.vmap(eps_greedy_single)(_rngs, q_vals, eps, num_valid_actions)
+                new_action = jax.vmap(eps_greedy_exploration)(_rngs, q_vals, eps, num_valid_actions)
 
                 new_obs, new_env_state, reward, new_done, info = env.step(
                     env_state, new_action
@@ -364,6 +331,7 @@ def make_train(config):
                 },
                 transitions.next_obs[-1],
                 train=False,
+                num_valid_actions=env.action_space.n,
             )
             last_q = jnp.max(last_q, axis=-1)
 
@@ -409,6 +377,7 @@ def make_train(config):
                             {"params": params, "batch_stats": train_state.batch_stats},
                             minibatch.obs,
                             train=True,
+                            num_valid_actions=env.action_space.n,
                             mutable=["batch_stats"],
                         )  # (batch_size*2, num_actions)
 
