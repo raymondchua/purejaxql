@@ -271,12 +271,16 @@ def make_train(config):
                 else:
                     eps = jnp.full(config["NUM_ENVS"], config["EPS_FINISH"])
 
-                if config.get("TEST_DURING_TRAINING", False):
-                    eps = jnp.concatenate((eps, jnp.zeros(config["TEST_ENVS"])))
                 num_valid_actions = jnp.full(
                     config["NUM_ENVS"],
                     env.single_action_space.n,
                 )
+
+                if config.get("TEST_DURING_TRAINING", False):
+                    eps = jnp.concatenate((eps, jnp.zeros(config["TEST_ENVS"])))
+                    num_valid_actions = jnp.concatenate(
+                        (num_valid_actions, jnp.zeros(config["TEST_ENVS"]))
+                    )
                 new_action = jax.vmap(eps_greedy_exploration)(_rngs, q_vals, eps, num_valid_actions)
 
                 new_obs, new_env_state, reward, new_done, info = env.step(
