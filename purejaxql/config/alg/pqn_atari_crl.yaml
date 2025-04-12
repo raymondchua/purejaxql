@@ -15,6 +15,7 @@ LR_LINEAR_DECAY: False
 GAMMA: 0.99
 LAMBDA: 0.65
 NUM_EXPOSURES: 4 # number of exposures for all games
+FULL_ACTION_SPACE: True # use full action space
 
 # env specific, see https://envpool.readthedocs.io/en/latest/env/atari.html
 ENV_NAME: "Pong-v5"

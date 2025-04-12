@@ -77,7 +77,7 @@ class QNetwork(nn.Module):
     norm_input: bool = False
 
     @nn.compact
-    def __call__(self, x: jnp.ndarray, train: bool, num_valid_actions: int):
+    def __call__(self, x: jnp.ndarray, train: bool):
         x = jnp.transpose(x, (0, 2, 3, 1))
         if self.norm_input:
             x = nn.BatchNorm(use_running_average=not train)(x)
@@ -87,7 +87,6 @@ class QNetwork(nn.Module):
             x = x / 255.0
         x = CNN(norm_type=self.norm_type)(x, train)
         x = nn.Dense(self.action_dim)(x)
-        x = x[..., :num_valid_actions]
         return x
 
 
@@ -157,6 +156,7 @@ def make_train(config):
             env_type="gym",
             num_envs=num_envs,
             seed=config["SEED"],
+            full_action_space=config["FULL_ACTION_SPACE"],
             **config["ENV_KWARGS"],
         )
         env.num_envs = num_envs
@@ -174,7 +174,7 @@ def make_train(config):
     env = make_env(total_envs)
 
     # epsilon-greedy exploration
-    def eps_greedy_exploration(rng, q_vals, eps, num_valid_actions):
+    def eps_greedy_exploration(rng, q_vals, eps):
         rng_a, rng_e = jax.random.split(
             rng
         )  # a key for sampling random actions and one for picking
@@ -260,7 +260,6 @@ def make_train(config):
                     },
                     last_obs,
                     train=False,
-                    num_valid_actions=env.action_space.n,
                 )
 
                 # different eps for each env
@@ -273,17 +272,9 @@ def make_train(config):
                 else:
                     eps = jnp.full(config["NUM_ENVS"], config["EPS_FINISH"])
 
-                num_valid_actions = jnp.full(
-                    config["NUM_ENVS"],
-                    env.single_action_space.n,
-                )
-
                 if config.get("TEST_DURING_TRAINING", False):
                     eps = jnp.concatenate((eps, jnp.zeros(config["TEST_ENVS"])))
-                    num_valid_actions = jnp.concatenate(
-                        (num_valid_actions, jnp.zeros(config["TEST_ENVS"]))
-                    )
-                new_action = jax.vmap(eps_greedy_exploration)(_rngs, q_vals, eps, num_valid_actions)
+                new_action = jax.vmap(eps_greedy_exploration)(_rngs, q_vals, eps)
 
                 new_obs, new_env_state, reward, new_done, info = env.step(
                     env_state, new_action
@@ -331,7 +322,6 @@ def make_train(config):
                 },
                 transitions.next_obs[-1],
                 train=False,
-                num_valid_actions=env.action_space.n,
             )
             last_q = jnp.max(last_q, axis=-1)
 
@@ -377,7 +367,6 @@ def make_train(config):
                             {"params": params, "batch_stats": train_state.batch_stats},
                             minibatch.obs,
                             train=True,
-                            num_valid_actions=env.action_space.n,
                             mutable=["batch_stats"],
                         )  # (batch_size*2, num_actions)
 
