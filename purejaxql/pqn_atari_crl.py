@@ -176,7 +176,7 @@ def make_train(config):
         rng_a, rng_e = jax.random.split(
             rng
         )  # a key for sampling random actions and one for picking
-        q_vals_valid_actions = q_vals[:, :num_valid_actions]
+        q_vals_valid_actions = q_vals[:num_valid_actions]
         greedy_actions = jnp.argmax(q_vals_valid_actions, axis=-1)
         chosed_actions = jnp.where(
             jax.random.uniform(rng_e, greedy_actions.shape)
