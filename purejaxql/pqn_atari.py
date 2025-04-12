@@ -104,6 +104,7 @@ class CustomTrainState(TrainState):
     timesteps: int = 0
     n_updates: int = 0
     grad_steps: int = 0
+    total_returns: int = 0
 
 
 def make_train(config):
@@ -126,6 +127,7 @@ def make_train(config):
             env_type="gym",
             num_envs=num_envs,
             seed=config["SEED"],
+            full_action_space=config["FULL_ACTION_SPACE"],
             **config["ENV_KWARGS"],
         )
         env.num_envs = num_envs
@@ -267,6 +269,10 @@ def make_train(config):
                 + config["NUM_STEPS"] * config["NUM_ENVS"]
             )  # update timesteps count
 
+            train_state = train_state.replace(
+                total_returns=train_state.total_returns + transitions.reward.sum()
+            )  # update total returns count
+
             last_q = network.apply(
                 {
                     "params": train_state.params,
@@ -389,6 +395,9 @@ def make_train(config):
                 "grad_steps": train_state.grad_steps,
                 "td_loss": loss.mean(),
                 "qvals": qvals.mean(),
+                "eps": eps_scheduler(train_state.exploration_updates),
+                "lr": lr,
+                "total_returns": train_state.total_returns,
             }
 
             metrics.update({k: v.mean() for k, v in infos.items()})
@@ -446,6 +455,8 @@ def single_run(config):
     alg_name = config.get("ALG_NAME", "pqn")
     env_name = config["ENV_NAME"]
 
+    start_time = time.time()
+
     wandb.init(
         entity=config["ENTITY"],
         project=config["PROJECT"],
@@ -461,12 +472,11 @@ def single_run(config):
 
     rng = jax.random.PRNGKey(config["SEED"])
 
-    t0 = time.time()
     if config["NUM_SEEDS"] > 1:
         raise NotImplementedError("Vmapped seeds not supported yet.")
     else:
         outs = jax.jit(make_train(config))(rng)
-    print(f"Took {time.time()-t0} seconds to complete.")
+    print(f"Took {time.time()-start_time} seconds to complete.")
 
     # save params
     if config.get("SAVE_PATH", None) is not None:
