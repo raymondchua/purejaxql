@@ -104,7 +104,6 @@ class CustomTrainState(TrainState):
     timesteps: int = 0
     n_updates: int = 0
     grad_steps: int = 0
-    exploration_updates: int = 0
     total_returns: int = 0
 
 
@@ -396,7 +395,7 @@ def make_train(config):
                 "grad_steps": train_state.grad_steps,
                 "td_loss": loss.mean(),
                 "qvals": qvals.mean(),
-                "eps": eps_scheduler(train_state.exploration_updates),
+                "eps": eps_scheduler(train_state.n_updates),
                 "lr": lr,
                 "total_returns": train_state.total_returns,
             }
