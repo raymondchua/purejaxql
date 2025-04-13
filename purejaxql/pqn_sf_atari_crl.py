@@ -113,7 +113,6 @@ class SFNetwork(nn.Module):
         task_normalized = task / jnp.linalg.norm(task, ord=2, axis=-1, keepdims=True)
         print("rep shape:", rep.shape)
         print("task_normalized shape:", task_normalized.shape)
-        print("task_normalized tiled shape:", task_normalized.shape)
 
         rep_task = jnp.concatenate([rep, task_normalized], axis=-1)
 
