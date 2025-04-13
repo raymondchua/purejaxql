@@ -387,7 +387,7 @@ def make_train(config):
                         grad_steps=train_state.grad_steps + 1,
                         batch_stats=updates["batch_stats"],
                     )
-                    return (train_state, rng), (loss, qvals, minibatch.obs)
+                    return (train_state, rng), (loss, qvals)
 
                 def preprocess_transition(x, rng):
                     x = x.reshape(
@@ -408,14 +408,14 @@ def make_train(config):
                 )
 
                 rng, _rng = jax.random.split(rng)
-                (train_state, rng), (loss, qvals, obs) = jax.lax.scan(
+                (train_state, rng), (loss, qvals) = jax.lax.scan(
                     _learn_phase, (train_state, rng), (minibatches, targets)
                 )
 
-                return (train_state, rng), (loss, qvals, obs)
+                return (train_state, rng), (loss, qvals)
 
             rng, _rng = jax.random.split(rng)
-            (train_state, rng), (loss, qvals, obs) = jax.lax.scan(
+            (train_state, rng), (loss, qvals) = jax.lax.scan(
                 _learn_epoch, (train_state, rng), None, config["NUM_EPOCHS"]
             )
 
@@ -461,7 +461,6 @@ def make_train(config):
             if config["WANDB_MODE"] != "disabled":
 
                 def callback(metrics, original_seed):
-                    print("obs: ", obs)
                     if config.get("WANDB_LOG_ALL_SEEDS", False):
                         metrics.update(
                             {
