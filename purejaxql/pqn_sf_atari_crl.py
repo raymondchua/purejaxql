@@ -22,6 +22,7 @@ import wandb
 import envpool
 
 from purejaxql.utils.atari_wrapper import JaxLogEnvPoolWrapper
+from purejaxql.utils.l2_normalize import l2_normalize
 
 
 class CNN(nn.Module):
