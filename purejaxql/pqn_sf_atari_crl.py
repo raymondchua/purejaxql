@@ -98,6 +98,7 @@ class SFNetwork(nn.Module):
 
     @nn.compact
     def __call__(self, x: jnp.ndarray, task: jnp.ndarray, train: bool):
+        batch_size = x.shape[0]
         x = jnp.transpose(x, (0, 2, 3, 1))
         if self.norm_input:
             x = nn.BatchNorm(use_running_average=not train)(x)
