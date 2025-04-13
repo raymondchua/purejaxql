@@ -550,7 +550,6 @@ def make_train(config):
                 def callback(metrics, original_seed):
                     print("basis_features_norm: ", basis_features_norm)
                     print("reward: ", transitions.reward)
-                    print("obs: ", obs)
                     print("transitions obs: ", transitions.obs)
                     print("mini_batch_obs: ", mini_batch_obs)
                     print("mini_batch_reward: ", mini_batch_reward)
