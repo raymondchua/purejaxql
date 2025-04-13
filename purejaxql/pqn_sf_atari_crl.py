@@ -172,7 +172,8 @@ def create_agent(rng, config, max_num_actions, observation_space_shape):
     )
     init_x = jnp.zeros((1, *observation_space_shape))
     init_task = jnp.zeros((1, config["SF_DIM"]))
-    network_variables = network.init(rng, init_x, init_task, train=False)
+    # network_variables = network.init(rng, init_x, init_task, train=False)
+    network_variables = network.init(rng, init_x, train=False)
     task_params = {"w": init_meta(rng, config["SF_DIM"])}
 
     tx = optax.chain(
