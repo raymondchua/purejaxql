@@ -296,12 +296,12 @@ def make_train(config):
                     lambda x: x[:, : -config["TEST_ENVS"]], transitions
                 )
 
-            train_state = train_state.network_state.replace(
+            train_state.network_state = train_state.network_state.replace(
                 timesteps=train_state.network_state.timesteps
                 + config["NUM_STEPS"] * config["NUM_ENVS"]
             )  # update timesteps count
 
-            train_state = train_state.network_state.replace(
+            train_state.network_state = train_state.network_state.replace(
                 total_returns=train_state.network_state.total_returns + transitions.reward.sum()
             )  # update total returns count
 
@@ -373,8 +373,8 @@ def make_train(config):
                     (loss, (updates, qvals)), grads = jax.value_and_grad(
                         _loss_fn, has_aux=True
                     )(train_state.network_state.params)
-                    train_state = train_state.network_state.apply_gradients(grads=grads)
-                    train_state = train_state.network_state.replace(
+                    train_state.network_state = train_state.network_state.apply_gradients(grads=grads)
+                    train_state.network_state = train_state.network_state.replace(
                         grad_steps=train_state.network_state.grad_steps + 1,
                         batch_stats=updates["batch_stats"],
                     )
@@ -410,8 +410,8 @@ def make_train(config):
                 _learn_epoch, (train_state, rng), None, config["NUM_EPOCHS"]
             )
 
-            train_state = train_state.network_state.replace(n_updates=train_state.network_state.n_updates + 1)
-            train_state = train_state.network_state.replace(
+            train_state.network_state = train_state.network_state.replace(n_updates=train_state.network_state.n_updates + 1)
+            train_state.network_state = train_state.network_state.replace(
                 exploration_updates=train_state.network_state.exploration_updates + 1
             )
 
