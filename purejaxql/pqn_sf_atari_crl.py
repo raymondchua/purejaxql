@@ -89,7 +89,7 @@ class SFNetwork(nn.Module):
             x = x / 255.0
         x = CNN(norm_type=self.norm_type)(x, train)
         rep = nn.Dense(self.sf_dim)(x)
-        basis_features = l2_normalize()(rep)
+        basis_features = rep / jnp.linalg.norm(rep, ord=2, axis=-1, keepdims=True)
 
         task = jax.lax.stop_gradient(task)
         task = convert_variable_into_batch(task, batch_size=x.shape[0])
