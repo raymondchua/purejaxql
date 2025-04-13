@@ -95,8 +95,14 @@ class SFNetwork(nn.Module):
         task = jax.lax.stop_gradient(task)
         task_normalized = task / jnp.linalg.norm(task, ord=2, axis=-1, keepdims=True)
         # task_normalized = jnp.expand_dims(task_normalized, 1)
-        task_normalized = jnp.tile(task_normalized, (x.shape[0], 1))
+        # task_normalized = jnp.tile(task_normalized, (x.shape[0], 1))
         # task = convert_variable_into_batch(task, batch_size=x.shape[0])
+
+        # convert task_normalized from 1D array of sf_dim to 2D array of (batch_size, sf_dim)
+        batch_size = x.shape[0]
+        task_normalized = jnp.expand_dims(task_normalized, 1)
+        task_normalized = jnp.tile(task_normalized, (1, batch_size, 1))
+        task_normalized = jnp.reshape(task_normalized, (batch_size, -1))
 
         rep_task = jnp.concatenate([rep, task_normalized], axis=1)
 
