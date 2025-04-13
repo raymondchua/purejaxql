@@ -548,6 +548,7 @@ def make_train(config):
 
                 def callback(metrics, original_seed):
                     print("basis_features_norm: ", basis_features_norm)
+                    print("reward: ", transitions.reward)
                     if config.get("WANDB_LOG_ALL_SEEDS", False):
                         metrics.update(
                             {
