@@ -465,15 +465,9 @@ def make_train(config):
                         new_task_params - old_task_params, ord=2
                     )
 
-                    # compute the grads mean using jax.tree_util.tree_map
-                    grads = jax.tree_util.tree_map(
-                        lambda x: jnp.mean(x, axis=0), grads
-                    )
+                    basis_features_norm = jnp.linalg.norm(basis_features, ord=2)
 
-                    grads_task = jax.tree_util.tree_map(
-                        lambda x: jnp.mean(x, axis=0), grads_task
-                    )
-                    return (multi_train_state, rng), (loss, reward_loss, qvals, task_param_diff, grads, grads_task)
+                    return (multi_train_state, rng), (loss, reward_loss, qvals, task_param_diff, basis_features_norm)
 
                 def preprocess_transition(x, rng):
                     x = x.reshape(
@@ -494,14 +488,14 @@ def make_train(config):
                 )
 
                 rng, _rng = jax.random.split(rng)
-                (multi_train_state, rng), (loss, reward_loss, qvals, task_param_diff, grads, grads_task) = jax.lax.scan(
+                (multi_train_state, rng), (loss, reward_loss, qvals, task_param_diff, basis_features_norm) = jax.lax.scan(
                     _learn_phase, (multi_train_state, rng), (minibatches, targets)
                 )
 
-                return (multi_train_state, rng), (loss, reward_loss, qvals, task_param_diff, grads, grads_task)
+                return (multi_train_state, rng), (loss, reward_loss, qvals, task_param_diff, basis_features_norm)
 
             rng, _rng = jax.random.split(rng)
-            (multi_train_state, rng), (loss, reward_loss, qvals, task_param_diff, grads, grads_task) = jax.lax.scan(
+            (multi_train_state, rng), (loss, reward_loss, qvals, task_param_diff, basis_features_norm) = jax.lax.scan(
                 _learn_epoch, (multi_train_state, rng), None, config["NUM_EPOCHS"]
             )
 
@@ -543,6 +537,7 @@ def make_train(config):
                 "task_param_diff": task_param_diff.mean(),
                 "task_norm": jnp.linalg.norm(multi_train_state.task_state.params["w"]),
                 "rewards": transitions.reward.mean(),
+                "basis_features_norm": basis_features_norm.mean(),
             }
 
             metrics.update({k: v.mean() for k, v in infos.items()})
@@ -582,6 +577,8 @@ def make_train(config):
                             if k == "task_norm":
                                 print(f"{k}: {v}")
                             if k == "rewards":
+                                print(f"{k}: {v}")
+                            if k == "basis_features_norm":
                                 print(f"{k}: {v}")
 
 
