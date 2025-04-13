@@ -538,6 +538,7 @@ def make_train(config):
                 "task_param_diff": task_param_diff.mean(),
                 "task_norm": jnp.linalg.norm(multi_train_state.task_state.params["w"]),
                 "rewards": transitions.reward.mean(),
+                "basis_features_norm": basis_features_norm.mean(),
             }
 
             metrics.update({k: v.mean() for k, v in infos.items()})
@@ -548,11 +549,6 @@ def make_train(config):
             if config["WANDB_MODE"] != "disabled":
 
                 def callback(metrics, original_seed):
-                    print("basis_features_norm: ", basis_features_norm)
-                    print("reward: ", transitions.reward)
-                    print("transitions obs: ", transitions.obs)
-                    print("mini_batch_obs: ", mini_batch_obs)
-                    print("mini_batch_reward: ", mini_batch_reward)
                     if config.get("WANDB_LOG_ALL_SEEDS", False):
                         metrics.update(
                             {
@@ -582,6 +578,8 @@ def make_train(config):
                             if k == "task_norm":
                                 print(f"{k}: {v}")
                             if k == "rewards":
+                                print(f"{k}: {v}")
+                            if k == "basis_features_norm":
                                 print(f"{k}: {v}")
 
 
