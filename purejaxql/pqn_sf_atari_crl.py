@@ -465,7 +465,7 @@ def make_train(config):
                         new_task_params - old_task_params, ord=2
                     )
 
-                    basis_features_norm = jnp.linalg.norm(basis_features, ord=2)
+                    basis_features_norm = jnp.linalg.norm(basis_features, ord=2, axis=-1)
 
                     return (multi_train_state, rng), (loss, reward_loss, qvals, task_param_diff, basis_features_norm)
 
