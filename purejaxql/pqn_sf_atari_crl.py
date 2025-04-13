@@ -508,6 +508,7 @@ def make_train(config):
                 "grad_steps": multi_train_state.network_state.grad_steps,
                 "td_loss": loss.mean(),
                 "qvals": qvals.mean(),
+                "reward_loss": reward_loss.mean(),
                 "eps": eps_scheduler(
                     multi_train_state.network_state.exploration_updates
                 )
