@@ -317,7 +317,7 @@ def make_train(config):
                         "batch_stats": train_state.network_state.batch_stats,
                     },
                     last_obs,
-                    jnp.tile(train_state.task_state.params["w"], (config["NUM_ENVS"], 1)),
+                    jnp.tile(train_state.task_state.params["w"], (last_obs.shape[0], 1)),
                     train=False,
                 )
 
@@ -346,7 +346,7 @@ def make_train(config):
                     done=new_done,
                     next_obs=new_obs,
                     q_val=q_vals,
-                    task=jnp.tile(train_state.task_state.params["w"], (config["NUM_ENVS"], 1)),
+                    task=jnp.tile(train_state.task_state.params["w"], (last_obs.shape[0], 1)),
                 )
                 return (new_obs, new_env_state, rng), (transition, info)
 
