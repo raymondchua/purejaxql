@@ -91,6 +91,7 @@ class SFNetwork(nn.Module):
         rep = nn.Dense(self.sf_dim)(x)
         basis_features = l2_normalize()(rep)
 
+        task = jax.lax.stop_gradient(task)
         task = convert_variable_into_batch(task, batch_size=x.shape[0])
         task_normalized = l2_normalize()(task)
         rep_task = jnp.concatenate([rep, task_normalized], axis=1)
