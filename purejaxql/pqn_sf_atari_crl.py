@@ -121,7 +121,7 @@ class SFNetwork(nn.Module):
         #     -1, self.action_dim
         # )  # (batch_size, action_dim)
 
-        q_1 = nn.Dense(features=action_dim)(features_critic_sf)
+        q_1 = nn.Dense(features=self.action_dim)(features_critic_sf)
 
         return q_1, basis_features
 
