@@ -404,7 +404,7 @@ def make_train(config):
                     minibatch, target = minibatch_and_target
 
                     def _loss_fn(params):
-                        (q_vals, basis_features), updates = network.apply(
+                        (q_vals, _), updates = network.apply(
                             {
                                 "params": params,
                                 "batch_stats": multi_train_state.network_state.batch_stats,
@@ -437,7 +437,7 @@ def make_train(config):
 
                     (
                         loss,
-                        (updates, qvals, basis_features),
+                        (updates, qvals, _),
                     ), grads = jax.value_and_grad(_loss_fn, has_aux=True)(
                         multi_train_state.network_state.params
                     )
@@ -467,6 +467,7 @@ def make_train(config):
                     # )
                     #
                     reward_loss = 0
+                    basis_features = jnp.ones_like(qvals)
                     new_task_params = multi_train_state.task_state.params["w"]
 
                     # compute the l2 norm of the difference between the old and new task params
