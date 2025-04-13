@@ -89,6 +89,7 @@ class SFNetwork(nn.Module):
             x = x / 255.0
         x = CNN(norm_type=self.norm_type)(x, train)
         rep = nn.Dense(self.sf_dim)(x)
+
         basis_features = rep / jnp.linalg.norm(rep, ord=2, axis=-1, keepdims=True)
 
         task = jax.lax.stop_gradient(task)
@@ -467,7 +468,7 @@ def make_train(config):
 
                     # basis_features_norm = jnp.linalg.norm(basis_features, ord=2, axis=-1)
 
-                    return (multi_train_state, rng), (loss, reward_loss, qvals, task_param_diff, basis_features, minibatch.obs)
+                    return (multi_train_state, rng), (loss, reward_loss, qvals, task_param_diff, basis_features, minibatch.obs, minibatch.reward)
 
                 def preprocess_transition(x, rng):
                     x = x.reshape(
@@ -488,14 +489,14 @@ def make_train(config):
                 )
 
                 rng, _rng = jax.random.split(rng)
-                (multi_train_state, rng), (loss, reward_loss, qvals, task_param_diff, basis_features_norm, obs) = jax.lax.scan(
+                (multi_train_state, rng), (loss, reward_loss, qvals, task_param_diff, basis_features_norm, mini_batch_obs, mini_batch_reward) = jax.lax.scan(
                     _learn_phase, (multi_train_state, rng), (minibatches, targets)
                 )
 
-                return (multi_train_state, rng), (loss, reward_loss, qvals, task_param_diff, basis_features_norm, obs)
+                return (multi_train_state, rng), (loss, reward_loss, qvals, task_param_diff, basis_features_norm, mini_batch_obs, mini_batch_reward)
 
             rng, _rng = jax.random.split(rng)
-            (multi_train_state, rng), (loss, reward_loss, qvals, task_param_diff, basis_features_norm, obs) = jax.lax.scan(
+            (multi_train_state, rng), (loss, reward_loss, qvals, task_param_diff, basis_features_norm, mini_batch_obs, mini_batch_reward) = jax.lax.scan(
                 _learn_epoch, (multi_train_state, rng), None, config["NUM_EPOCHS"]
             )
 
@@ -551,6 +552,8 @@ def make_train(config):
                     print("reward: ", transitions.reward)
                     print("obs: ", obs)
                     print("transitions obs: ", transitions.obs)
+                    print("mini_batch_obs: ", mini_batch_obs)
+                    print("mini_batch_reward: ", mini_batch_reward)
                     if config.get("WANDB_LOG_ALL_SEEDS", False):
                         metrics.update(
                             {
