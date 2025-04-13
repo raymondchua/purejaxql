@@ -98,7 +98,6 @@ class SFNetwork(nn.Module):
 
     @nn.compact
     def __call__(self, x: jnp.ndarray, task: jnp.ndarray, train: bool):
-        batch_size = x.shape[0]
         x = jnp.transpose(x, (0, 2, 3, 1))
         if self.norm_input:
             x = nn.BatchNorm(use_running_average=not train)(x)
@@ -112,7 +111,7 @@ class SFNetwork(nn.Module):
 
         task = jax.lax.stop_gradient(task)
         task_normalized = task / jnp.linalg.norm(task, ord=2, axis=-1, keepdims=True)
-        task_normalized = jnp.tile(task_normalized, (batch_size, 1))
+        task_normalized = jnp.tile(task_normalized, (rep.shape[0], 1))
         rep_task = jnp.concatenate([rep, task_normalized], axis=1)
 
         # features for SF
