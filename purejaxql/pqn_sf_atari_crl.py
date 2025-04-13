@@ -466,6 +466,7 @@ def make_train(config):
                     #     multi_train_state.task_state.apply_gradients(grads=grads_task)
                     # )
                     #
+                    reward_loss = 0
                     new_task_params = multi_train_state.task_state.params["w"]
 
                     # compute the l2 norm of the difference between the old and new task params
