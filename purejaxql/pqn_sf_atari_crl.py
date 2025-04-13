@@ -107,6 +107,18 @@ class CustomTrainState(TrainState):
     exploration_updates: int = 0
     total_returns: int = 0
 
+@chex.dataclass
+class MultiTrainState:
+    network_state: CustomTrainState
+    task_state: TrainState
+
+
+def init_meta(rng, sf_dim) -> chex.Array:
+    _, task_rng_key = jax.random.split(rng)
+    task = jax.random.uniform(task_rng_key, shape=(sf_dim,))
+    task = task / jnp.linalg.norm(task, ord=2)
+    return task
+
 
 def create_agent(rng, config, max_num_actions, observation_space_shape):
     # INIT NETWORK AND OPTIMIZER
@@ -116,8 +128,8 @@ def create_agent(rng, config, max_num_actions, observation_space_shape):
         norm_input=config.get("NORM_INPUT", False),
     )
 
-    # init_x = jnp.zeros((1, *env.single_observation_space.shape))
     init_x = jnp.zeros((1, *observation_space_shape))
+    init_task = jnp.zeros((1, config["SF_DIM"]))
     network_variables = network.init(rng, init_x, train=False)
 
     tx = optax.chain(
@@ -125,14 +137,23 @@ def create_agent(rng, config, max_num_actions, observation_space_shape):
         optax.radam(learning_rate=config["LR"]),
     )
 
-    train_state = CustomTrainState.create(
+    # train_state = CustomTrainState.create(
+    #     apply_fn=network.apply,
+    #     params=network_variables["params"],
+    #     batch_stats=network_variables["batch_stats"],
+    #     tx=tx,
+    # )
+    network_state = CustomTrainState.create(
         apply_fn=network.apply,
         params=network_variables["params"],
         batch_stats=network_variables["batch_stats"],
         tx=tx,
     )
 
-    return train_state, network
+    return MultiTrainState(
+        network_state=network_state,
+        task_state=None
+    ), network
 
 
 def make_train(config):
@@ -210,38 +231,8 @@ def make_train(config):
         )
         lr = lr_scheduler if config.get("LR_LINEAR_DECAY", False) else config["LR"]
 
-        # # INIT NETWORK AND OPTIMIZER
-        # network = QNetwork(
-        #     action_dim=env.single_action_space.n,
-        #     norm_type=config["NORM_TYPE"],
-        #     norm_input=config.get("NORM_INPUT", False),
-        # )
-
-        # def create_agent(rng):
-        #     init_x = jnp.zeros((1, *env.single_observation_space.shape))
-        #     network_variables = network.init(rng, init_x, train=False)
-        #
-        #     tx = optax.chain(
-        #         optax.clip_by_global_norm(config["MAX_GRAD_NORM"]),
-        #         optax.radam(learning_rate=lr),
-        #     )
-        #
-        #     train_state = CustomTrainState.create(
-        #         apply_fn=network.apply,
-        #         params=network_variables["params"],
-        #         batch_stats=network_variables["batch_stats"],
-        #         tx=tx,
-        #     )
-        #
-        #     train_state = train_state.replace(timesteps=env_steps_taken)
-        #     train_state = train_state.replace(n_updates=updates_taken)
-        #     train_state = train_state.replace(grad_steps=grad_steps_taken)
-        #
-        #     return train_state
-
         rng, _rng = jax.random.split(rng)
-        train_state = train_state.replace(exploration_updates=0)
-        # train_state = create_agent(rng)
+        train_state = train_state.network_state.replace(exploration_updates=0)
 
         # TRAINING LOOP
         def _update_step(runner_state, unused):
@@ -254,8 +245,8 @@ def make_train(config):
                 rng, rng_a, rng_s = jax.random.split(rng, 3)
                 q_vals = network.apply(
                     {
-                        "params": train_state.params,
-                        "batch_stats": train_state.batch_stats,
+                        "params": train_state.network_state.params,
+                        "batch_stats": train_state.network_state.batch_stats,
                     },
                     last_obs,
                     train=False,
@@ -266,7 +257,7 @@ def make_train(config):
                 if exposure == 0:
                     eps = jnp.full(
                         config["NUM_ENVS"],
-                        eps_scheduler(train_state.exploration_updates),
+                        eps_scheduler(train_state.network_state.exploration_updates),
                     )
                 else:
                     eps = jnp.full(config["NUM_ENVS"], config["EPS_FINISH"])
@@ -305,19 +296,19 @@ def make_train(config):
                     lambda x: x[:, : -config["TEST_ENVS"]], transitions
                 )
 
-            train_state = train_state.replace(
-                timesteps=train_state.timesteps
+            train_state = train_state.network_state.replace(
+                timesteps=train_state.network_state.timesteps
                 + config["NUM_STEPS"] * config["NUM_ENVS"]
             )  # update timesteps count
 
-            train_state = train_state.replace(
-                total_returns=train_state.total_returns + transitions.reward.sum()
+            train_state = train_state.network_state.replace(
+                total_returns=train_state.network_state.total_returns + transitions.reward.sum()
             )  # update total returns count
 
             last_q = network.apply(
                 {
-                    "params": train_state.params,
-                    "batch_stats": train_state.batch_stats,
+                    "params": train_state.network_state.params,
+                    "batch_stats": train_state.network_state.batch_stats,
                 },
                 transitions.next_obs[-1],
                 train=False,
@@ -363,7 +354,7 @@ def make_train(config):
 
                     def _loss_fn(params):
                         q_vals, updates = network.apply(
-                            {"params": params, "batch_stats": train_state.batch_stats},
+                            {"params": params, "batch_stats": train_state.network_state.batch_stats},
                             minibatch.obs,
                             train=True,
                             mutable=["batch_stats"],
@@ -381,10 +372,10 @@ def make_train(config):
 
                     (loss, (updates, qvals)), grads = jax.value_and_grad(
                         _loss_fn, has_aux=True
-                    )(train_state.params)
-                    train_state = train_state.apply_gradients(grads=grads)
-                    train_state = train_state.replace(
-                        grad_steps=train_state.grad_steps + 1,
+                    )(train_state.network_state.params)
+                    train_state = train_state.network_state.apply_gradients(grads=grads)
+                    train_state = train_state.network_state.replace(
+                        grad_steps=train_state.network_state.grad_steps + 1,
                         batch_stats=updates["batch_stats"],
                     )
                     return (train_state, rng), (loss, qvals)
@@ -419,9 +410,9 @@ def make_train(config):
                 _learn_epoch, (train_state, rng), None, config["NUM_EPOCHS"]
             )
 
-            train_state = train_state.replace(n_updates=train_state.n_updates + 1)
-            train_state = train_state.replace(
-                exploration_updates=train_state.exploration_updates + 1
+            train_state = train_state.network_state.replace(n_updates=train_state.network_state.n_updates + 1)
+            train_state = train_state.network_state.replace(
+                exploration_updates=train_state.network_state.exploration_updates + 1
             )
 
             if config.get("TEST_DURING_TRAINING", False):
@@ -434,23 +425,23 @@ def make_train(config):
                 infos.update({"test/" + k: v for k, v in test_infos.items()})
 
             metrics = {
-                "env_step": train_state.timesteps,
-                "update_steps": train_state.n_updates,
-                "env_frame": train_state.timesteps
+                "env_step": train_state.network_state.timesteps,
+                "update_steps": train_state.network_state.n_updates,
+                "env_frame": train_state.network_state.timesteps
                 * env.observation_space.shape[
                     0
                 ],  # first dimension of the observation space is number of stacked frames
-                "grad_steps": train_state.grad_steps,
+                "grad_steps": train_state.network_state.grad_steps,
                 "td_loss": loss.mean(),
                 "qvals": qvals.mean(),
-                "eps": eps_scheduler(train_state.exploration_updates)
+                "eps": eps_scheduler(train_state.network_state.exploration_updates)
                 if exposure == 0
                 else config["EPS_FINISH"],
                 "lr": lr,
                 "exposure": exposure,
                 "task_id": task_id,
-                "exploration_updates": train_state.exploration_updates,
-                "total_returns": train_state.total_returns,
+                "exploration_updates": train_state.network_state.exploration_updates,
+                "total_returns": train_state.network_state.total_returns,
             }
 
             metrics.update({k: v.mean() for k, v in infos.items()})
@@ -594,9 +585,9 @@ def single_run(config):
             # print(f"env_step: {env_step}")
             # print(f"update_steps: {update_steps}")
             #
-            # print("train_state timesteps:", train_state.timesteps)
-            # print("train_state n_updates:", train_state.n_updates)
-            # print("train_state grad_steps:", train_state.grad_steps)
+            # print("train_state timesteps:", train_state.network_state.timesteps)
+            # print("train_state n_updates:", train_state.network_state.n_updates)
+            # print("train_state grad_steps:", train_state.network_state.grad_steps)
 
             # save params
             if config.get("SAVE_PATH", None) is not None:
