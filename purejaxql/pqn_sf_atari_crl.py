@@ -465,6 +465,14 @@ def make_train(config):
                         new_task_params - old_task_params, ord=2
                     )
 
+                    # compute the grads mean using jax.tree_util.tree_map
+                    grads = jax.tree_util.tree_map(
+                        lambda x: jnp.mean(x, axis=0), grads
+                    )
+
+                    grads_task = jax.tree_util.tree_map(
+                        lambda x: jnp.mean(x, axis=0), grads_task
+                    )
                     return (multi_train_state, rng), (loss, reward_loss, qvals, task_param_diff, grads, grads_task)
 
                 def preprocess_transition(x, rng):
