@@ -453,19 +453,19 @@ def make_train(config):
                     )
 
                     # update task params using reward prediction loss
-                    basis_features = jax.lax.stop_gradient(basis_features)
-                    reward_loss, grads_task = jax.value_and_grad(_reward_loss_fn)(
-                        multi_train_state.task_state.params,
-                        basis_features,
-                        minibatch.reward,
-                    )
-
+                    # basis_features = jax.lax.stop_gradient(basis_features)
+                    # reward_loss, grads_task = jax.value_and_grad(_reward_loss_fn)(
+                    #     multi_train_state.task_state.params,
+                    #     basis_features,
+                    #     minibatch.reward,
+                    # )
+                    #
                     old_task_params = multi_train_state.task_state.params["w"]
-
-                    multi_train_state.task_state = (
-                        multi_train_state.task_state.apply_gradients(grads=grads_task)
-                    )
-
+                    #
+                    # multi_train_state.task_state = (
+                    #     multi_train_state.task_state.apply_gradients(grads=grads_task)
+                    # )
+                    #
                     new_task_params = multi_train_state.task_state.params["w"]
 
                     # compute the l2 norm of the difference between the old and new task params
