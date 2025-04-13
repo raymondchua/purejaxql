@@ -170,6 +170,7 @@ def init_meta(rng, sf_dim) -> chex.Array:
     _, task_rng_key = jax.random.split(rng)
     task = jax.random.uniform(task_rng_key, shape=(sf_dim,))
     task = task / jnp.linalg.norm(task, ord=2)
+    task = jnp.expand_dims(task, 0)
     return task
 
 
