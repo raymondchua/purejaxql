@@ -112,6 +112,7 @@ class SFNetwork(nn.Module):
         task = jax.lax.stop_gradient(task)
         task_normalized = task / jnp.linalg.norm(task, ord=2, axis=-1, keepdims=True)
         print("rep shape:", rep.shape)
+        print("task_normalized shape:", task_normalized.shape)
         task_normalized = jnp.tile(task_normalized, (rep.shape[0], 1))
 
         rep_task = jnp.concatenate([rep, task_normalized], axis=-1)
