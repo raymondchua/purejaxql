@@ -423,7 +423,7 @@ def make_train(config):
 
                         loss = 0.5 * jnp.square(chosen_action_qvals - target).mean()
 
-                        return loss, (updates, chosen_action_qvals, basis_features)
+                        return loss, (updates, chosen_action_qvals)
 
                     def _reward_loss_fn(task_params, basis_features, reward):
                         loss = (
@@ -437,7 +437,7 @@ def make_train(config):
 
                     (
                         loss,
-                        (updates, qvals, _),
+                        (updates, qvals),
                     ), grads = jax.value_and_grad(_loss_fn, has_aux=True)(
                         multi_train_state.network_state.params
                     )
