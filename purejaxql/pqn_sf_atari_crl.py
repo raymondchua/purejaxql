@@ -176,7 +176,7 @@ def create_agent(rng, config, max_num_actions, observation_space_shape):
     # )
 
     network = SFNetwork(
-        action_dim=env.single_action_space.n,
+        action_dim=max_num_actions,
         norm_type=config["NORM_TYPE"],
         norm_input=config.get("NORM_INPUT", False),
         sf_dim=config["SF_DIM"],
