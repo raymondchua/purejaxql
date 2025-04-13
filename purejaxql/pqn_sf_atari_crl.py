@@ -117,9 +117,11 @@ class SFNetwork(nn.Module):
         # expand task to match the shape of sf_action
         task = jnp.tile(task, (batch_size, 1))
 
-        q_1 = jnp.einsum("bi, bij -> bj", task, sf_action).reshape(
-            -1, self.action_dim
-        )  # (batch_size, action_dim)
+        # q_1 = jnp.einsum("bi, bij -> bj", task, sf_action).reshape(
+        #     -1, self.action_dim
+        # )  # (batch_size, action_dim)
+
+        q_1 = nn.Dense(features=action_dim)(features_critic_sf)
 
         return q_1, basis_features
 
