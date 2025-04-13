@@ -125,7 +125,8 @@ class SFNetwork(nn.Module):
         # q_1 = nn.Dense(features=self.action_dim)(features_critic_sf)
 
         # return q_1, basis_features
-        return q_1, _
+        basis_features = jnp.zero((batch_size, self.sf_dim))
+        return q_1, basis_features
 
 
 @chex.dataclass(frozen=True)
