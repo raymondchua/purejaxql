@@ -150,7 +150,7 @@ class CustomTrainState(TrainState):
 @chex.dataclass
 class MultiTrainState:
     network_state: CustomTrainState
-    task_state: TrainState
+    # task_state: TrainState
 
 
 def init_meta(rng, sf_dim) -> chex.Array:
