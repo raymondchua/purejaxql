@@ -543,7 +543,7 @@ def make_train(config):
                 "task_id": task_id,
                 "exploration_updates": multi_train_state.network_state.exploration_updates,
                 "total_returns": multi_train_state.network_state.total_returns,
-                "task_param_diff": task_param_diff.mean(),
+                # "task_param_diff": task_param_diff.mean(),
                 # "task_norm": jnp.linalg.norm(multi_train_state.task_state.params["w"]),
                 "rewards": transitions.reward.mean(),
                 "basis_features_norm": basis_features_norm.mean(),
