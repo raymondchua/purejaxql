@@ -533,8 +533,8 @@ def make_train(config):
                 "exploration_updates": multi_train_state.network_state.exploration_updates,
                 "total_returns": multi_train_state.network_state.total_returns,
                 "task_param_diff": task_param_diff.mean(),
-                "grads": grads.mean(),
-                "grads_task": grads_task.mean(),
+                "grads": grads,
+                "grads_task": grads_task,
             }
 
             metrics.update({k: v.mean() for k, v in infos.items()})
