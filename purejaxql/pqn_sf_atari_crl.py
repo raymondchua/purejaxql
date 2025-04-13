@@ -232,7 +232,7 @@ def make_train(config):
         lr = lr_scheduler if config.get("LR_LINEAR_DECAY", False) else config["LR"]
 
         rng, _rng = jax.random.split(rng)
-        train_state = train_state.network_state.replace(exploration_updates=0)
+        train_state.network_state = train_state.network_state.replace(exploration_updates=0)
 
         # TRAINING LOOP
         def _update_step(runner_state, unused):
