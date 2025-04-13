@@ -70,13 +70,33 @@ class CNN(nn.Module):
         return x
 
 
-class QNetwork(nn.Module):
+# class QNetwork(nn.Module):
+#     action_dim: int
+#     norm_type: str = "layer_norm"
+#     norm_input: bool = False
+#
+#     @nn.compact
+#     def __call__(self, x: jnp.ndarray, train: bool):
+#         x = jnp.transpose(x, (0, 2, 3, 1))
+#         if self.norm_input:
+#             x = nn.BatchNorm(use_running_average=not train)(x)
+#         else:
+#             # dummy normalize input for global compatibility
+#             x_dummy = nn.BatchNorm(use_running_average=not train)(x)
+#             x = x / 255.0
+#         x = CNN(norm_type=self.norm_type)(x, train)
+#         x = nn.Dense(self.action_dim)(x)
+#         return x
+
+class SFNetwork(nn.Module):
     action_dim: int
     norm_type: str = "layer_norm"
     norm_input: bool = False
+    feature_dim: int = 128
+    sf_dim: int = 256
 
     @nn.compact
-    def __call__(self, x: jnp.ndarray, train: bool):
+    def __call__(self, x: jnp.ndarray, task: jnp.ndarray, train: bool):
         x = jnp.transpose(x, (0, 2, 3, 1))
         if self.norm_input:
             x = nn.BatchNorm(use_running_average=not train)(x)
@@ -85,8 +105,34 @@ class QNetwork(nn.Module):
             x_dummy = nn.BatchNorm(use_running_average=not train)(x)
             x = x / 255.0
         x = CNN(norm_type=self.norm_type)(x, train)
-        x = nn.Dense(self.action_dim)(x)
-        return x
+        rep = nn.Dense(self.sf_dim)(x)
+        basis_features = l2_normalize()(rep)
+
+        task = convert_variable_into_batch(task, batch_size=x.shape[0])
+        task_normalized = l2_normalize()(task)
+        rep_task = jnp.concatenate([rep, task_normalized], axis=1)
+
+        # features for SF
+        features_critic_sf = nn.Dense(features=self.feature_dim)(rep_task)
+        features_critic_sf = nn.relu(features_critic_sf)
+
+        # SF
+        sf = nn.Dense(features=self.sf_dim * self.action_dim)(features_critic_sf)
+        sf_action = jnp.reshape(
+            sf,
+            (
+                -1,
+                self.sf_dim,
+                self.action_dim,
+            ),
+        )  # (batch_size, sf_dim, action_dim)
+
+        # q_1 = jnp.einsum("bi, bij -> bj", task, sf_action).reshape(
+        #     -1, self.action_dim
+        # )  # (batch_size, action_dim)
+        q_1 = nn.Dense(self.action_dim)(x)
+
+        return q_1, basis_features
 
 
 @chex.dataclass(frozen=True)
@@ -97,6 +143,7 @@ class Transition:
     done: chex.Array
     next_obs: chex.Array
     q_val: chex.Array
+    task: chex.Array
 
 
 class CustomTrainState(TrainState):
@@ -122,19 +169,33 @@ def init_meta(rng, sf_dim) -> chex.Array:
 
 def create_agent(rng, config, max_num_actions, observation_space_shape):
     # INIT NETWORK AND OPTIMIZER
-    network = QNetwork(
-        action_dim=max_num_actions,
+    # network = QNetwork(
+    #     action_dim=max_num_actions,
+    #     norm_type=config["NORM_TYPE"],
+    #     norm_input=config.get("NORM_INPUT", False),
+    # )
+
+    network = SFNetwork(
+        action_dim=env.single_action_space.n,
         norm_type=config["NORM_TYPE"],
         norm_input=config.get("NORM_INPUT", False),
+        sf_dim=config["SF_DIM"],
+        feature_dim=config["FEATURE_DIM"],
     )
 
     init_x = jnp.zeros((1, *observation_space_shape))
     init_task = jnp.zeros((1, config["SF_DIM"]))
-    network_variables = network.init(rng, init_x, train=False)
+    network_variables = network.init(rng, init_x, init_task, train=False)
+    task_params = {"w": init_meta(rng, config["SF_DIM"])}
 
     tx = optax.chain(
         optax.clip_by_global_norm(config["MAX_GRAD_NORM"]),
         optax.radam(learning_rate=config["LR"]),
+    )
+
+    tx_task = optax.chain(
+        optax.clip_by_global_norm(config["MAX_GRAD_NORM"]),
+        optax.radam(learning_rate=config["LR_TASK"]),
     )
 
     # train_state = CustomTrainState.create(
@@ -150,9 +211,15 @@ def create_agent(rng, config, max_num_actions, observation_space_shape):
         tx=tx,
     )
 
+    task_state = TrainState.create(
+        apply_fn=network.apply,
+        params=task_params,
+        tx=tx_task,
+    )
+
     return MultiTrainState(
         network_state=network_state,
-        task_state=None
+        task_state=task_state
     ), network
 
 
@@ -241,7 +308,7 @@ def make_train(config):
 
             # SAMPLE PHASE
             def _step_env(carry, _):
-                last_obs, env_state, rng = carry
+                last_obs, env_state, task_params, rng = carry
                 rng, rng_a, rng_s = jax.random.split(rng, 3)
                 q_vals = network.apply(
                     {
@@ -249,6 +316,7 @@ def make_train(config):
                         "batch_stats": train_state.network_state.batch_stats,
                     },
                     last_obs,
+                    task_params,
                     train=False,
                 )
 
@@ -277,8 +345,10 @@ def make_train(config):
                     done=new_done,
                     next_obs=new_obs,
                     q_val=q_vals,
+                    task=train_state.task_state.params["w"],
                 )
-                return (new_obs, new_env_state, rng), (transition, info)
+                task_params = train_state.task_state.params["w"]
+                return (new_obs, new_env_state, task_params, rng), (transition, info)
 
             # step the env
             rng, _rng = jax.random.split(rng)
@@ -311,6 +381,7 @@ def make_train(config):
                     "batch_stats": train_state.network_state.batch_stats,
                 },
                 transitions.next_obs[-1],
+                transitions.task,
                 train=False,
             )
             last_q = jnp.max(last_q, axis=-1)
@@ -356,6 +427,7 @@ def make_train(config):
                         q_vals, updates = network.apply(
                             {"params": params, "batch_stats": train_state.network_state.batch_stats},
                             minibatch.obs,
+                            minibatch.task,
                             train=True,
                             mutable=["batch_stats"],
                         )  # (batch_size*2, num_actions)
