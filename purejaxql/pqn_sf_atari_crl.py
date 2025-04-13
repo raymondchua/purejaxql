@@ -80,6 +80,7 @@ class SFNetwork(nn.Module):
 
     @nn.compact
     def __call__(self, x: jnp.ndarray, task: jnp.ndarray, train: bool):
+        batch_size = x.shape[0]
         x = jnp.transpose(x, (0, 2, 3, 1))
         if self.norm_input:
             x = nn.BatchNorm(use_running_average=not train)(x)
@@ -94,15 +95,7 @@ class SFNetwork(nn.Module):
 
         task = jax.lax.stop_gradient(task)
         task_normalized = task / jnp.linalg.norm(task, ord=2, axis=-1, keepdims=True)
-        # task_normalized = jnp.expand_dims(task_normalized, 1)
-        # task_normalized = jnp.tile(task_normalized, (x.shape[0], 1))
-        # task = convert_variable_into_batch(task, batch_size=x.shape[0])
-
-        # convert task_normalized from 1D array of sf_dim to 2D array of (batch_size, sf_dim)
-        batch_size = x.shape[0]
-        task_normalized = jnp.expand_dims(task_normalized, 1)
-        task_normalized = jnp.tile(task_normalized, (1, batch_size, 1))
-        task_normalized = jnp.reshape(task_normalized, (batch_size, -1))
+        task_normalized = jnp.tile(task_normalized, (batch_size, 1))
 
         rep_task = jnp.concatenate([rep, task_normalized], axis=1)
 
@@ -120,6 +113,9 @@ class SFNetwork(nn.Module):
                 self.action_dim,
             ),
         )  # (batch_size, sf_dim, action_dim)
+
+        # expand task to match the shape of sf_action
+        task = jnp.tile(task, (batch_size, 1))
 
         q_1 = jnp.einsum("bi, bij -> bj", task, sf_action).reshape(
             -1, self.action_dim
