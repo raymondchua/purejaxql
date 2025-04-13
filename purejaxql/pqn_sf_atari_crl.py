@@ -349,15 +349,15 @@ def make_train(config):
                 + config["NUM_STEPS"] * config["NUM_ENVS"]
             )  # update timesteps count
 
-            train_state.network_state = train_state.network_state.replace(
-                total_returns=train_state.network_state.total_returns
+            train_state = train_state.replace(
+                total_returns=train_state.total_returns
                 + transitions.reward.sum()
             )  # update total returns count
 
             last_q = network.apply(
                 {
-                    "params": train_state.network_state.params,
-                    "batch_stats": train_state.network_state.batch_stats,
+                    "params": train_state.params,
+                    "batch_stats": train_state.batch_stats,
                 },
                 transitions.next_obs[-1],
                 train=False,
