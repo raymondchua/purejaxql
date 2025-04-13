@@ -559,7 +559,7 @@ def single_run(config):
 
     rng = jax.random.PRNGKey(config["SEED"])
     rng, rng_agent = jax.random.split(rng)
-    train_state, network = create_agent(rng_agent, config, max_num_actions, observation_space_shape)
+    agent_train_state, network = create_agent(rng_agent, config, max_num_actions, observation_space_shape)
 
     for cycle in range(num_exposures):
         print(f"\n=== Cycle {cycle + 1}/{num_exposures} ===")
@@ -572,11 +572,11 @@ def single_run(config):
             else:
                 # outs = jax.jit(make_train(config))(rng, exposure)
                 outs = jax.jit(
-                    lambda rng: make_train(config)(rng, cycle, train_state, network, task_id)
+                    lambda rng: make_train(config)(rng, cycle, agent_train_state, network, task_id)
                 )(rng)
             print(f"Took {time.time()-start_time} seconds to complete.")
 
-            train_state = outs["train_state"]
+            # train_state = outs["train_state"]
 
             # Debug print statements
             # metrics = outs["metrics"]
