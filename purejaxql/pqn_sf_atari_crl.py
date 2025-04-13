@@ -111,6 +111,10 @@ class SFNetwork(nn.Module):
 
         task = jax.lax.stop_gradient(task)
         task_normalized = task / jnp.linalg.norm(task, ord=2, axis=-1, keepdims=True)
+
+        task_tiles = jnp.ones_like(rep, dtype=jnp.float32)
+        task_normalized = task_normalized * task_tiles
+
         rep_task = jnp.concatenate([rep, task_normalized], axis=1)
 
         # features for SF
