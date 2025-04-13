@@ -421,7 +421,7 @@ def make_train(config):
                         loss = (
                             0.5
                             * jnp.square(
-                                jnp.dot(jax.lax.stop_gradient(basis_features), task_params["w"]) - reward
+                                jnp.dot(basis_features, task_params["w"]) - reward
                             ).mean()
                         )
 
