@@ -577,7 +577,7 @@ def make_train(config):
 
         # train
         rng, _rng = jax.random.split(rng)
-        expl_state = (init_obs, env_state)
+        expl_state = (init_obs, env_state, train_state.task_state.params["w"])
         runner_state = (train_state, expl_state, test_metrics, _rng)
 
         runner_state, metrics = jax.lax.scan(
