@@ -542,6 +542,7 @@ def make_train(config):
                 "total_returns": multi_train_state.network_state.total_returns,
                 "task_param_diff": task_param_diff.mean(),
                 "task_norm": jnp.linalg.norm(multi_train_state.task_state.params["w"]),
+                "rewards": transitions.reward.mean(),
             }
 
             metrics.update({k: v.mean() for k, v in infos.items()})
@@ -579,6 +580,8 @@ def make_train(config):
                             if k == "returned_episode_returns":
                                 print(f"{k}: {v}")
                             if k == "task_norm":
+                                print(f"{k}: {v}")
+                            if k == "rewards":
                                 print(f"{k}: {v}")
 
 
