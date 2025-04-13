@@ -200,7 +200,7 @@ def create_agent(rng, config, max_num_actions, observation_space_shape):
     # )
 
     # return MultiTrainState(network_state=network_state, task_state=task_state), network
-    return MultiTrainState(network_state=network_state), network
+    return network_state, network
 
 
 def make_train(config):
@@ -259,7 +259,7 @@ def make_train(config):
     # here reset must be out of vmap and jit
     init_obs, env_state = env.reset()
 
-    def train(rng, exposure, multi_train_state, network, task_id):
+    def train(rng, exposure, train_state, network, task_id):
 
         original_seed = rng[0]
 
@@ -282,7 +282,7 @@ def make_train(config):
         # TRAINING LOOP
         def _update_step(runner_state, unused):
 
-            multi_train_state, expl_state, test_metrics, rng = runner_state
+            train_state, expl_state, test_metrics, rng = runner_state
 
             # SAMPLE PHASE
             def _step_env(carry, _):
@@ -290,8 +290,8 @@ def make_train(config):
                 rng, rng_a, rng_s = jax.random.split(rng, 3)
                 q_vals = network.apply(
                     {
-                        "params": multi_train_state.network_state.params,
-                        "batch_stats": multi_train_state.network_state.batch_stats,
+                        "params": train_state.params,
+                        "batch_stats": train_state.batch_stats,
                     },
                     last_obs,
                     # multi_train_state.task_state.params["w"],
@@ -305,7 +305,7 @@ def make_train(config):
                     eps = jnp.full(
                         config["NUM_ENVS"],
                         eps_scheduler(
-                            multi_train_state.network_state.exploration_updates
+                            train_state.exploration_updates
                         ),
                     )
                 else:
@@ -344,20 +344,20 @@ def make_train(config):
                     lambda x: x[:, : -config["TEST_ENVS"]], transitions
                 )
 
-            multi_train_state.network_state = multi_train_state.network_state.replace(
-                timesteps=multi_train_state.network_state.timesteps
+            train_state = train_state.replace(
+                timesteps=train_state.timesteps
                 + config["NUM_STEPS"] * config["NUM_ENVS"]
             )  # update timesteps count
 
-            multi_train_state.network_state = multi_train_state.network_state.replace(
-                total_returns=multi_train_state.network_state.total_returns
+            train_state.network_state = train_state.network_state.replace(
+                total_returns=train_state.network_state.total_returns
                 + transitions.reward.sum()
             )  # update total returns count
 
             last_q = network.apply(
                 {
-                    "params": multi_train_state.network_state.params,
-                    "batch_stats": multi_train_state.network_state.batch_stats,
+                    "params": train_state.network_state.params,
+                    "batch_stats": train_state.network_state.batch_stats,
                 },
                 transitions.next_obs[-1],
                 train=False,
@@ -395,18 +395,18 @@ def make_train(config):
 
             # NETWORKS UPDATE
             def _learn_epoch(carry, _):
-                multi_train_state, rng = carry
+                train_state, rng = carry
 
                 def _learn_phase(carry, minibatch_and_target):
 
-                    multi_train_state, rng = carry
+                    train_state, rng = carry
                     minibatch, target = minibatch_and_target
 
                     def _loss_fn(params):
                         q_vals, updates = network.apply(
                             {
                                 "params": params,
-                                "batch_stats": multi_train_state.network_state.batch_stats,
+                                "batch_stats": train_state.batch_stats,
                             },
                             minibatch.obs,
                             train=True,
@@ -438,15 +438,15 @@ def make_train(config):
                         loss,
                         (updates, qvals),
                     ), grads = jax.value_and_grad(_loss_fn, has_aux=True)(
-                        multi_train_state.network_state.params
+                        train_state.params
                     )
 
-                    multi_train_state.network_state = (
-                        multi_train_state.network_state.apply_gradients(grads=grads)
+                    train_state = (
+                        train_state.apply_gradients(grads=grads)
                     )
-                    multi_train_state.network_state = (
-                        multi_train_state.network_state.replace(
-                            grad_steps=multi_train_state.network_state.grad_steps + 1,
+                    train_state = (
+                        train_state.replace(
+                            grad_steps=train_state.grad_steps + 1,
                             batch_stats=updates["batch_stats"],
                         )
                     )
@@ -476,7 +476,7 @@ def make_train(config):
 
                     basis_features_norm = jnp.linalg.norm(basis_features, ord=2, axis=-1)
 
-                    return (multi_train_state, rng), (loss, reward_loss, qvals, basis_features_norm, minibatch.obs, minibatch.reward)
+                    return (train_state, rng), (loss, reward_loss, qvals, basis_features_norm, minibatch.obs, minibatch.reward)
 
                 def preprocess_transition(x, rng):
                     x = x.reshape(
@@ -497,19 +497,19 @@ def make_train(config):
                 )
 
                 rng, _rng = jax.random.split(rng)
-                (multi_train_state, rng), (loss, reward_loss, qvals, basis_features_norm, mini_batch_obs, mini_batch_reward) = jax.lax.scan(
-                    _learn_phase, (multi_train_state, rng), (minibatches, targets)
+                (train_state, rng), (loss, reward_loss, qvals, basis_features_norm, mini_batch_obs, mini_batch_reward) = jax.lax.scan(
+                    _learn_phase, (train_state, rng), (minibatches, targets)
                 )
 
-                return (multi_train_state, rng), (loss, reward_loss, qvals, basis_features_norm, mini_batch_obs, mini_batch_reward)
+                return (train_state, rng), (loss, reward_loss, qvals, basis_features_norm, mini_batch_obs, mini_batch_reward)
 
             rng, _rng = jax.random.split(rng)
-            (multi_train_state, rng), (loss, reward_loss, qvals, basis_features_norm, mini_batch_obs, mini_batch_reward) = jax.lax.scan(
-                _learn_epoch, (multi_train_state, rng), None, config["NUM_EPOCHS"]
+            (train_state, rng), (loss, reward_loss, qvals, basis_features_norm, mini_batch_obs, mini_batch_reward) = jax.lax.scan(
+                _learn_epoch, (train_state, rng), None, config["NUM_EPOCHS"]
             )
 
-            multi_train_state.network_state = multi_train_state.network_state.replace(
-                n_updates=multi_train_state.network_state.n_updates + 1
+            train_state = train_state.replace(
+                n_updates=train_state.n_updates + 1
             )
 
             if config.get("TEST_DURING_TRAINING", False):
@@ -522,18 +522,18 @@ def make_train(config):
                 infos.update({"test/" + k: v for k, v in test_infos.items()})
 
             metrics = {
-                "env_step": multi_train_state.network_state.timesteps,
-                "update_steps": multi_train_state.network_state.n_updates,
-                "env_frame": multi_train_state.network_state.timesteps
+                "env_step": train_state.timesteps,
+                "update_steps": train_state.n_updates,
+                "env_frame": train_state.timesteps
                 * env.observation_space.shape[
                     0
                 ],  # first dimension of the observation space is number of stacked frames
-                "grad_steps": multi_train_state.network_state.grad_steps,
+                "grad_steps": train_state.grad_steps,
                 "td_loss": loss.mean(),
                 "qvals": qvals.mean(),
                 "reward_loss": reward_loss.mean(),
                 "eps": eps_scheduler(
-                    multi_train_state.network_state.exploration_updates
+                    train_state.exploration_updates
                 )
                 if exposure == 0
                 else config["EPS_FINISH"],
@@ -541,8 +541,8 @@ def make_train(config):
                 "lr_task": lr_task,
                 "exposure": exposure,
                 "task_id": task_id,
-                "exploration_updates": multi_train_state.network_state.exploration_updates,
-                "total_returns": multi_train_state.network_state.total_returns,
+                "exploration_updates": train_state.exploration_updates,
+                "total_returns": train_state.total_returns,
                 # "task_param_diff": task_param_diff.mean(),
                 # "task_norm": jnp.linalg.norm(multi_train_state.task_state.params["w"]),
                 "rewards": transitions.reward.mean(),
@@ -605,7 +605,7 @@ def make_train(config):
 
                 jax.debug.callback(callback, metrics, original_seed)
 
-            runner_state = (multi_train_state, tuple(expl_state), test_metrics, rng)
+            runner_state = (train_state, tuple(expl_state), test_metrics, rng)
 
             return runner_state, metrics
 
@@ -615,7 +615,7 @@ def make_train(config):
         # train
         rng, _rng = jax.random.split(rng)
         expl_state = (init_obs, env_state)
-        runner_state = (multi_train_state, expl_state, test_metrics, _rng)
+        runner_state = (train_state, expl_state, test_metrics, _rng)
 
         runner_state, metrics = jax.lax.scan(
             _update_step, runner_state, None, config["NUM_UPDATES"]
@@ -624,7 +624,7 @@ def make_train(config):
         return {
             "runner_state": runner_state,
             "metrics": metrics,
-            "multi_train_state": runner_state[0],
+            "train_state": runner_state[0],
         }
 
     return train
