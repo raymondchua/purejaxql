@@ -550,6 +550,7 @@ def make_train(config):
                     print("basis_features_norm: ", basis_features_norm)
                     print("reward: ", transitions.reward)
                     print("obs: ", obs)
+                    print("transitions obs: ", transitions.obs)
                     if config.get("WANDB_LOG_ALL_SEEDS", False):
                         metrics.update(
                             {
