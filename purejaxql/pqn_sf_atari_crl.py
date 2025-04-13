@@ -543,6 +543,7 @@ def make_train(config):
                 "task_param_diff": task_param_diff.mean(),
                 "grads": grads,
                 "grads_task": grads_task,
+                "task_norm": jnp.linalg.norm(multi_train_state.task_state.params["w"]),
             }
 
             metrics.update({k: v.mean() for k, v in infos.items()})
