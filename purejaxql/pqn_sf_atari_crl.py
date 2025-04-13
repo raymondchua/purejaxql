@@ -578,6 +578,8 @@ def make_train(config):
                                 print(f"{k}: {v}")
                             if k == "returned_episode_returns":
                                 print(f"{k}: {v}")
+                            if k == "task_norm":
+                                print(f"{k}: {v}")
 
 
                         # print(f"{k}: {v}")
