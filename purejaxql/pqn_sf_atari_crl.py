@@ -432,6 +432,7 @@ def make_train(config):
                     ), grads = jax.value_and_grad(_loss_fn, has_aux=True)(
                         multi_train_state.network_state.params
                     )
+
                     multi_train_state.network_state = (
                         multi_train_state.network_state.apply_gradients(grads=grads)
                     )
@@ -449,11 +450,21 @@ def make_train(config):
                         basis_features,
                         minibatch.reward,
                     )
+
+                    old_task_params = multi_train_state.task_state.params["w"]
+
                     multi_train_state.task_state = (
                         multi_train_state.task_state.apply_gradients(grads=grads_task)
                     )
 
-                    return (multi_train_state, rng), (loss, reward_loss, qvals)
+                    new_task_params = multi_train_state.task_state.params["w"]
+
+                    # compute the l2 norm of the difference between the old and new task params
+                    task_param_diff = jnp.linalg.norm(
+                        new_task_params - old_task_params, ord=2
+                    )
+
+                    return (multi_train_state, rng), (loss, reward_loss, qvals, task_param_diff)
 
                 def preprocess_transition(x, rng):
                     x = x.reshape(
@@ -474,14 +485,14 @@ def make_train(config):
                 )
 
                 rng, _rng = jax.random.split(rng)
-                (multi_train_state, rng), (loss, reward_loss, qvals) = jax.lax.scan(
+                (multi_train_state, rng), (loss, reward_loss, qvals, task_param_diff) = jax.lax.scan(
                     _learn_phase, (multi_train_state, rng), (minibatches, targets)
                 )
 
-                return (multi_train_state, rng), (loss, reward_loss, qvals)
+                return (multi_train_state, rng), (loss, reward_loss, qvals, task_param_diff)
 
             rng, _rng = jax.random.split(rng)
-            (multi_train_state, rng), (loss, reward_loss, qvals) = jax.lax.scan(
+            (multi_train_state, rng), (loss, reward_loss, qvals, task_param_diff) = jax.lax.scan(
                 _learn_epoch, (multi_train_state, rng), None, config["NUM_EPOCHS"]
             )
 
@@ -520,6 +531,7 @@ def make_train(config):
                 "task_id": task_id,
                 "exploration_updates": multi_train_state.network_state.exploration_updates,
                 "total_returns": multi_train_state.network_state.total_returns,
+                "task_param_diff": task_param_diff.mean(),
             }
 
             metrics.update({k: v.mean() for k, v in infos.items()})
