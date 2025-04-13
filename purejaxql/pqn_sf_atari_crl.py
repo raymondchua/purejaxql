@@ -465,7 +465,7 @@ def make_train(config):
                         new_task_params - old_task_params, ord=2
                     )
 
-                    return (multi_train_state, rng), (loss, reward_loss, qvals, task_param_diff)
+                    return (multi_train_state, rng), (loss, reward_loss, qvals, task_param_diff, grads, grads_task)
 
                 def preprocess_transition(x, rng):
                     x = x.reshape(
@@ -486,14 +486,14 @@ def make_train(config):
                 )
 
                 rng, _rng = jax.random.split(rng)
-                (multi_train_state, rng), (loss, reward_loss, qvals, task_param_diff) = jax.lax.scan(
+                (multi_train_state, rng), (loss, reward_loss, qvals, task_param_diff, grads, grads_task) = jax.lax.scan(
                     _learn_phase, (multi_train_state, rng), (minibatches, targets)
                 )
 
-                return (multi_train_state, rng), (loss, reward_loss, qvals, task_param_diff)
+                return (multi_train_state, rng), (loss, reward_loss, qvals, task_param_diff, grads, grads_task)
 
             rng, _rng = jax.random.split(rng)
-            (multi_train_state, rng), (loss, reward_loss, qvals, task_param_diff) = jax.lax.scan(
+            (multi_train_state, rng), (loss, reward_loss, qvals, task_param_diff, grads, grads_task) = jax.lax.scan(
                 _learn_epoch, (multi_train_state, rng), None, config["NUM_EPOCHS"]
             )
 
@@ -533,6 +533,8 @@ def make_train(config):
                 "exploration_updates": multi_train_state.network_state.exploration_updates,
                 "total_returns": multi_train_state.network_state.total_returns,
                 "task_param_diff": task_param_diff.mean(),
+                "grads": grads.mean(),
+                "grads_task": grads_task.mean(),
             }
 
             metrics.update({k: v.mean() for k, v in infos.items()})
@@ -568,6 +570,10 @@ def make_train(config):
                             if k == "reward_loss":
                                 print(f"{k}: {v}")
                             if k == "returned_episode_returns":
+                                print(f"{k}: {v}")
+                            if k == "grads":
+                                print(f"{k}: {v}")
+                            if k == "grads_task":
                                 print(f"{k}: {v}")
 
 
