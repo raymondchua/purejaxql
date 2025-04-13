@@ -191,19 +191,14 @@ def create_agent(rng, config, max_num_actions, observation_space_shape):
         tx=tx,
     )
 
-    task_state = TrainState.create(
-        apply_fn=network.apply,
-        params=task_params,
-        tx=tx_task,
-    )
+    # task_state = TrainState.create(
+    #     apply_fn=network.apply,
+    #     params=task_params,
+    #     tx=tx_task,
+    # )
 
-    return MultiTrainState(network_state=network_state, task_state=task_state), network
-
-
-def convert_variable_into_batch(variable, batch_size: int) -> chex.Array:
-    var_batch = jnp.tile(variable, batch_size)
-    var_batch = jnp.reshape(var_batch, (batch_size, -1))
-    return var_batch
+    # return MultiTrainState(network_state=network_state, task_state=task_state), network
+    return MultiTrainState(network_state=network_state), network
 
 
 def make_train(config):
@@ -297,7 +292,7 @@ def make_train(config):
                         "batch_stats": multi_train_state.network_state.batch_stats,
                     },
                     last_obs,
-                    multi_train_state.task_state.params["w"],
+                    # multi_train_state.task_state.params["w"],
                     train=False,
                 )
 
@@ -364,7 +359,7 @@ def make_train(config):
                 },
                 transitions.next_obs[-1],
                 train=False,
-                task=multi_train_state.task_state.params["w"],
+                # task=multi_train_state.task_state.params["w"],
             )
             last_q = jnp.max(last_q, axis=-1)
 
@@ -414,7 +409,7 @@ def make_train(config):
                             minibatch.obs,
                             train=True,
                             mutable=["batch_stats"],
-                            task=multi_train_state.task_state.params["w"],
+                            # task=multi_train_state.task_state.params["w"],
                         )  # (batch_size*2, num_actions)
 
                         chosen_action_qvals = jnp.take_along_axis(
@@ -462,7 +457,7 @@ def make_train(config):
                     #     minibatch.reward,
                     # )
                     #
-                    old_task_params = multi_train_state.task_state.params["w"]
+                    # old_task_params = multi_train_state.task_state.params["w"]
                     #
                     # multi_train_state.task_state = (
                     #     multi_train_state.task_state.apply_gradients(grads=grads_task)
@@ -470,16 +465,16 @@ def make_train(config):
                     #
                     reward_loss = 0
                     basis_features = jnp.ones_like(qvals)
-                    new_task_params = multi_train_state.task_state.params["w"]
+                    # new_task_params = multi_train_state.task_state.params["w"]
 
                     # compute the l2 norm of the difference between the old and new task params
-                    task_param_diff = jnp.linalg.norm(
-                        new_task_params - old_task_params, ord=2
-                    )
+                    # task_param_diff = jnp.linalg.norm(
+                    #     new_task_params - old_task_params, ord=2
+                    # )
 
                     basis_features_norm = jnp.linalg.norm(basis_features, ord=2, axis=-1)
 
-                    return (multi_train_state, rng), (loss, reward_loss, qvals, task_param_diff, basis_features_norm, minibatch.obs, minibatch.reward)
+                    return (multi_train_state, rng), (loss, reward_loss, qvals, basis_features_norm, minibatch.obs, minibatch.reward)
 
                 def preprocess_transition(x, rng):
                     x = x.reshape(
@@ -500,14 +495,14 @@ def make_train(config):
                 )
 
                 rng, _rng = jax.random.split(rng)
-                (multi_train_state, rng), (loss, reward_loss, qvals, task_param_diff, basis_features_norm, mini_batch_obs, mini_batch_reward) = jax.lax.scan(
+                (multi_train_state, rng), (loss, reward_loss, qvals, basis_features_norm, mini_batch_obs, mini_batch_reward) = jax.lax.scan(
                     _learn_phase, (multi_train_state, rng), (minibatches, targets)
                 )
 
-                return (multi_train_state, rng), (loss, reward_loss, qvals, task_param_diff, basis_features_norm, mini_batch_obs, mini_batch_reward)
+                return (multi_train_state, rng), (loss, reward_loss, qvals, basis_features_norm, mini_batch_obs, mini_batch_reward)
 
             rng, _rng = jax.random.split(rng)
-            (multi_train_state, rng), (loss, reward_loss, qvals, task_param_diff, basis_features_norm, mini_batch_obs, mini_batch_reward) = jax.lax.scan(
+            (multi_train_state, rng), (loss, reward_loss, qvals, basis_features_norm, mini_batch_obs, mini_batch_reward) = jax.lax.scan(
                 _learn_epoch, (multi_train_state, rng), None, config["NUM_EPOCHS"]
             )
 
@@ -547,7 +542,7 @@ def make_train(config):
                 "exploration_updates": multi_train_state.network_state.exploration_updates,
                 "total_returns": multi_train_state.network_state.total_returns,
                 "task_param_diff": task_param_diff.mean(),
-                "task_norm": jnp.linalg.norm(multi_train_state.task_state.params["w"]),
+                # "task_norm": jnp.linalg.norm(multi_train_state.task_state.params["w"]),
                 "rewards": transitions.reward.mean(),
                 "basis_features_norm": basis_features_norm.mean(),
             }
