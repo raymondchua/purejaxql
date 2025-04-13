@@ -313,7 +313,7 @@ def make_train(config):
             def _step_env(carry, _):
                 last_obs, env_state, task_params, rng = carry
                 rng, rng_a, rng_s = jax.random.split(rng, 3)
-                q_vals = network.apply(
+                (q_vals, _) = network.apply(
                     {
                         "params": train_state.network_state.params,
                         "batch_stats": train_state.network_state.batch_stats,
@@ -378,7 +378,7 @@ def make_train(config):
                 total_returns=train_state.network_state.total_returns + transitions.reward.sum()
             )  # update total returns count
 
-            last_q = network.apply(
+            (last_q,_) = network.apply(
                 {
                     "params": train_state.network_state.params,
                     "batch_stats": train_state.network_state.batch_stats,
@@ -427,7 +427,7 @@ def make_train(config):
                     minibatch, target = minibatch_and_target
 
                     def _loss_fn(params):
-                        q_vals, updates = network.apply(
+                        (q_vals, _), updates = network.apply(
                             {"params": params, "batch_stats": train_state.network_state.batch_stats},
                             minibatch.obs,
                             minibatch.task,
