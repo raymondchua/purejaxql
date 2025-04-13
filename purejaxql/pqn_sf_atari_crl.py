@@ -111,7 +111,6 @@ class SFNetwork(nn.Module):
 
         task = jax.lax.stop_gradient(task)
         task_normalized = task / jnp.linalg.norm(task, ord=2, axis=-1, keepdims=True)
-        task_normalized = jnp.tile(task_normalized, (rep.shape[0], 1))
         rep_task = jnp.concatenate([rep, task_normalized], axis=1)
 
         # features for SF
@@ -310,7 +309,7 @@ def make_train(config):
 
             # SAMPLE PHASE
             def _step_env(carry, _):
-                last_obs, env_state, task_params, rng = carry
+                last_obs, env_state, rng = carry
                 rng, rng_a, rng_s = jax.random.split(rng, 3)
                 (q_vals, _) = network.apply(
                     {
@@ -318,7 +317,7 @@ def make_train(config):
                         "batch_stats": train_state.network_state.batch_stats,
                     },
                     last_obs,
-                    task_params,
+                    jnp.tile(train_state.task_state.params["w"], (1, config["NUM_ENVS"], 1)),
                     train=False,
                 )
 
@@ -347,10 +346,9 @@ def make_train(config):
                     done=new_done,
                     next_obs=new_obs,
                     q_val=q_vals,
-                    task=train_state.task_state.params["w"],
+                    task=jnp.tile(train_state.task_state.params["w"], (1, config["NUM_ENVS"], 1)),
                 )
-                task_params = train_state.task_state.params["w"]
-                return (new_obs, new_env_state, task_params, rng), (transition, info)
+                return (new_obs, new_env_state, rng), (transition, info)
 
             # step the env
             rng, _rng = jax.random.split(rng)
@@ -576,7 +574,7 @@ def make_train(config):
 
         # train
         rng, _rng = jax.random.split(rng)
-        expl_state = (init_obs, env_state, train_state.task_state.params["w"])
+        expl_state = (init_obs, env_state)
         runner_state = (train_state, expl_state, test_metrics, _rng)
 
         runner_state, metrics = jax.lax.scan(
