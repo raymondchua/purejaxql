@@ -125,8 +125,7 @@ class SFNetwork(nn.Module):
         # q_1 = nn.Dense(features=self.action_dim)(features_critic_sf)
 
         # return q_1, basis_features
-        basis_features = jnp.zero((batch_size, self.sf_dim))
-        return q_1, basis_features
+        return q_1
 
 
 @chex.dataclass(frozen=True)
@@ -292,7 +291,7 @@ def make_train(config):
             def _step_env(carry, _):
                 last_obs, env_state, rng = carry
                 rng, rng_a, rng_s = jax.random.split(rng, 3)
-                q_vals, _ = network.apply(
+                q_vals = network.apply(
                     {
                         "params": multi_train_state.network_state.params,
                         "batch_stats": multi_train_state.network_state.batch_stats,
@@ -358,7 +357,7 @@ def make_train(config):
                 + transitions.reward.sum()
             )  # update total returns count
 
-            last_q, _ = network.apply(
+            last_q = network.apply(
                 {
                     "params": multi_train_state.network_state.params,
                     "batch_stats": multi_train_state.network_state.batch_stats,
@@ -407,7 +406,7 @@ def make_train(config):
                     minibatch, target = minibatch_and_target
 
                     def _loss_fn(params):
-                        (q_vals, _), updates = network.apply(
+                        q_vals, updates = network.apply(
                             {
                                 "params": params,
                                 "batch_stats": multi_train_state.network_state.batch_stats,
