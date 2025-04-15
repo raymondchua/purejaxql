@@ -20,7 +20,7 @@ SF_DIM: 256
 FULL_ACTION_SPACE: True # use full action space
 
 # env specific, see https://envpool.readthedocs.io/en/latest/env/atari.html
-ENV_NAME: "Pong-v5"
+ENV_NAME: "Alien-v5"
 ENV_KWARGS:
   episodic_life: True # lost life -> done, increases sample efficiency, may hurt in some games
   reward_clip: True # reward into -1, 1
