@@ -378,7 +378,7 @@ def make_train(config):
                     "batch_stats": train_state.network_state.batch_stats,
                 },
                 transitions.next_obs[-1],
-                transitions.task[-1],
+                train_state.task_state.params["w"][-1],
                 train=False,
             )
             last_q = jnp.max(last_q, axis=-1)
@@ -424,7 +424,7 @@ def make_train(config):
                         (q_vals, basis_features), updates = network.apply(
                             {"params": params, "batch_stats": train_state.network_state.batch_stats},
                             minibatch.obs,
-                            minibatch.task,
+                            train_state.task_state.params["w"],
                             train=True,
                             mutable=["batch_stats"],
                         )  # (batch_size*2, num_actions)
@@ -441,6 +441,8 @@ def make_train(config):
 
                     def _reward_loss_fn(task_params, basis_features, reward):
                         task_params_train = task_params["w"][:-config["TEST_ENVS"], : ]
+                        print("task_params_train shape: ", task_params_train.shape)
+                        print("basis_features shape: ", basis_features.shape)
                         predicted_reward = jnp.einsum("ij,ij->i", basis_features, task_params_train)
                         loss = 0.5 * jnp.square(predicted_reward - reward).mean()
 
