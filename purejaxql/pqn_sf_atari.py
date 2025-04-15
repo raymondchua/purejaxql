@@ -289,13 +289,7 @@ def make_train(config):
 
                 # different eps for each env
                 _rngs = jax.random.split(rng_a, total_envs)
-                if exposure == 0:
-                    eps = jnp.full(
-                        config["NUM_ENVS"],
-                        eps_scheduler(train_state.network_state.exploration_updates),
-                    )
-                else:
-                    eps = jnp.full(config["NUM_ENVS"], config["EPS_FINISH"])
+                eps = jnp.full(config["NUM_ENVS"], config["EPS_FINISH"])
 
                 if config.get("TEST_DURING_TRAINING", False):
                     eps = jnp.concatenate((eps, jnp.zeros(config["TEST_ENVS"])))
