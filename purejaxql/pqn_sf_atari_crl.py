@@ -378,7 +378,7 @@ def make_train(config):
                     "batch_stats": train_state.network_state.batch_stats,
                 },
                 transitions.next_obs[-1],
-                train_state.task_state.params["w"][-1],
+                train_state.task_state.params["w"],
                 train=False,
             )
             last_q = jnp.max(last_q, axis=-1)
@@ -458,12 +458,15 @@ def make_train(config):
                     )
 
                     # update task params using reward prediction loss
+                    old_task_params = train_state.task_state.params["w"]
                     basis_features = jax.lax.stop_gradient(basis_features)
                     reward_loss, grads_task = jax.value_and_grad(
                         _reward_loss_fn
                     )(train_state.task_state.params, basis_features, minibatch.reward)
                     train_state.task_state = train_state.task_state.apply_gradients(grads=grads_task)
+                    new_task_params = train_state.task_state.params["w"]
 
+                    task_params_diff = jnp.linalg.norm(new_task_params - old_task_params)
 
                     return (train_state, rng), (loss, qvals, reward_loss)
 
