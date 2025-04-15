@@ -381,6 +381,7 @@ def make_train(config):
                             reward = minibatch.reward
                         else:
                             reward = jnp.concatenate((minibatch.reward, minibatch.reward))
+                            task_params = jnp.concatenate((task_params, task_params))
                         predicted_reward = jnp.einsum("ij,ij->i", basis_features, task_params)
                         loss = 0.5 * jnp.square(predicted_reward - reward).mean()
 
