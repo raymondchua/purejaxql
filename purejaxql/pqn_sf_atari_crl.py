@@ -424,7 +424,7 @@ def make_train(config):
                         (q_vals, basis_features), updates = network.apply(
                             {"params": params, "batch_stats": train_state.network_state.batch_stats},
                             minibatch.obs,
-                            train_state.task_state.params["w"],
+                            train_state.task_state.params["w"][: -config["TEST_ENVS"], :],
                             train=True,
                             mutable=["batch_stats"],
                         )  # (batch_size*2, num_actions)
