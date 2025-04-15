@@ -591,6 +591,10 @@ def single_run(config):
         mode=config["WANDB_MODE"],
     )
 
+    # determine the max number of actions
+    max_num_actions = 18  # atari has at most 18 actions
+    observation_space_shape = (4, 84, 84)
+
     rng = jax.random.PRNGKey(config["SEED"])
     rng, rng_agent = jax.random.split(rng)
     agent_train_state, network = create_agent(rng_agent, config, max_num_actions, observation_space_shape)
