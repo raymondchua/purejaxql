@@ -348,11 +348,14 @@ def make_train(config):
             )
             expl_state = tuple(expl_state)
 
+            task_params_target = train_state.task_state.params["w"]
+
             if config.get("TEST_DURING_TRAINING", False):
                 # remove testing envs
                 transitions = jax.tree_util.tree_map(
                     lambda x: x[:, : -config["TEST_ENVS"]], transitions
                 )
+                task_params_target = train_state.task_state.params["w"][: -config["TEST_ENVS"], :]
 
             train_state.network_state = train_state.network_state.replace(
                 timesteps=train_state.network_state.timesteps
@@ -369,7 +372,7 @@ def make_train(config):
                     "batch_stats": train_state.network_state.batch_stats,
                 },
                 transitions.next_obs[-1],
-                train_state.task_state.params["w"][: -config["TEST_ENVS"], :],
+                task_params_target,
                 train=False,
             )
             last_q = jnp.max(last_q, axis=-1)
