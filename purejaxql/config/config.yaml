@@ -10,7 +10,7 @@ LOGGING:
 # wandb params
 WANDB_MODE: "offline"  # set to online to activate wandb
 ENTITY: ""
-PROJECT: "Atari_Three_Games"
+PROJECT: "Atari_Five_Games"
 alg:
   WANDB_LOG_ALL_SEEDS: False # will log all the vmapped seeds separetely
 
