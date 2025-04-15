@@ -191,17 +191,18 @@ def make_train(config):
             num_layers=config["NUM_LAYERS"],
         )
 
-        def init_meta(rng, sf_dim) -> chex.Array:
+        def init_meta(rng, sf_dim, num_env) -> chex.Array:
             _, task_rng_key = jax.random.split(rng)
             task = jax.random.uniform(task_rng_key, shape=(sf_dim,))
             task = task / jnp.linalg.norm(task, ord=2)
+            task = jnp.tile(task, (num_env, 1))
             return task
 
         def create_agent(rng):
             init_x = jnp.zeros((1, *env.observation_space(env_params).shape))
             init_task = jnp.zeros((1, config["SF_DIM"]))
             network_variables = network.init(rng, init_x, init_task, train=False)
-            task_params = {"w": init_meta(rng, config["SF_DIM"])}
+            task_params = {"w": init_meta(rng, config["SF_DIM"], config["NUM_ENVS"])}
 
             tx = optax.chain(
                 optax.clip_by_global_norm(config["MAX_GRAD_NORM"]),
