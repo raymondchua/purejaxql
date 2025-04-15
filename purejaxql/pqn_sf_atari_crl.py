@@ -128,6 +128,9 @@ class SFNetwork(nn.Module):
             ),
         )  # (batch_size, sf_dim, action_dim)
 
+        print("sf action shape: ", sf_action.shape)
+        print("task shape: ", task.shape)
+
         q_1 = jnp.einsum("bi, bij -> bj", task, sf_action).reshape(
             -1, self.action_dim
         )  # (batch_size, action_dim)
