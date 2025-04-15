@@ -356,7 +356,7 @@ def make_train(config):
                                 jnp.concatenate((minibatch.obs, minibatch.next_obs)),
                                 train=True,
                                 mutable=["batch_stats"],
-                                task=multi_train_state.task_state.params["w"],
+                                task=jnp.concatenate(multi_train_state.task_state.params["w"], multi_train_state.task_state.params["w"]),
                             )
                             q_vals, q_next = jnp.split(all_q_vals, 2)
                             q_next = jax.lax.stop_gradient(q_next)
