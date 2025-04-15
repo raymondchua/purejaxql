@@ -396,6 +396,10 @@ def make_train(config):
                         metrics["update_steps"] % config.get("WANDB_LOG_INTERVAL", 128) == 0
                     ):
                         print("Logging metrics to wandb")
+
+                        for k,v in metrics.items():
+                            print(f"{k}: {v}")
+
                         if config.get("WANDB_LOG_ALL_SEEDS", False):
                             metrics.update(
                                 {
