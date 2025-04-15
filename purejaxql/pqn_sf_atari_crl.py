@@ -70,25 +70,6 @@ class CNN(nn.Module):
         x = nn.relu(x)
         return x
 
-
-# class QNetwork(nn.Module):
-#     action_dim: int
-#     norm_type: str = "layer_norm"
-#     norm_input: bool = False
-#
-#     @nn.compact
-#     def __call__(self, x: jnp.ndarray, train: bool):
-#         x = jnp.transpose(x, (0, 2, 3, 1))
-#         if self.norm_input:
-#             x = nn.BatchNorm(use_running_average=not train)(x)
-#         else:
-#             # dummy normalize input for global compatibility
-#             x_dummy = nn.BatchNorm(use_running_average=not train)(x)
-#             x = x / 255.0
-#         x = CNN(norm_type=self.norm_type)(x, train)
-#         x = nn.Dense(self.action_dim)(x)
-#         return x
-
 class SFNetwork(nn.Module):
     action_dim: int
     norm_type: str = "layer_norm"
@@ -130,7 +111,7 @@ class SFNetwork(nn.Module):
 
         q_1 = jnp.einsum("bi, bij -> bj", task, sf_action).reshape(
             -1, self.action_dim
-        )
+        )  # (batch_size, action_dim)
 
         return q_1, basis_features
 
