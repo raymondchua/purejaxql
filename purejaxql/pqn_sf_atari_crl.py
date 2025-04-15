@@ -146,7 +146,6 @@ class Transition:
     done: chex.Array
     next_obs: chex.Array
     q_val: chex.Array
-    task: chex.Array
 
 
 class CustomTrainState(TrainState):
@@ -172,13 +171,6 @@ def init_meta(rng, sf_dim, num_env) -> chex.Array:
 
 
 def create_agent(rng, config, max_num_actions, observation_space_shape):
-    # INIT NETWORK AND OPTIMIZER
-    # network = QNetwork(
-    #     action_dim=max_num_actions,
-    #     norm_type=config["NORM_TYPE"],
-    #     norm_input=config.get("NORM_INPUT", False),
-    # )
-
     network = SFNetwork(
         action_dim=max_num_actions,
         norm_type=config["NORM_TYPE"],
@@ -343,7 +335,6 @@ def make_train(config):
                     done=new_done,
                     next_obs=new_obs,
                     q_val=q_vals,
-                    task=train_state.task_state.params["w"],
                 )
                 return (new_obs, new_env_state, rng), (transition, info)
 
