@@ -214,12 +214,12 @@ def make_train(config):
 
             tx = optax.chain(
                 optax.clip_by_global_norm(config["MAX_GRAD_NORM"]),
-                optax.radam(learning_rate=config["LR"]),
+                optax.radam(learning_rate=lr),
             )
 
             tx_task = optax.chain(
                 optax.clip_by_global_norm(config["MAX_GRAD_NORM"]),
-                optax.radam(learning_rate=config["LR_TASK"]),
+                optax.radam(learning_rate=lr_task),
             )
 
             network_state = CustomTrainState.create(
