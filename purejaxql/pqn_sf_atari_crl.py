@@ -133,8 +133,7 @@ class SFNetwork(nn.Module):
 
         q_1 = jnp.einsum("bi, bij -> bj", task, sf_action).reshape(
             -1, self.action_dim
-        )  # (batch_size, action_dim)
-        # q_1 = nn.Dense(self.action_dim)(x)
+        )
 
         return q_1, basis_features
 
@@ -203,12 +202,6 @@ def create_agent(rng, config, max_num_actions, observation_space_shape):
         optax.radam(learning_rate=config["LR_TASK"]),
     )
 
-    # train_state = CustomTrainState.create(
-    #     apply_fn=network.apply,
-    #     params=network_variables["params"],
-    #     batch_stats=network_variables["batch_stats"],
-    #     tx=tx,
-    # )
     network_state = CustomTrainState.create(
         apply_fn=network.apply,
         params=network_variables["params"],
@@ -428,7 +421,7 @@ def make_train(config):
                     minibatch, target = minibatch_and_target
 
                     def _loss_fn(params):
-                        (q_vals, _), updates = network.apply(
+                        (q_vals, basis_features), updates = network.apply(
                             {"params": params, "batch_stats": train_state.network_state.batch_stats},
                             minibatch.obs,
                             minibatch.task,
@@ -444,9 +437,14 @@ def make_train(config):
 
                         loss = 0.5 * jnp.square(chosen_action_qvals - target).mean()
 
-                        return loss, (updates, chosen_action_qvals)
+                        return loss, (updates, chosen_action_qvals, basis_features)
 
-                    (loss, (updates, qvals)), grads = jax.value_and_grad(
+                    def _reward_loss_fn(task_params, basis_features, reward):
+                        loss = 0.5 * jnp.square(jnp.dot(basis_features, task_params["w"]) - reward).mean()
+
+                        return loss
+
+                    (loss, (updates, qvals, basis_features)), grads = jax.value_and_grad(
                         _loss_fn, has_aux=True
                     )(train_state.network_state.params)
                     train_state.network_state = train_state.network_state.apply_gradients(grads=grads)
@@ -454,7 +452,16 @@ def make_train(config):
                         grad_steps=train_state.network_state.grad_steps + 1,
                         batch_stats=updates["batch_stats"],
                     )
-                    return (train_state, rng), (loss, qvals)
+
+                    # update task params using reward prediction loss
+                    basis_features = jax.lax.stop_gradient(basis_features)
+                    reward_loss, grads_task = jax.value_and_grad(
+                        _reward_loss_fn
+                    )(multi_train_state.task_state.params, basis_features, minibatch.reward)
+                    multi_train_state.task_state = multi_train_state.task_state.apply_gradients(grads=grads_task)
+
+
+                    return (train_state, rng), (loss, qvals, reward_loss)
 
                 def preprocess_transition(x, rng):
                     x = x.reshape(
@@ -482,7 +489,7 @@ def make_train(config):
                 return (train_state, rng), (loss, qvals)
 
             rng, _rng = jax.random.split(rng)
-            (train_state, rng), (loss, qvals) = jax.lax.scan(
+            (train_state, rng), (loss, qvals, reward_loss) = jax.lax.scan(
                 _learn_epoch, (train_state, rng), None, config["NUM_EPOCHS"]
             )
 
@@ -509,6 +516,7 @@ def make_train(config):
                 ],  # first dimension of the observation space is number of stacked frames
                 "grad_steps": train_state.network_state.grad_steps,
                 "td_loss": loss.mean(),
+                "reward_loss": reward_loss.mean(),
                 "qvals": qvals.mean(),
                 "eps": eps_scheduler(train_state.network_state.exploration_updates)
                 if exposure == 0
