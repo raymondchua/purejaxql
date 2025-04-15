@@ -128,9 +128,6 @@ class SFNetwork(nn.Module):
             ),
         )  # (batch_size, sf_dim, action_dim)
 
-        print("sf action shape: ", sf_action.shape)
-        print("task shape: ", task.shape)
-
         q_1 = jnp.einsum("bi, bij -> bj", task, sf_action).reshape(
             -1, self.action_dim
         )
@@ -435,8 +432,6 @@ def make_train(config):
 
                     def _reward_loss_fn(task_params, basis_features, reward):
                         task_params_train = task_params["w"][:-config["TEST_ENVS"], : ]
-                        print("task_params_train shape: ", task_params_train.shape)
-                        print("basis_features shape: ", basis_features.shape)
                         predicted_reward = jnp.einsum("ij,ij->i", basis_features, task_params_train)
                         loss = 0.5 * jnp.square(predicted_reward - reward).mean()
 
