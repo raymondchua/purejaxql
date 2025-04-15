@@ -440,9 +440,8 @@ def make_train(config):
                         return loss, (updates, chosen_action_qvals, basis_features)
 
                     def _reward_loss_fn(task_params, basis_features, reward):
-                        print("task params shape: ", task_params["w"].shape)
-                        print("basis features shape: ", basis_features.shape)
-                        predicted_reward = jnp.einsum("ij,ij->i", basis_features, task_params["w"])
+                        task_params_train = task_params["w"][:-config["TEST_ENVS"], : ]
+                        predicted_reward = jnp.einsum("ij,ij->i", basis_features, task_params_train)
                         loss = 0.5 * jnp.square(predicted_reward - reward).mean()
 
                         return loss
