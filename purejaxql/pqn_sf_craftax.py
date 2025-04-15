@@ -427,14 +427,14 @@ def make_train(config):
                 )
 
                 rng, _rng = jax.random.split(rng)
-                (multi_train_state, rng), (loss, qvals, reward_loss) = jax.lax.scan(
+                (multi_train_state, rng), (loss, qvals, reward_loss, task_params_diff) = jax.lax.scan(
                     _learn_phase, (multi_train_state, rng), (minibatches, targets)
                 )
 
-                return (multi_train_state, rng), (loss, qvals, reward_loss)
+                return (multi_train_state, rng), (loss, qvals, reward_loss, task_params_diff)
 
             rng, _rng = jax.random.split(rng)
-            (multi_train_state, rng), (loss, qvals, reward_loss) = jax.lax.scan(
+            (multi_train_state, rng), (loss, qvals, reward_loss, task_params_diff) = jax.lax.scan(
                 _learn_epoch, (multi_train_state, rng), None, config["NUM_EPOCHS"]
             )
 
