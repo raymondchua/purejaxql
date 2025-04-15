@@ -457,8 +457,8 @@ def make_train(config):
                     basis_features = jax.lax.stop_gradient(basis_features)
                     reward_loss, grads_task = jax.value_and_grad(
                         _reward_loss_fn
-                    )(multi_train_state.task_state.params, basis_features, minibatch.reward)
-                    multi_train_state.task_state = multi_train_state.task_state.apply_gradients(grads=grads_task)
+                    )(train_state.task_state.params, basis_features, minibatch.reward)
+                    train_state.task_state = train_state.task_state.apply_gradients(grads=grads_task)
 
 
                     return (train_state, rng), (loss, qvals, reward_loss)
