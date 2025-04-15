@@ -30,38 +30,11 @@ from purejaxql.utils.craftax_wrappers import (
 from purejaxql.utils.batch_renorm import BatchRenorm
 from purejaxql.utils.l2_normalize import l2_normalize
 
-
-def convert_variable_into_batch(variable, batch_size: int) -> chex.Array:
-    var_batch = jnp.tile(variable, batch_size)
-    var_batch = jnp.reshape(var_batch, (batch_size, -1))
-    return var_batch
-
-@chex.dataclass(frozen=True)
-class Transition:
-    obs: chex.Array
-    action: chex.Array
-    reward: chex.Array
-    done: chex.Array
-    next_obs: chex.Array
-    q_val: chex.Array
-
-
-class CustomTrainState(TrainState):
-    batch_stats: Any
-    timesteps: int = 0
-    n_updates: int = 0
-    grad_steps: int = 0
-
-@chex.dataclass
-class MultiTrainState:
-    network_state: CustomTrainState
-    task_state: TrainState
-
 class SFNetwork(nn.Module):
     action_dim: int
     norm_type: str = "layer_norm"
     norm_input: bool = False
-    feature_dim: int = 256
+    feature_dim: int = 128
     sf_dim: int = 256
     hidden_size: int = 512
     num_layers: int = 2 # lesser than Q network since we use additional layers to construct SF
@@ -87,11 +60,11 @@ class SFNetwork(nn.Module):
             x = nn.relu(x)
 
         rep = nn.Dense(self.sf_dim)(x)
-        basis_features = l2_normalize()(rep)
+        basis_features = rep / jnp.linalg.norm(rep, ord=2, axis=-1, keepdims=True)
 
-        task = convert_variable_into_batch(task, batch_size=x.shape[0])
-        task_normalized = l2_normalize()(task)
-        rep_task = jnp.concatenate([rep, task_normalized], axis=1)
+        task = jax.lax.stop_gradient(task)
+        task_normalized = task / jnp.linalg.norm(task, ord=2, axis=-1, keepdims=True)
+        rep_task = jnp.concatenate([rep, task_normalized], axis=-1)
 
         # features for SF
         features_critic_sf = nn.Dense(features=self.feature_dim)(rep_task)
@@ -115,7 +88,29 @@ class SFNetwork(nn.Module):
         return q_1, basis_features
 
 
+@chex.dataclass(frozen=True)
+class Transition:
+    obs: chex.Array
+    action: chex.Array
+    reward: chex.Array
+    done: chex.Array
+    next_obs: chex.Array
+    q_val: chex.Array
+
+
+class CustomTrainState(TrainState):
+    batch_stats: Any
+    timesteps: int = 0
+    n_updates: int = 0
+    grad_steps: int = 0
+
+@chex.dataclass
+class MultiTrainState:
+    network_state: CustomTrainState
+    task_state: TrainState
+
 def make_train(config):
+
     config["NUM_UPDATES"] = (
             config["TOTAL_TIMESTEPS"] // config["NUM_STEPS"] // config["NUM_ENVS"]
     )
@@ -195,25 +190,35 @@ def make_train(config):
             num_layers=config["NUM_LAYERS"],
         )
 
-        def init_meta(rng, sf_dim) -> chex.Array:
+        def init_meta(rng, sf_dim, num_env) -> chex.Array:
             _, task_rng_key = jax.random.split(rng)
             task = jax.random.uniform(task_rng_key, shape=(sf_dim,))
             task = task / jnp.linalg.norm(task, ord=2)
+            task = jnp.tile(task, (num_env, 1))
             return task
 
         def create_agent(rng):
-            init_x = jnp.zeros((1, *env.observation_space(env_params).shape))
+            network = SFNetwork(
+                action_dim=env.action_space(env_params).n,
+                norm_type=config["NORM_TYPE"],
+                norm_input=config.get("NORM_INPUT", False),
+                sf_dim=config["SF_DIM"],
+                feature_dim=config["FEATURE_DIM"],
+            )
+
+            init_x = jnp.zeros((1, *observation_space_shape))
             init_task = jnp.zeros((1, config["SF_DIM"]))
             network_variables = network.init(rng, init_x, init_task, train=False)
-            task_params = {"w": init_meta(rng, config["SF_DIM"])}
+            task_params = {"w": init_meta(rng, config["SF_DIM"], config["NUM_ENVS"] + config["TEST_ENVS"])}
+
             tx = optax.chain(
                 optax.clip_by_global_norm(config["MAX_GRAD_NORM"]),
-                optax.radam(learning_rate=lr),
+                optax.radam(learning_rate=config["LR"]),
             )
 
             tx_task = optax.chain(
                 optax.clip_by_global_norm(config["MAX_GRAD_NORM"]),
-                optax.radam(learning_rate=lr_task),
+                optax.radam(learning_rate=config["LR_TASK"]),
             )
 
             network_state = CustomTrainState.create(
@@ -231,8 +236,8 @@ def make_train(config):
 
             return MultiTrainState(
                 network_state=network_state,
-                task_state=task_state,
-            )
+                task_state=task_state
+            ), network
 
         rng, _rng = jax.random.split(rng)
         multi_train_state = create_agent(rng)
@@ -246,7 +251,7 @@ def make_train(config):
             def _step_env(carry, _):
                 last_obs, env_state, rng = carry
                 rng, rng_a, rng_s = jax.random.split(rng, 3)
-                q_vals, _ = network.apply(
+                (q_vals, _) = network.apply(
                     {
                         "params": multi_train_state.network_state.params,
                         "batch_stats": multi_train_state.network_state.batch_stats,
@@ -290,7 +295,7 @@ def make_train(config):
                           + config["NUM_STEPS"] * config["NUM_ENVS"]
             )  # update timesteps count
 
-            last_q, _ = network.apply(
+            (last_q, _) = network.apply(
                 {
                     "params": multi_train_state.network_state.params,
                     "batch_stats": multi_train_state.network_state.batch_stats,
@@ -383,7 +388,8 @@ def make_train(config):
                             reward = minibatch.reward
                         else:
                             reward = jnp.concatenate((minibatch.reward, minibatch.reward))
-                        loss = 0.5 * jnp.square(jnp.dot(basis_features, task_params["w"]) - reward).mean()
+                        predicted_reward = jnp.einsum("ij,ij->i", basis_features, task_params)
+                        loss = 0.5 * jnp.square(predicted_reward - reward).mean()
 
                         return loss
 
@@ -397,13 +403,16 @@ def make_train(config):
                     )
 
                     # update task params using reward prediction loss
+                    old_task_params = train_state.task_state.params["w"]
                     basis_features = jax.lax.stop_gradient(basis_features)
                     reward_loss, grads_task = jax.value_and_grad(
                         _reward_loss_fn
                     )(multi_train_state.task_state.params, basis_features)
                     multi_train_state.task_state = multi_train_state.task_state.apply_gradients(grads=grads_task)
+                    new_task_params = train_state.task_state.params["w"]
 
-                    return (multi_train_state, rng), (loss, qvals, reward_loss)
+                    task_params_diff = jnp.linalg.norm(new_task_params - old_task_params, ord=2, axis=-1)
+                    return (multi_train_state, rng), (loss, qvals, reward_loss, task_params_diff)
 
                 def preprocess_transition(x, rng):
                     x = x.reshape(
@@ -444,6 +453,7 @@ def make_train(config):
                 "qvals": qvals.mean(),
                 "eps": eps_scheduler(multi_train_state.network_state.n_updates),
                 "reward_loss": reward_loss.mean(),
+                "task_params_diff": task_params_diff.mean(),
             }
             done_infos = jax.tree_util.tree_map(
                 lambda x: (x * infos["returned_episode"]).sum()
