@@ -28,7 +28,6 @@ from purejaxql.utils.craftax_wrappers import (
     BatchEnvWrapper,
 )
 from purejaxql.utils.batch_renorm import BatchRenorm
-from purejaxql.utils.l2_normalize import l2_normalize
 
 class SFNetwork(nn.Module):
     action_dim: int
@@ -175,8 +174,8 @@ def make_train(config):
             init_value=config["LR"],
             end_value=1e-20,
             transition_steps=(config["NUM_UPDATES_DECAY"])
-                             * config["NUM_MINIBATCHES"]
-                             * config["NUM_EPOCHS"],
+            * config["NUM_MINIBATCHES"]
+            * config["NUM_EPOCHS"],
         )
         lr = lr_scheduler if config.get("LR_LINEAR_DECAY", False) else config["LR"]
         lr_task = config["LR_TASK"]
@@ -199,14 +198,6 @@ def make_train(config):
             return task
 
         def create_agent(rng):
-            network = SFNetwork(
-                action_dim=env.action_space(env_params).n,
-                norm_type=config["NORM_TYPE"],
-                norm_input=config.get("NORM_INPUT", False),
-                sf_dim=config["SF_DIM"],
-                feature_dim=config["FEATURE_DIM"],
-            )
-
             init_x = jnp.zeros((1, *env.observation_space(env_params).shape))
             init_task = jnp.zeros((1, config["SF_DIM"]))
             network_variables = network.init(rng, init_x, init_task, train=False)
@@ -238,7 +229,7 @@ def make_train(config):
             return MultiTrainState(
                 network_state=network_state,
                 task_state=task_state
-            ), network
+            )
 
         rng, _rng = jax.random.split(rng)
         multi_train_state = create_agent(rng)
