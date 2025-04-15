@@ -64,6 +64,8 @@ class SFNetwork(nn.Module):
 
         task = jax.lax.stop_gradient(task)
         task_normalized = task / jnp.linalg.norm(task, ord=2, axis=-1, keepdims=True)
+        print("rep shape: ", rep.shape)
+        print("task shape: ", task_normalized.shape)
         rep_task = jnp.concatenate([rep, task_normalized], axis=-1)
 
         # features for SF
@@ -206,7 +208,7 @@ def make_train(config):
                 feature_dim=config["FEATURE_DIM"],
             )
 
-            init_x = jnp.zeros((1, *observation_space_shape))
+            init_x = jnp.zeros((1, *env.observation_space(env_params).shape))
             init_task = jnp.zeros((1, config["SF_DIM"]))
             network_variables = network.init(rng, init_x, init_task, train=False)
             task_params = {"w": init_meta(rng, config["SF_DIM"], config["NUM_ENVS"] + config["TEST_ENVS"])}
