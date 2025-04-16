@@ -2,7 +2,7 @@
 #SBATCH --account=rrg-tyrell-ab
 #SBATCH --mail-type=BEGIN,END,FAIL,REQUEUE
 #SBATCH --mail-user=raymond.chua@mail.mcgill.ca
-#SBATCH --time=1-16:00:00
+#SBATCH --time=6:00:00
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=8G
@@ -43,4 +43,4 @@ source /home/chuaraym/pqn_env311/bin/activate
 cd /home/chuaraym/purejaxql/
 
 # Run the experiment
-python purejaxql/pqn_sf_craftax.py +alg=pqn_sf_craftax SEED=${SEED} SAVE_PATH=${OUT_DIR} PROJECT="Craftax"
+python purejaxql/pqn_sf_craftax.py +alg=pqn_sf_craftax SEED=${SEED} SAVE_PATH=${OUT_DIR} PROJECT="Craftax" alg.LR_TASK=0.0001
