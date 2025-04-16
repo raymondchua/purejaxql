@@ -43,4 +43,4 @@ source /home/chuaraym/pqn_env311/bin/activate
 cd /home/chuaraym/purejaxql/
 
 # Run the experiment
-python purejaxql/pqn_craftax.py +alg=pqn_craftax SEED=${SEED} SAVE_PATH=${OUT_DIR} PROJECT="Craftax" alg.SOFT_ENTROPY=true
+python purejaxql/pqn_craftax.py +alg=pqn_craftax SEED=${SEED} SAVE_PATH=${OUT_DIR} PROJECT="Craftax" alg.SOFT_ENTROPY=true alg.ENTROPY_COEF=1
