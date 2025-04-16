@@ -43,4 +43,4 @@ source /home/chuaraym/pqn_env311/bin/activate
 cd /home/chuaraym/purejaxql/
 
 # Run the experiment
-python purejaxql/pqn_sf_craftax.py +alg=pqn_sf_craftax SEED=${SEED} SAVE_PATH=${OUT_DIR} PROJECT="Craftax" alg.LR_TASK=0.0001
+python purejaxql/pqn_sf_craftax.py +alg=pqn_sf_craftax SEED=${SEED} SAVE_PATH=${OUT_DIR} PROJECT="Craftax" alg.LR_TASK=0.000001
