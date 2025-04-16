@@ -638,7 +638,7 @@ def single_run(config):
                 )(rng)
             print(f"Took {time.time()-start_time} seconds to complete.")
 
-            # train_state = outs["train_state"]
+            agent_train_state = outs["train_state"]
 
             # Debug print statements
             # metrics = outs["metrics"]
