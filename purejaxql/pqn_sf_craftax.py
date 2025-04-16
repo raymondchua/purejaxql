@@ -447,6 +447,7 @@ def make_train(config):
                 "lr": lr_scheduler(multi_train_state.network_state.n_updates),
                 "reward_loss": reward_loss.mean(),
                 "task_params_diff": task_params_diff.mean(),
+                "extrinsic rewards": transitions.reward.mean(),
             }
             done_infos = jax.tree_util.tree_map(
                 lambda x: (x * infos["returned_episode"]).sum()
