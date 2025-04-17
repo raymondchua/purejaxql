@@ -28,6 +28,7 @@ from purejaxql.utils.craftax_wrappers import (
     BatchEnvWrapper,
 )
 from purejaxql.utils.batch_renorm import BatchRenorm
+from jax.scipy.special import logsumexp
 
 class SFNetwork(nn.Module):
     action_dim: int
