@@ -295,7 +295,17 @@ def make_train(config):
                 task=multi_train_state.task_state.params["w"],
                 train=False,
             )
-            last_q = jnp.max(last_q, axis=-1)
+            if config.get("SOFT_ENTROPY", False):
+                logits= last_q / config["ENTROPY_COEF"]
+                logsumexp_q = logsumexp(logits, axis=-1)
+                last_q = config["ENTROPY_COEF"] * logsumexp_q   # to ensure the same scale
+
+                # compute entropy for logging purposes if using soft entropy
+                probs = jax.nn.softmax(logits)
+                entropy = -jnp.sum(probs * jnp.log(probs + 1e-10))  # avoid log(0)
+
+            else:
+                last_q = jnp.max(last_q, axis=-1)
 
             def _get_target(lambda_returns_and_next_q, transition):
                 lambda_returns, next_q = lambda_returns_and_next_q
@@ -448,6 +458,8 @@ def make_train(config):
                 "reward_loss": reward_loss.mean(),
                 "task_params_diff": task_params_diff.mean(),
                 "extrinsic rewards": transitions.reward.mean(),
+                "entropy": entropy.mean() if config.get("SOFT_ENTROPY", False) else 0,
+                "max_probs": jnp.max(probs, axis=-1).mean() if config.get("SOFT_ENTROPY", False) else 0,
             }
             done_infos = jax.tree_util.tree_map(
                 lambda x: (x * infos["returned_episode"]).sum()
