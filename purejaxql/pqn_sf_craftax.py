@@ -505,6 +505,9 @@ def make_train(config):
                             )
                         wandb.log(metrics, step=metrics["update_steps"])
 
+                        for k, v in metrics.items():
+                            print(f"{k}: {v}")
+
                 jax.debug.callback(callback, metrics, original_rng)
 
             runner_state = (multi_train_state, tuple(expl_state), test_metrics, rng)
