@@ -373,6 +373,7 @@ def make_train(config):
                 "qvals": qvals.mean(),
                 "eps": eps_scheduler(train_state.n_updates),
                 "lr": lr_scheduler(train_state.n_updates),
+                "extrinsic rewards": transitions.reward.mean(),
                 "entropy": entropy.mean() if config.get("SOFT_ENTROPY", False) else 0,
                 "max_probs": jnp.max(probs, axis=-1).mean() if config.get("SOFT_ENTROPY", False) else 0,
             }
