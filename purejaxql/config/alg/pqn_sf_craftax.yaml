@@ -23,7 +23,7 @@ LAMBDA: 0
 FEATURE_DIM: 128
 SF_DIM: 256
 SOFT_ENTROPY: False
-ENTROPY_COEF: 0.1  # entropy coefficient
+ENTROPY_COEF: 1  # entropy coefficient
 
 # env specific
 ENV_NAME: "Craftax-Symbolic-v1"
