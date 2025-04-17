@@ -210,38 +210,8 @@ def make_train(config):
         )
         lr = lr_scheduler if config.get("LR_LINEAR_DECAY", False) else config["LR"]
 
-        # # INIT NETWORK AND OPTIMIZER
-        # network = QNetwork(
-        #     action_dim=env.single_action_space.n,
-        #     norm_type=config["NORM_TYPE"],
-        #     norm_input=config.get("NORM_INPUT", False),
-        # )
-
-        # def create_agent(rng):
-        #     init_x = jnp.zeros((1, *env.single_observation_space.shape))
-        #     network_variables = network.init(rng, init_x, train=False)
-        #
-        #     tx = optax.chain(
-        #         optax.clip_by_global_norm(config["MAX_GRAD_NORM"]),
-        #         optax.radam(learning_rate=lr),
-        #     )
-        #
-        #     train_state = CustomTrainState.create(
-        #         apply_fn=network.apply,
-        #         params=network_variables["params"],
-        #         batch_stats=network_variables["batch_stats"],
-        #         tx=tx,
-        #     )
-        #
-        #     train_state = train_state.replace(timesteps=env_steps_taken)
-        #     train_state = train_state.replace(n_updates=updates_taken)
-        #     train_state = train_state.replace(grad_steps=grad_steps_taken)
-        #
-        #     return train_state
-
         rng, _rng = jax.random.split(rng)
         train_state = train_state.replace(exploration_updates=0)
-        # train_state = create_agent(rng)
 
         # TRAINING LOOP
         def _update_step(runner_state, unused):
