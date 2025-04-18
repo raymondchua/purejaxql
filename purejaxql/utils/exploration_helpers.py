@@ -13,6 +13,7 @@ def compute_action_entropy_probs(q_values: jnp.ndarray, tau: float = 10.0) -> jn
         Scalar: average entropy across the batch (in nats).
     """
     logits = q_values / tau
+    print("logits shape:", logits.shape)
     probs = jax.nn.softmax(logits, axis=-1)
     entropy = -jnp.sum(probs * jnp.log(probs + 1e-10), axis=-1)
     return entropy, probs
