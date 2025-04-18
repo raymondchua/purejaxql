@@ -182,7 +182,7 @@ def make_train(config):
                 _rngs = jax.random.split(rng_a, config["NUM_ENVS"])
                 # eps = jnp.full(config["NUM_ENVS"], eps_scheduler(train_state.n_updates))
                 # new_action = jax.vmap(eps_greedy_exploration)(_rngs, q_vals, eps)
-                new_action = jnp.argmax(q_vals)
+                new_action = jnp.argmax(q_vals, axis=-1, keepdims=True)
                 print("q_vals shape: ", q_vals.shape)
                 print("rng_s shape: ", rng_s.shape)
                 print("new_action shape: ", new_action.shape)
