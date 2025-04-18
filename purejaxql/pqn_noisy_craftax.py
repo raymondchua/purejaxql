@@ -273,6 +273,7 @@ def make_train(config):
                                 train=True,
                                 mutable=["batch_stats"],
                             )
+
                         else:
                             rng, noise_rng = jax.random.split(rng)
                             # if not using q_lambda, re-pass the next_obs through the network to compute target
@@ -301,10 +302,11 @@ def make_train(config):
                         ).squeeze(axis=-1)
 
                         loss = 0.5 * jnp.square(chosen_action_qvals - target).mean()
+                        entropy, probs = compute_action_entropy_probs(q_vals, tau=config["ENTROPY_COEF"])
 
-                        return loss, (updates, chosen_action_qvals)
+                        return loss, (updates, chosen_action_qvals, entropy, probs)
 
-                    (loss, (updates, qvals)), grads = jax.value_and_grad(
+                    (loss, (updates, qvals, entropy, probs)), grads = jax.value_and_grad(
                         _loss_fn, has_aux=True
                     )(train_state.params, rng)
                     train_state = train_state.apply_gradients(grads=grads)
@@ -312,7 +314,7 @@ def make_train(config):
                         grad_steps=train_state.grad_steps + 1,
                         batch_stats=updates["batch_stats"],
                     )
-                    return (train_state, rng), (loss, qvals)
+                    return (train_state, rng), (loss, qvals, entropy, probs)
 
                 def preprocess_transition(x, rng):
                     x = x.reshape(
@@ -340,12 +342,12 @@ def make_train(config):
                 return (train_state, rng), (loss, qvals)
 
             rng, _rng = jax.random.split(rng)
-            (train_state, rng), (loss, qvals) = jax.lax.scan(
+            (train_state, rng), (loss, qvals, entropy, probs) = jax.lax.scan(
                 _learn_epoch, (train_state, rng), None, config["NUM_EPOCHS"]
             )
 
-            print("qvals shape: ", qvals.shape)
-            entropy, probs = compute_action_entropy_probs(q_values=qvals, tau=config["ENTROPY_COEF"])
+            print("entropy shape: ", entropy.shape)
+            print("probs shape: ", probs.shape)
 
             train_state = train_state.replace(n_updates=train_state.n_updates + 1)
             metrics = {
