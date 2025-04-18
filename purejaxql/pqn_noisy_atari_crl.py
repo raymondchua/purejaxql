@@ -254,6 +254,8 @@ def make_train(config):
                 total_returns=train_state.total_returns + transitions.reward.sum()
             )  # update total returns count
 
+            rng, noise_rng = jax.random.split(rng)
+
             last_q = network.apply(
                 {
                     "params": train_state.params,
