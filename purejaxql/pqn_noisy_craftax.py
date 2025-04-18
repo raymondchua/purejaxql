@@ -56,7 +56,7 @@ class QNetwork(nn.Module):
             normalize = lambda x: x
 
         for l in range(self.num_layers):
-            x = NoisyLinear(features=self.hidden_size)(x, rng=noise_rng)
+            x = nn.Dense(self.hidden_size)(x)
             x = normalize(x)
             x = nn.relu(x)
 
