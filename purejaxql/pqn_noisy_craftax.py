@@ -346,8 +346,8 @@ def make_train(config):
                 _learn_epoch, (train_state, rng), None, config["NUM_EPOCHS"]
             )
 
-            print("entropy shape: ", entropy.shape)
-            print("probs shape: ", probs.shape)
+            # determine the top-1 action probabilities
+            max_probs = jnp.max(probs, axis=-1)
 
             train_state = train_state.replace(n_updates=train_state.n_updates + 1)
             metrics = {
@@ -359,7 +359,7 @@ def make_train(config):
                 "lr": lr_scheduler(train_state.n_updates),
                 "extrinsic rewards": transitions.reward.mean(),
                 "entropy": entropy.mean(),
-                "max_probs": probs.mean(),
+                "max_probs": max_probs.mean(),
             }
             done_infos = jax.tree_util.tree_map(
                 lambda x: (x * infos["returned_episode"]).sum()
