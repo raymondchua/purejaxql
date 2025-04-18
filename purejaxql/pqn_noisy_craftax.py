@@ -29,7 +29,7 @@ from purejaxql.utils.craftax_wrappers import (
 )
 from purejaxql.utils.batch_renorm import BatchRenorm
 from purejaxql.utils.noisy_net_helpers import NoisyLinear
-from purejaxql.utils.exploration_helpers import compute_action_entropy
+from purejaxql.utils.exploration_helpers import compute_action_entropy_probs
 from jax.scipy.special import logsumexp
 
 
@@ -344,7 +344,7 @@ def make_train(config):
                 _learn_epoch, (train_state, rng), None, config["NUM_EPOCHS"]
             )
 
-            entropy, probs = compute_action_entropy(q_values=qvals, tau=config["ENTROPY_COEF"])
+            entropy, probs = compute_action_entropy_probs(q_values=qvals, tau=config["ENTROPY_COEF"])
 
             train_state = train_state.replace(n_updates=train_state.n_updates + 1)
             metrics = {
