@@ -442,7 +442,7 @@ def make_train(config):
                 # new_action = jax.vmap(eps_greedy_exploration)(
                 #     jax.random.split(_rng, config["TEST_NUM_ENVS"]), q_vals, eps
                 # )
-                new_action = jnp.argmax(q_vals)
+                new_action = jnp.argmax(q_vals, axis=-1)
                 new_obs, new_env_state, reward, new_done, info = test_env.step(
                     _rng, env_state, new_action, env_params
                 )
