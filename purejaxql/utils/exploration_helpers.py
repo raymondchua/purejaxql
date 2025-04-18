@@ -11,6 +11,7 @@ def compute_action_entropy_probs(q_values: jnp.ndarray, tau: float = 10.0) -> jn
 
     Returns:
         Scalar: average entropy across the batch (in nats).
+        jnp.ndarray: probs of the softmax policy.
     """
     logits = q_values / tau
     probs = jax.nn.softmax(logits, axis=-1)
