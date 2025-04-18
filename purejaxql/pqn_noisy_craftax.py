@@ -165,14 +165,14 @@ def make_train(config):
             # SAMPLE PHASE
             def _step_env(carry, _):
                 last_obs, env_state, rng = carry
-                rng, rng_a, rng_s, rng_noise = jax.random.split(rng, 4)
+                rng, rng_a, rng_s, noise_rng = jax.random.split(rng, 4)
                 q_vals = network.apply(
                     {
                         "params": train_state.params,
                         "batch_stats": train_state.batch_stats,
                     },
                     last_obs,
-                    rng_noise=rng_noise,
+                    noise_rng=noise_rng,
                     train=False,
                 )
 
