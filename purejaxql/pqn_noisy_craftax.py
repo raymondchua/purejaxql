@@ -29,6 +29,7 @@ from purejaxql.utils.craftax_wrappers import (
 )
 from purejaxql.utils.batch_renorm import BatchRenorm
 from purejaxql.utils.noisy_net_helpers import NoisyLinear
+from purejaxql.utils.exploration_helpers import compute_action_entropy
 from jax.scipy.special import logsumexp
 
 
@@ -221,17 +222,8 @@ def make_train(config):
                 noise_rng=noise_rng,
                 train=False,
             )
-            if config.get("SOFT_ENTROPY", False):
-                logits= last_q / config["ENTROPY_COEF"]
-                logsumexp_q = logsumexp(logits, axis=-1)
-                last_q = config["ENTROPY_COEF"] * logsumexp_q   # to ensure the same scale
 
-                # compute entropy for logging purposes if using soft entropy
-                probs = jax.nn.softmax(logits)
-                entropy = -jnp.sum(probs * jnp.log(probs + 1e-10))  # avoid log(0)
-
-            else:
-                last_q = jnp.max(last_q, axis=-1)
+            last_q = jnp.max(last_q, axis=-1)
 
             def _get_target(lambda_returns_and_next_q, transition):
                 lambda_returns, next_q = lambda_returns_and_next_q
@@ -352,10 +344,7 @@ def make_train(config):
                 _learn_epoch, (train_state, rng), None, config["NUM_EPOCHS"]
             )
 
-            # to compute entropy to track if the noisy layers are working
-            logits = qvals / config["ENTROPY_COEF"]
-            probs = jax.nn.softmax(logits, axis=-1)
-            entropy = -jnp.sum(probs * jnp.log(probs + 1e-10), axis=-1)
+            entropy, probs = compute_action_entropy(q_values=qvals, tau=config["ENTROPY_COEF"])
 
             train_state = train_state.replace(n_updates=train_state.n_updates + 1)
             metrics = {
@@ -367,7 +356,7 @@ def make_train(config):
                 "lr": lr_scheduler(train_state.n_updates),
                 "extrinsic rewards": transitions.reward.mean(),
                 "entropy": entropy.mean(),
-                "max_probs": jnp.max(probs, axis=-1).mean(),
+                "max_probs": probs.mean(),
             }
             done_infos = jax.tree_util.tree_map(
                 lambda x: (x * infos["returned_episode"]).sum()
