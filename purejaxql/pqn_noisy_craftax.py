@@ -353,7 +353,7 @@ def make_train(config):
             )
 
             # to compute entropy to track if the noisy layers are working
-            logits = q_values / tau
+            logits = qvals / config["ENTROPY_COEF"]
             probs = jax.nn.softmax(logits, axis=-1)
             entropy = -jnp.sum(probs * jnp.log(probs + 1e-10), axis=-1)
 

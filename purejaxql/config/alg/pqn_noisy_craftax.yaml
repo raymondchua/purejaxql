@@ -16,7 +16,6 @@ REW_SCALE: 1.
 GAMMA: 0.99
 Q_LAMBDA: False
 LAMBDA: 0
-SOFT_ENTROPY: False
 ENTROPY_COEF: 1  # entropy coefficient
 
 
