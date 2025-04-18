@@ -344,6 +344,7 @@ def make_train(config):
                 _learn_epoch, (train_state, rng), None, config["NUM_EPOCHS"]
             )
 
+            print("qvals shape: ", qvals.shape)
             entropy, probs = compute_action_entropy_probs(q_values=qvals, tau=config["ENTROPY_COEF"])
 
             train_state = train_state.replace(n_updates=train_state.n_updates + 1)
