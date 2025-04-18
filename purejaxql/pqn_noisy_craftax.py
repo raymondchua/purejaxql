@@ -139,7 +139,8 @@ def make_train(config):
 
         def create_agent(rng):
             init_x = jnp.zeros((1, *env.observation_space(env_params).shape))
-            network_variables = network.init(rng, init_x, train=False)
+            _, noise_rng = jax.random.split(rng)
+            network_variables = network.init(rng, init_x, noise_rng=noise_rng, train=False)
             tx = optax.chain(
                 optax.clip_by_global_norm(config["MAX_GRAD_NORM"]),
                 optax.radam(learning_rate=lr),
