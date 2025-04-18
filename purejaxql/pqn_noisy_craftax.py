@@ -352,6 +352,11 @@ def make_train(config):
                 _learn_epoch, (train_state, rng), None, config["NUM_EPOCHS"]
             )
 
+            # to compute entropy to track if the noisy layers are working
+            logits = q_values / tau
+            probs = jax.nn.softmax(logits, axis=-1)
+            entropy = -jnp.sum(probs * jnp.log(probs + 1e-10), axis=-1)
+
             train_state = train_state.replace(n_updates=train_state.n_updates + 1)
             metrics = {
                 "env_step": train_state.timesteps,
@@ -361,8 +366,8 @@ def make_train(config):
                 "qvals": qvals.mean(),
                 "lr": lr_scheduler(train_state.n_updates),
                 "extrinsic rewards": transitions.reward.mean(),
-                "entropy": entropy.mean() if config.get("SOFT_ENTROPY", False) else 0,
-                "max_probs": jnp.max(probs, axis=-1).mean() if config.get("SOFT_ENTROPY", False) else 0,
+                "entropy": entropy.mean(),
+                "max_probs": jnp.max(probs, axis=-1).mean(),
             }
             done_infos = jax.tree_util.tree_map(
                 lambda x: (x * infos["returned_episode"]).sum()
