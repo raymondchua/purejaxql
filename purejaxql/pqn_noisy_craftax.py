@@ -177,10 +177,7 @@ def make_train(config):
                     train=False,
                 )
 
-                # different eps for each env
-                _rngs = jax.random.split(rng_a, config["NUM_ENVS"])
-                # eps = jnp.full(config["NUM_ENVS"], eps_scheduler(train_state.n_updates))
-                # new_action = jax.vmap(eps_greedy_exploration)(_rngs, q_vals, eps)
+                # greedy action selection. The noisy layer will guide exploration
                 new_action = jnp.argmax(q_vals, axis=-1)
                 new_obs, new_env_state, reward, new_done, info = env.step(
                     rng_s, env_state, new_action, env_params
