@@ -185,6 +185,7 @@ def make_train(config):
                 print("q_vals shape: ", q_vals.shape)
                 new_action = jnp.argmax(q_vals)
 
+                print("rng_s shape: ", rng_s.shape)
                 new_obs, new_env_state, reward, new_done, info = env.step(
                     rng_s, env_state, new_action, env_params
                 )
