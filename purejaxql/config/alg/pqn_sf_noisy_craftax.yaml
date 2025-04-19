@@ -1,4 +1,4 @@
-ALG_NAME: "pqn_sf_craftax"
+ALG_NAME: "pqn_sf_noisy_craftax"
 TOTAL_TIMESTEPS: 1e9
 TOTAL_TIMESTEPS_DECAY: 1e9 # will be used for decay functions, in case you want to test for less timesteps and keep decays same
 NUM_ENVS: 1024 # parallel environments
@@ -22,7 +22,6 @@ Q_LAMBDA: False
 LAMBDA: 0
 FEATURE_DIM: 128
 SF_DIM: 256
-SOFT_ENTROPY: False
 ENTROPY_COEF: 1  # entropy coefficient
 NOISE_SCALE: 0.1 # scale of the noise for noisy linear layers
 

@@ -386,8 +386,9 @@ def make_train(config):
                         ).squeeze(axis=-1)
 
                         loss = 0.5 * jnp.square(chosen_action_qvals - target).mean()
+                        entropy, probs = compute_action_entropy_probs(q_vals, tau=config["ENTROPY_COEF"])
 
-                        return loss, (updates, chosen_action_qvals, basis_features)
+                        return loss, (updates, chosen_action_qvals, basis_features, entropy, probs)
 
                     def _reward_loss_fn(task_params, basis_features):
                         if config.get("Q_LAMBDA", False):
@@ -400,7 +401,7 @@ def make_train(config):
 
                         return loss
 
-                    (loss, (updates, qvals, basis_features)), grads = jax.value_and_grad(
+                    (loss, (updates, qvals, basis_features, entropy, probs)), grads = jax.value_and_grad(
                         _loss_fn, has_aux=True
                     )(multi_train_state.network_state.params)
                     multi_train_state.network_state = multi_train_state.network_state.apply_gradients(grads=grads)
@@ -419,7 +420,7 @@ def make_train(config):
                     new_task_params = multi_train_state.task_state.params["w"]
 
                     task_params_diff = jnp.linalg.norm(new_task_params - old_task_params, ord=2, axis=-1)
-                    return (multi_train_state, rng), (loss, qvals, reward_loss, task_params_diff)
+                    return (multi_train_state, rng), (loss, qvals, reward_loss, task_params_diff, entropy, probs)
 
                 def preprocess_transition(x, rng):
                     x = x.reshape(
@@ -440,18 +441,22 @@ def make_train(config):
                 )
 
                 rng, _rng = jax.random.split(rng)
-                (multi_train_state, rng), (loss, qvals, reward_loss, task_params_diff) = jax.lax.scan(
+                (multi_train_state, rng), (loss, qvals, reward_loss, task_params_diff, entropy, probs) = jax.lax.scan(
                     _learn_phase, (multi_train_state, rng), (minibatches, targets)
                 )
 
-                return (multi_train_state, rng), (loss, qvals, reward_loss, task_params_diff)
+                return (multi_train_state, rng), (loss, qvals, reward_loss, task_params_diff, entropy, probs)
 
             rng, _rng = jax.random.split(rng)
-            (multi_train_state, rng), (loss, qvals, reward_loss, task_params_diff) = jax.lax.scan(
+            (multi_train_state, rng), (loss, qvals, reward_loss, task_params_diff, entropy, probs) = jax.lax.scan(
                 _learn_epoch, (multi_train_state, rng), None, config["NUM_EPOCHS"]
             )
 
             multi_train_state.network_state = multi_train_state.network_state.replace(n_updates=multi_train_state.network_state.n_updates + 1)
+
+            # determine the top-1 action probabilities
+            max_probs = jnp.max(probs, axis=-1)
+
             metrics = {
                 "env_step": multi_train_state.network_state.timesteps,
                 "update_steps": multi_train_state.network_state.n_updates,
@@ -463,8 +468,8 @@ def make_train(config):
                 "reward_loss": reward_loss.mean(),
                 "task_params_diff": task_params_diff.mean(),
                 "extrinsic rewards": transitions.reward.mean(),
-                "entropy": entropy.mean() if config.get("SOFT_ENTROPY", False) else 0,
-                "max_probs": jnp.max(probs, axis=-1).mean() if config.get("SOFT_ENTROPY", False) else 0,
+                "entropy": entropy.mean(),
+                "max_probs": max_probs.mean(),
             }
             done_infos = jax.tree_util.tree_map(
                 lambda x: (x * infos["returned_episode"]).sum()
