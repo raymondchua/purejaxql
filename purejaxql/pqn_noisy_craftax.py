@@ -259,9 +259,9 @@ def make_train(config):
                     minibatch, target = minibatch_and_target
 
                     def _loss_fn(params, rng):
-
+                        rng, noise_rng = jax.random.split(rng)
                         if config.get("Q_LAMBDA", False):
-                            rng, noise_rng = jax.random.split(rng)
+
                             q_vals, updates = network.apply(
                                 {
                                     "params": params,
@@ -272,9 +272,7 @@ def make_train(config):
                                 train=True,
                                 mutable=["batch_stats"],
                             )
-
                         else:
-                            rng, noise_rng = jax.random.split(rng)
                             # if not using q_lambda, re-pass the next_obs through the network to compute target
                             all_q_vals, updates = network.apply(
                                 {
