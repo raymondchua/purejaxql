@@ -548,23 +548,23 @@ def make_train(config):
                         if isinstance(v, np.ndarray):
                             metrics[k] = v.item()
 
-                        if metrics["update_steps"] % 10 == 0:
-                            if k == "env_step":
-                                print(f"{k}: {v}")
-                            if k == "update_steps":
-                                print(f"{k}: {v}")
-                            if k == "total_returns":
-                                print(f"{k}: {v}")
-                            if k == "reward_loss":
-                                print(f"{k}: {v}")
-                            if k == "returned_episode_returns":
-                                print(f"{k}: {v}")
-                            if k == "rewards":
-                                print(f"{k}: {v}")
-                            if k == "entropy":
-                                print(f"{k}: {v}")
-                            if k == "max_probs":
-                                print(f"{k}: {v}")
+                        # if metrics["update_steps"] % 10 == 0:
+                        #     if k == "env_step":
+                        #         print(f"{k}: {v}")
+                        #     if k == "update_steps":
+                        #         print(f"{k}: {v}")
+                        #     if k == "total_returns":
+                        #         print(f"{k}: {v}")
+                        #     if k == "reward_loss":
+                        #         print(f"{k}: {v}")
+                        #     if k == "returned_episode_returns":
+                        #         print(f"{k}: {v}")
+                        #     if k == "rewards":
+                        #         print(f"{k}: {v}")
+                        #     if k == "entropy":
+                        #         print(f"{k}: {v}")
+                        #     if k == "max_probs":
+                        #         print(f"{k}: {v}")
 
                         # print(f"{k}: {v}")
                         # if k == "env_step":
