@@ -137,9 +137,7 @@ class CustomTrainState(TrainState):
     timesteps: int = 0
     n_updates: int = 0
     grad_steps: int = 0
-    exploration_updates: int = 0
     total_returns: int = 0
-
 
 @chex.dataclass
 class MultiTrainState:
@@ -167,7 +165,8 @@ def create_agent(rng, config, max_num_actions, observation_space_shape):
 
     init_x = jnp.zeros((1, *observation_space_shape))
     init_task = jnp.zeros((1, config["SF_DIM"]))
-    network_variables = network.init(rng, init_x, init_task, train=False)
+    rng, noise_rng = jax.random.split(rng)
+    network_variables = network.init(rng, init_x, init_task, noise_rng=noise_rng, train=False)
     task_params = {
         "w": init_meta(rng, config["SF_DIM"], config["NUM_ENVS"] + config["TEST_ENVS"])
     }
@@ -235,34 +234,12 @@ def make_train(config):
     )
     env = make_env(total_envs)
 
-    # epsilon-greedy exploration
-    def eps_greedy_exploration(rng, q_vals, eps):
-        rng_a, rng_e = jax.random.split(
-            rng
-        )  # a key for sampling random actions and one for picking
-        greedy_actions = jnp.argmax(q_vals, axis=-1)
-        chosed_actions = jnp.where(
-            jax.random.uniform(rng_e, greedy_actions.shape)
-            < eps,  # pick the actions that should be random
-            jax.random.randint(
-                rng_a, shape=greedy_actions.shape, minval=0, maxval=q_vals.shape[-1]
-            ),  # sample random actions,
-            greedy_actions,
-        )
-        return chosed_actions
-
     # here reset must be out of vmap and jit
     init_obs, env_state = env.reset()
 
     def train(rng, exposure, train_state, network, task_id):
 
         original_seed = rng[0]
-
-        eps_scheduler = optax.linear_schedule(
-            config["EPS_START"],
-            config["EPS_FINISH"],
-            (config["EPS_DECAY"]) * config["NUM_UPDATES_DECAY"],
-        )
 
         lr_scheduler = optax.linear_schedule(
             init_value=config["LR"],
@@ -274,9 +251,6 @@ def make_train(config):
         lr = lr_scheduler if config.get("LR_LINEAR_DECAY", False) else config["LR"]
 
         rng, _rng = jax.random.split(rng)
-        train_state.network_state = train_state.network_state.replace(
-            exploration_updates=0
-        )
 
         # TRAINING LOOP
         def _update_step(runner_state, unused):
@@ -286,30 +260,20 @@ def make_train(config):
             # SAMPLE PHASE
             def _step_env(carry, _):
                 last_obs, env_state, rng = carry
-                rng, rng_a, rng_s = jax.random.split(rng, 3)
-                (q_vals, _) = network.apply(
+                rng, rng_a, rng_s, noise_rng = jax.random.split(rng, 4)
+                q_vals = network.apply(
                     {
                         "params": train_state.network_state.params,
                         "batch_stats": train_state.network_state.batch_stats,
                     },
                     last_obs,
                     train_state.task_state.params["w"],
+                    noise_rng=noise_rng,
                     train=False,
                 )
 
-                # different eps for each env
-                _rngs = jax.random.split(rng_a, total_envs)
-                if exposure == 0:
-                    eps = jnp.full(
-                        config["NUM_ENVS"],
-                        eps_scheduler(train_state.network_state.exploration_updates),
-                    )
-                else:
-                    eps = jnp.full(config["NUM_ENVS"], config["EPS_FINISH"])
-
-                if config.get("TEST_DURING_TRAINING", False):
-                    eps = jnp.concatenate((eps, jnp.zeros(config["TEST_ENVS"])))
-                new_action = jax.vmap(eps_greedy_exploration)(_rngs, q_vals, eps)
+                # greedy action selection. The noisy layer will guide exploration
+                new_action = jnp.argmax(q_vals, axis=-1)
 
                 new_obs, new_env_state, reward, new_done, info = env.step(
                     env_state, new_action
@@ -356,13 +320,16 @@ def make_train(config):
                 + transitions.reward.sum()
             )  # update total returns count
 
-            (last_q, _) = network.apply(
+            rng, noise_rng = jax.random.split(rng)
+
+            last_q = network.apply(
                 {
                     "params": train_state.network_state.params,
                     "batch_stats": train_state.network_state.batch_stats,
                 },
                 transitions.next_obs[-1],
                 task_params_target,
+                noise_rng=noise_rng,
                 train=False,
             )
             last_q = jnp.max(last_q, axis=-1)
@@ -404,7 +371,8 @@ def make_train(config):
                     train_state, rng = carry
                     minibatch, target = minibatch_and_target
 
-                    def _loss_fn(params):
+                    def _loss_fn(params, rng):
+                        rng, noise_rng = jax.random.split(rng)
                         (q_vals, basis_features), updates = network.apply(
                             {
                                 "params": params,
@@ -414,6 +382,7 @@ def make_train(config):
                             train_state.task_state.params["w"][
                                 : -config["TEST_ENVS"], :
                             ],
+                            noise_rng=noise_rng,
                             train=True,
                             mutable=["batch_stats"],
                         )  # (batch_size*2, num_actions)
@@ -442,7 +411,8 @@ def make_train(config):
                         loss,
                         (updates, qvals, basis_features, entropy, probs),
                     ), grads = jax.value_and_grad(_loss_fn, has_aux=True)(
-                        train_state.network_state.params
+                        train_state.network_state.params,
+                        rng
                     )
                     train_state.network_state = (
                         train_state.network_state.apply_gradients(grads=grads)
@@ -535,6 +505,9 @@ def make_train(config):
                     lambda x: x[:, : -config["TEST_ENVS"]], infos
                 )
                 infos.update({"test/" + k: v for k, v in test_infos.items()})
+
+            # determine the top-1 action probabilities
+            max_probs = jnp.max(probs, axis=-1)
 
             metrics = {
                 "env_step": train_state.network_state.timesteps,
