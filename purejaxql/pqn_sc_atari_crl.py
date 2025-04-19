@@ -18,10 +18,12 @@ from flax.training.train_state import TrainState
 import hydra
 from omegaconf import OmegaConf
 import wandb
+from flax.core import freeze, unfreeze
 
 import envpool
 
 from purejaxql.utils.atari_wrapper import JaxLogEnvPoolWrapper
+from purejaxql.utils.consolidation_helpers import update_and_accumulate_tree
 
 
 class CNN(nn.Module):
