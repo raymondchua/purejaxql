@@ -35,6 +35,7 @@ from jax.scipy.special import logsumexp
 
 class QNetwork(nn.Module):
     action_dim: int
+    noise_scale: float
     hidden_size: int = 512
     num_layers: int = 4
     norm_type: str = "batch_norm"
@@ -60,7 +61,7 @@ class QNetwork(nn.Module):
             x = normalize(x)
             x = nn.relu(x)
 
-        x = NoisyLinear(features=self.action_dim)(x, rng=noise_rng)
+        x = NoisyLinear(features=self.action_dim, noise_scale=self.noise_scale)(x, rng=noise_rng)
 
         return x
 
@@ -136,6 +137,7 @@ def make_train(config):
             num_layers=config.get("NUM_LAYERS", 2),
             norm_type=config["NORM_TYPE"],
             norm_input=config.get("NORM_INPUT", False),
+            noise_scale=config["NOISE_SCALE"],
         )
 
         def create_agent(rng):
