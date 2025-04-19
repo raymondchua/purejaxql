@@ -19,19 +19,19 @@ class NoisyLinear(nn.Module):
     bias_init: Callable = nn.initializers.zeros
 
     @nn.compact
-    def __call__(self, inputs, *, rng):
+    def __call__(self, inputs, *, rng, noise_scale: float = 0.5):
         in_features = inputs.shape[-1]
 
         # Base parameters (mean)
         w_mu = self.param("weight_mu", self.kernel_init, (self.features, in_features))
         w_sigma = self.param("weight_sigma",
-                             nn.initializers.constant(0.5 / jnp.sqrt(in_features)),
+                             nn.initializers.constant(noise_scale / jnp.sqrt(in_features)),
                              (self.features, in_features))
 
         if self.use_bias:
             b_mu = self.param("bias_mu", self.bias_init, (self.features,))
             b_sigma = self.param("bias_sigma",
-                                 nn.initializers.constant(0.5 / jnp.sqrt(self.features)),
+                                 nn.initializers.constant(noise_scale / jnp.sqrt(self.features)),
                                  (self.features,))
         else:
             b_mu, b_sigma = None, None
