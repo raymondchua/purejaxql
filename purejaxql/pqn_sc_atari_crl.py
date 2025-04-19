@@ -25,6 +25,8 @@ import envpool
 from purejaxql.utils.atari_wrapper import JaxLogEnvPoolWrapper
 from purejaxql.utils.consolidation_helpers import update_and_accumulate_tree
 
+Params = FrozenDict
+
 
 class CNN(nn.Module):
 
