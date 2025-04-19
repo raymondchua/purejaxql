@@ -403,9 +403,9 @@ def make_train(config):
                     def _consolidation_update_fn(
                         params: List[Params],
                         params_set_to_zero: Params,
-                        g_flow: Array,
-                        capacity: Array,
-                        mask: Array,
+                        g_flow: chex.Array,
+                        capacity: chex.Array,
+                        mask: chex.Array,
                         num_beakers: int,
                     ) -> Tuple[List[Params], float]:
                         loss = 0.0
