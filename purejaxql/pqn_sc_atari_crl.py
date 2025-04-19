@@ -452,7 +452,17 @@ def make_train(config):
                                 loss,
                             )
 
-                        return params, loss
+                        # compute the norm of the params using jax.tree_util.tree_map and sum the norms with jnp.sum and jnp.linalg.norm
+                        params_norm = []
+                        for p in params:
+                            current_param_norm = jnp.sum(
+                                jax.tree_util.tree_map(
+                                    lambda x: jnp.linalg.norm(x), p
+                                )
+                            )
+                            params_norm.append(current_param_norm)
+
+                        return params, loss, params_norm
 
                     (loss, (updates, qvals)), grads = jax.value_and_grad(
                         _loss_fn, has_aux=True
@@ -485,7 +495,7 @@ def make_train(config):
                     for i in range(1, config["NUM_BEAKERS"]):
                         all_params.append(train_state.consolidation_params_tree[f"network_{i}"])
 
-                    network_params, consolidation_loss = _consolidation_update_fn(
+                    network_params, consolidation_loss, params_norm = _consolidation_update_fn(
                         params=all_params,
                         params_set_to_zero=params_set_to_zero,
                         g_flow=train_state.g_flow,
@@ -503,7 +513,7 @@ def make_train(config):
                         },
                     )
 
-                    return (train_state, rng), (loss, qvals, consolidation_loss)
+                    return (train_state, rng), (loss, qvals, consolidation_loss, params_norm)
 
                 def preprocess_transition(x, rng):
                     x = x.reshape(
@@ -524,14 +534,14 @@ def make_train(config):
                 )
 
                 rng, _rng = jax.random.split(rng)
-                (train_state, rng), (loss, qvals, consolidation_loss) = jax.lax.scan(
+                (train_state, rng), (loss, qvals, consolidation_loss, params_norm) = jax.lax.scan(
                     _learn_phase, (train_state, rng), (minibatches, targets)
                 )
 
                 return (train_state, rng), (loss, qvals)
 
             rng, _rng = jax.random.split(rng)
-            (train_state, rng), (loss, qvals, consolidation_loss) = jax.lax.scan(
+            (train_state, rng), (loss, qvals, consolidation_loss, params_norm) = jax.lax.scan(
                 _learn_epoch, (train_state, rng), None, config["NUM_EPOCHS"]
             )
 
@@ -571,6 +581,9 @@ def make_train(config):
                 "consolidation_loss": consolidation_loss.mean(),
             }
 
+            for idx, p in enumerate(params_norm):
+                metrics[f"params_norm_{idx}"] = p
+
             metrics.update({k: v.mean() for k, v in infos.items()})
             if config.get("TEST_DURING_TRAINING", False):
                 metrics.update({f"test/{k}": v.mean() for k, v in test_infos.items()})
@@ -593,16 +606,17 @@ def make_train(config):
                             metrics[k] = v.item()
 
                         if metrics["update_steps"] % 10 == 0:
-                            if k == "env_step":
-                                print(f"{k}: {v}")
-                            if k == "update_steps":
-                                print(f"{k}: {v}")
-                            if k == "total_returns":
-                                print(f"{k}: {v}")
-                            if k == "returned_episode_returns":
-                                print(f"{k}: {v}")
-                            if k == "rewards":
-                                print(f"{k}: {v}")
+                            print(f"{k}: {v}")
+                            # if k == "env_step":
+                            #     print(f"{k}: {v}")
+                            # if k == "update_steps":
+                            #     print(f"{k}: {v}")
+                            # if k == "total_returns":
+                            #     print(f"{k}: {v}")
+                            # if k == "returned_episode_returns":
+                            #     print(f"{k}: {v}")
+                            # if k == "rewards":
+                            #     print(f"{k}: {v}")
 
                         # print(f"{k}: {v}")
                         # if k == "env_step":
