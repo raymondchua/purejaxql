@@ -74,6 +74,7 @@ class CNN(nn.Module):
 
 class QNetwork(nn.Module):
     action_dim: int
+    noise_scale: float
     norm_type: str = "layer_norm"
     norm_input: bool = False
 
@@ -87,7 +88,7 @@ class QNetwork(nn.Module):
             x_dummy = nn.BatchNorm(use_running_average=not train)(x)
             x = x / 255.0
         x = CNN(norm_type=self.norm_type)(x, train)
-        x = NoisyLinear(features=self.action_dim)(x, rng=noise_rng)
+        x = NoisyLinear(features=self.action_dim, noise_scale=self.noise_scale)(x, rng=noise_rng)
         return x
 
 
@@ -106,7 +107,6 @@ class CustomTrainState(TrainState):
     timesteps: int = 0
     n_updates: int = 0
     grad_steps: int = 0
-    exploration_updates: int = 0
     total_returns: int = 0
 
 
@@ -116,6 +116,7 @@ def create_agent(rng, config, max_num_actions, observation_space_shape):
         action_dim=max_num_actions,
         norm_type=config["NORM_TYPE"],
         norm_input=config.get("NORM_INPUT", False),
+        noise_scale=config["NOISE_SCALE"],
     )
 
     # init_x = jnp.zeros((1, *env.single_observation_space.shape))
