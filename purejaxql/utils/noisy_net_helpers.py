@@ -15,23 +15,24 @@ class NoisyLinear(nn.Module):
     features: int
     use_bias: bool = True
     dtype: jnp.dtype = jnp.float32
+    noise_scale: float = 0.5
     kernel_init: Callable = nn.initializers.lecun_uniform()
     bias_init: Callable = nn.initializers.zeros
 
     @nn.compact
-    def __call__(self, inputs, *, rng, noise_scale: float = 0.5):
+    def __call__(self, inputs, *, rng):
         in_features = inputs.shape[-1]
 
         # Base parameters (mean)
         w_mu = self.param("weight_mu", self.kernel_init, (self.features, in_features))
         w_sigma = self.param("weight_sigma",
-                             nn.initializers.constant(noise_scale / jnp.sqrt(in_features)),
+                             nn.initializers.constant(self.noise_scale / jnp.sqrt(in_features)),
                              (self.features, in_features))
 
         if self.use_bias:
             b_mu = self.param("bias_mu", self.bias_init, (self.features,))
             b_sigma = self.param("bias_sigma",
-                                 nn.initializers.constant(noise_scale / jnp.sqrt(self.features)),
+                                 nn.initializers.constant(self.noise_scale / jnp.sqrt(self.features)),
                                  (self.features,))
         else:
             b_mu, b_sigma = None, None
