@@ -18,7 +18,7 @@ from flax.training.train_state import TrainState
 import hydra
 from omegaconf import OmegaConf
 import wandb
-from flax.core import freeze, unfreeze
+from flax.core import freeze, unfreeze,FrozenDict
 
 import envpool
 
