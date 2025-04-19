@@ -493,9 +493,6 @@ def make_train(config):
             train_state.network_state = train_state.network_state.replace(
                 n_updates=train_state.network_state.n_updates + 1
             )
-            train_state.network_state = train_state.network_state.replace(
-                exploration_updates=train_state.network_state.exploration_updates + 1
-            )
 
             if config.get("TEST_DURING_TRAINING", False):
                 test_infos = jax.tree_util.tree_map(
