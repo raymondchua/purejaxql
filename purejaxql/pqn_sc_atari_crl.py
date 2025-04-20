@@ -457,12 +457,10 @@ def make_train(config):
                         # compute the norm of the params using jax.tree_util.tree_map and sum the norms with jnp.sum and jnp.linalg.norm
                         params_norm = []
                         for p in params:
-                            current_param_norm = jnp.sum(
-                                jax.tree_util.tree_map(
-                                    lambda x: jnp.linalg.norm(x), p
-                                )
-                            )
+                            current_param_norm = optax.global_norm(p)
+
                             params_norm.append(current_param_norm)
+
 
                         return params, loss, params_norm
 
@@ -583,6 +581,7 @@ def make_train(config):
                 "consolidation_loss": consolidation_loss.mean(),
             }
 
+            # add norm of each beaker params to metrics
             for idx, p in enumerate(params_norm):
                 metrics[f"params_norm_{idx}"] = p
 
