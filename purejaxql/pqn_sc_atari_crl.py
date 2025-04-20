@@ -538,7 +538,7 @@ def make_train(config):
                     _learn_phase, (train_state, rng), (minibatches, targets)
                 )
 
-                return (train_state, rng), (loss, qvals)
+                return (train_state, rng), (loss, qvals, consolidation_loss, params_norm)
 
             rng, _rng = jax.random.split(rng)
             (train_state, rng), (loss, qvals, consolidation_loss, params_norm) = jax.lax.scan(
