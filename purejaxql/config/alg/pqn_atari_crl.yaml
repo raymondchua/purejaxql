@@ -4,7 +4,7 @@ TOTAL_TIMESTEPS_DECAY: 5e6 # will be used for decay functions (epsilon and lr)
 NUM_ENVS: 128 # parallel environments
 NUM_STEPS: 32 # steps per environment in each update
 EPS_START: 1.
-EPS_FINISH: 0.001
+EPS_FINISH: 0.01
 EPS_DECAY: 0.1 # ratio of total updates
 NUM_EPOCHS: 2 # number of epochs per update
 NUM_MINIBATCHES: 32 # minibatches per epoch
