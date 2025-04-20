@@ -582,7 +582,8 @@ def make_train(config):
             }
 
             # add norm of each beaker params to metrics
-            # for idx, p in enumerate(params_norm):
+            for idx, p in enumerate(params_norm):
+                print(f"params_norm_{idx}: {p}, type: {type(p)}")
             #     metrics[f"params_norm_{idx}"] = p
 
             metrics.update({k: v.mean() for k, v in infos.items()})
