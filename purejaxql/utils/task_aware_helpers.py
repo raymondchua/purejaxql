@@ -47,6 +47,8 @@ class TaskModulatedConv(nn.Module):
         )
         y = layer(x)
 
+        print("y shape: ", y.shape)
+
         gain_shape = (self.num_tasks, self.features, 1, 1)
         bias_shape = (self.num_tasks, self.features, 1, 1)
         gains = self.param("gains", nn.initializers.ones, gain_shape)
