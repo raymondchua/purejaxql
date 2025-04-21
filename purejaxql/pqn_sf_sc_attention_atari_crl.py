@@ -528,7 +528,7 @@ def make_train(config):
                 zipped_inputs = list(zip(*inputs))  # shape: (num_beakers - 1, 3)
 
                 print("Tree structure:")
-                print(tree_structure(params_beakers_stacked))
+                print(jax.tree_util.tree_structure(params_beakers_stacked))
 
                 print("Shapes of each leaf:")
                 tree_map(lambda x: print(x.shape), params_beakers_stacked)
