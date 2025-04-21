@@ -46,7 +46,6 @@ class TaskModulatedConv(nn.Module):
             strides=self.strides,
             padding=self.padding,
             kernel_init=self.kernel_init,
-            name=self.name,
         )
         y = layer(x)
 
