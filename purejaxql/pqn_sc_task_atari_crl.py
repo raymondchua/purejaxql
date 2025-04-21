@@ -602,11 +602,9 @@ def make_train(config):
             for idx, p in enumerate(params_norm):
                 metrics[f"params_norm_{idx}"] = jnp.mean(p)
 
-                # print params names
-                # Flatten the param dict and print full names
-                flat_params = flatten_dict(train_state.params, sep="/")  # 👈 use `sep="/"`
-                for name, param in flat_params.items():
-                    print(f"{name}: {param.shape}")
+            print_param_tree(train_state.params, prefix="MainQNet/")
+            for name, params in train_state.consolidation_params_tree.items():
+                print_param_tree(params, prefix=f"{name}/")
 
             metrics.update({k: v.mean() for k, v in infos.items()})
             if config.get("TEST_DURING_TRAINING", False):
@@ -830,6 +828,11 @@ def tune(default_config):
         sweep_config, entity=default_config["ENTITY"], project=default_config["PROJECT"]
     )
     wandb.agent(sweep_id, wrapped_make_train, count=1000)
+
+def print_param_tree(param_tree, prefix=""):
+    flat = flatten_dict(param_tree, sep="/")
+    for name, param in flat.items():
+        print(f"{prefix}{name}: {param.shape}")
 
 
 @hydra.main(version_base=None, config_path="./config", config_name="config")
