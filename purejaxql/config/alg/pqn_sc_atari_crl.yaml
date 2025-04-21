@@ -18,9 +18,9 @@ NUM_EXPOSURES: 4 # number of exposures for all games
 FULL_ACTION_SPACE: True # use full action space
 
 # consolidation specific
-FLOW_INIT_INDEX: 5 # meaning the g_1_2 starts from 0.125
+FLOW_INIT_INDEX: 9 # meaning the g_1_2 starts from 0.125
 BEAKER_CAPACITY: 2
-NUM_BEAKERS: 5
+NUM_BEAKERS: 7
 CONSOLIDATE_EARLIER: true # set to true to consolidate earlier using timescales =  2^k/g_1_2 ratio
 
 
