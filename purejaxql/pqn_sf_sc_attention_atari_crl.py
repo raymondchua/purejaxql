@@ -448,7 +448,7 @@ def make_train(config):
 
         params_set_to_zero = unfreeze(
             jax.tree_util.tree_map(
-                lambda x: jnp.zeros_like(x), unfreeze(train_state.params)
+                lambda x: jnp.zeros_like(x), unfreeze(train_state.network_state.params)
             )
         )
 
