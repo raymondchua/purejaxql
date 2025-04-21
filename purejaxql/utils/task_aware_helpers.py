@@ -17,8 +17,8 @@ class TaskModulatedDense(nn.Module):
         # Initialize all task-specific gains and biases at once
         gain_shape = (self.num_tasks, self.features)
         bias_shape = (self.num_tasks, self.features)
-        gains = self.param("gains", nn.initializers.ones, gain_shape, name=self.name + "_gains")
-        biases = self.param("biases", nn.initializers.zeros, bias_shape, name=self.name + "_biases")
+        gains = self.param(nn.initializers.ones, gain_shape, name=self.name + "_gains")
+        biases = self.param(nn.initializers.zeros, bias_shape, name=self.name + "_biases")
 
         # Use the task_id to index into the gains and biases
         gain = gains[task_id]
@@ -52,8 +52,8 @@ class TaskModulatedConv(nn.Module):
 
         gain_shape = (self.num_tasks, self.features, 1, 1)
         bias_shape = (self.num_tasks, self.features, 1, 1)
-        gains = self.param('gains', nn.initializers.ones, gain_shape, name=self.name + "_gains")
-        biases = self.param('biases', nn.initializers.zeros, bias_shape, name=self.name + "_biases")
+        gains = self.param(nn.initializers.ones, gain_shape, name=self.name + "_gains")
+        biases = self.param(nn.initializers.zeros, bias_shape, name=self.name + "_biases")
 
         gain = jnp.take(gains, task_id, axis=0)  # Shape (features, 1, 1)
         bias = jnp.take(biases, task_id, axis=0)  # Shape (features, 1, 1)
