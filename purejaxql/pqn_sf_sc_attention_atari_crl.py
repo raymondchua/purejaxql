@@ -178,6 +178,11 @@ class SFAttentionNetwork(nn.Module):
             values_per_beaker, axis=1
         )  # (batch_size, num_beakers, num_actions, sf_dim)
 
+        print("task_normalized.shape", task_normalized.shape)
+        print("keys.shape", keys.shape)
+        print("values.shape", values.shape)
+        print("query.shape", query.shape)
+
         attn_logits = jnp.einsum("bqf,bnaf->bqna", query, keys) / jnp.sqrt(self.sf_dim)
 
         # replace zero logits with a large negative number so that they are ignored in the softmax
