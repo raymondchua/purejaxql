@@ -97,7 +97,7 @@ class QNetwork(nn.Module):
             # dummy normalize input for global compatibility
             x_dummy = nn.BatchNorm(use_running_average=not train)(x)
             x = x / 255.0
-        x = CNN(norm_type=self.norm_type, num_tasks=self.num_tasks, name=self.name)(x, train, task_id)
+        x = CNN(norm_type=self.norm_type, num_tasks=self.num_tasks)(x, train, task_id)
         x = TaskModulatedDense(
             features=self.action_dim,
             num_tasks=self.num_tasks,
