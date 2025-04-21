@@ -28,14 +28,15 @@ class TaskModulatedLayer(nn.Module):
                 strides=self.strides,
                 kernel_init=self.kernel_init,
                 use_bias=False,
+                dtype=jnp.float32,
             )
         else:
-            self.core = nn.Dense(self.features, kernel_init=self.kernel_init, use_bias=False)
+            self.core = nn.Dense(self.features, kernel_init=self.kernel_init, use_bias=False, dtype=jnp.float32)
         self.task_bias = self.param(
-            f"bias_task{self.task_id}", nn.initializers.zeros, (self.features,)
+            f"bias_task{self.task_id}", nn.initializers.zeros, (self.features,), dtype=jnp.float32
         )
         self.task_gain = self.param(
-            f"gain_task{self.task_id}", nn.initializers.ones, (self.features,)
+            f"gain_task{self.task_id}", nn.initializers.ones, (self.features,), dtype=jnp.float32
         )
 
     def __call__(self, x):
