@@ -196,14 +196,6 @@ def create_agent(rng, config, max_num_actions, observation_space_shape):
         consolidation_params_tree=consolidation_params_tree,
     )
 
-    diffs = compare_param_trees(train_state.params, train_state.consolidation_params_tree["network_1"])
-    if diffs:
-        print("🔍 Different parameters:")
-        for key in diffs:
-            print(f"  {key}")
-    else:
-        print("All params are identical (possibly shared or cloned)")
-
     return train_state, network
 
 
@@ -609,6 +601,14 @@ def make_train(config):
             # add norm of each beaker params to metrics
             for idx, p in enumerate(params_norm):
                 metrics[f"params_norm_{idx}"] = jnp.mean(p)
+
+            diffs = compare_param_trees(train_state.params, train_state.consolidation_params_tree["network_1"])
+            if diffs:
+                print("🔍 Different parameters:")
+                for key in diffs:
+                    print(f"  {key}")
+            else:
+                print("All params are identical (possibly shared or cloned)")
 
             metrics.update({k: v.mean() for k, v in infos.items()})
             if config.get("TEST_DURING_TRAINING", False):
