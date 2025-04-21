@@ -19,6 +19,7 @@ import hydra
 from omegaconf import OmegaConf
 import wandb
 from flax.core import freeze, unfreeze,FrozenDict
+from flax.traverse_util import flatten_dict
 
 import envpool
 
