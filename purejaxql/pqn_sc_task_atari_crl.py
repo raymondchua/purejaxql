@@ -603,6 +603,10 @@ def make_train(config):
             for idx, p in enumerate(params_norm):
                 metrics[f"params_norm_{idx}"] = jnp.mean(p)
 
+                # print params names
+                for name, param in zip(train_state.params.keys(), p):
+                    print(f"{name}: {param}, {param.shape}")
+
             metrics.update({k: v.mean() for k, v in infos.items()})
             if config.get("TEST_DURING_TRAINING", False):
                 metrics.update({f"test/{k}": v.mean() for k, v in test_infos.items()})
