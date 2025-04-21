@@ -569,9 +569,7 @@ def make_train(config):
                 "grad_steps": train_state.grad_steps,
                 "td_loss": loss.mean(),
                 "qvals": qvals.mean(),
-                "eps": eps_scheduler(train_state.exploration_updates)
-                if exposure == 0
-                else config["EPS_FINISH"],
+                "eps": eps_scheduler(train_state.exploration_updates),
                 "lr": lr,
                 "exposure": exposure,
                 "task_id": task_id,
