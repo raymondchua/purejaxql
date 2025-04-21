@@ -602,14 +602,6 @@ def make_train(config):
             for idx, p in enumerate(params_norm):
                 metrics[f"params_norm_{idx}"] = jnp.mean(p)
 
-            diffs = compare_param_trees(train_state.params, train_state.consolidation_params_tree["network_1"])
-            if diffs:
-                print("Different parameters:")
-                for key in diffs:
-                    print(f"  {key}")
-            else:
-                print("All params are identical (possibly shared or cloned)")
-
             metrics.update({k: v.mean() for k, v in infos.items()})
             if config.get("TEST_DURING_TRAINING", False):
                 metrics.update({f"test/{k}": v.mean() for k, v in test_infos.items()})
@@ -832,24 +824,6 @@ def tune(default_config):
         sweep_config, entity=default_config["ENTITY"], project=default_config["PROJECT"]
     )
     wandb.agent(sweep_id, wrapped_make_train, count=1000)
-
-def print_param_tree(param_tree, prefix=""):
-    flat = flatten_dict(param_tree, sep="/")
-    for name, param in flat.items():
-        print(f"{prefix}{name}: {param.shape}")
-
-def compare_param_trees(params_a, params_b):
-    flat_a = flatten_dict(params_a, sep="/")
-    flat_b = flatten_dict(params_b, sep="/")
-
-    shared_keys = set(flat_a.keys()) & set(flat_b.keys())
-    differences = []
-
-    for key in shared_keys:
-        if not jnp.all(flat_a[key] == flat_b[key]):
-            differences.append(key)
-
-    return differences
 
 
 @hydra.main(version_base=None, config_path="./config", config_name="config")
