@@ -47,8 +47,6 @@ class TaskModulatedConv(nn.Module):
         )
         y = layer(x)
 
-        print("y shape: ", y.shape)
-
         gain_shape = (self.num_tasks, self.features, 1, 1)
         bias_shape = (self.num_tasks, self.features, 1, 1)
         gains = self.param('gains', nn.initializers.ones, gain_shape)
@@ -60,8 +58,6 @@ class TaskModulatedConv(nn.Module):
         # Reshape gain and bias to be compatible with (batch_size, height, width, features)
         gain = jnp.reshape(gain, (1, 1, 1, self.features))
         bias = jnp.reshape(bias, (1, 1, 1, self.features))
-
-        print("gain shape: ", gain.shape)
 
         y = gain * y + bias
         return y
