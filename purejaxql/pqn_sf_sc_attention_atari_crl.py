@@ -129,7 +129,6 @@ class SFAttentionNetwork(nn.Module):
         print("sf_all.shape", sf_all.shape)
         print("batch_size", batch_size)
 
-        # stop gradient for all beakers except the first one
         sf_first = sf_all[:, :1, :, :]  # shape (batch, 1, ...)
         sf_rest = jax.lax.stop_gradient(sf_all[:, 1:, :, :])  # shape (batch, num_beakers-1, ...)
         sf_all = jnp.concatenate([sf_first, sf_rest], axis=1)
@@ -681,26 +680,52 @@ def make_train(config):
                             mutable=["batch_stats"],
                         )  # (batch_size*2, num_actions)
 
-                        # grab the sf from the consolidation networks
-                        sf_all = []
-                        sf_all.append(sf)
-                        for i in range(1, config["NUM_BEAKERS"]):
-                            sf_all.append(
-                                train_state.consolidation_networks[i].apply(
-                                    {
-                                        "params": params_consolidation[f"network_{i}"],
-                                        "batch_stats": train_state.network_state.batch_stats,
-                                    },
-                                    last_obs,
-                                    train_state.task_state.params["w"],
-                                    train=False,
-                                )[2]
-                            )
+                        params_beakers = [
+                            train_state.consolidation_params_tree[f"network_{i}"]
+                            for i in range(1, config["NUM_BEAKERS"])
+                        ]
 
-                        # stack the sf from all beakers
-                        sf_all = jnp.stack(
-                            sf_all, axis=1
-                        )  # (batch_size, num_beakers, num_actions, sf_dim)
+                        # Convert list of dicts into a batched PyTree
+                        params_beakers_stacked = jax.tree_util.tree_map(lambda *x: jnp.stack(x), *params_beakers)
+
+                        num_beakers = config["NUM_BEAKERS"] - 1  # because beaker 0 is excluded
+
+                        # Tile obs/task for each beaker
+                        obs_tiled = jnp.broadcast_to(obs, (num_beakers, *obs.shape))  # [num_beakers, batch, ...]
+                        task_tiled = jnp.broadcast_to(task,
+                                                      (num_beakers, *task.shape))  # [num_beakers, batch, task_dim]
+
+                        # Vectorized application
+                        sf_beakers = jax.vmap(apply_single_beaker, in_axes=(0, 0, 0, None))(
+                            params_beakers_stacked, obs_tiled, task_tiled, train_state.network_state.batch_stats
+                        )
+
+                        sf_all = jnp.concatenate([sf[None], sf_beakers], axis=1)
+
+                        # # grab the sf from the consolidation networks
+                        # sf_all = []
+                        # sf_all.append(sf)
+                        # for i in range(1, config["NUM_BEAKERS"]):
+                        #     sf_all.append(
+                        #         jax.lax.stop_gradient(
+                        #             train_state.consolidation_networks[i].apply(
+                        #                 {
+                        #                     "params": params_consolidation[
+                        #                         f"network_{i}"
+                        #                     ],
+                        #                     "batch_stats": train_state.network_state.batch_stats,
+                        #                 },
+                        #                 minibatch.obs,
+                        #                 train_state.task_state.params["w"],
+                        #                 train=False,
+                        #             )[2]
+                        #         )
+                        #     )
+                        #
+                        # # stack the sf from all beakers
+                        # sf_all = jnp.stack(
+                        #     sf_all, axis=1
+                        # )  # (batch_size, num_beakers, num_actions, sf_dim)
 
                         # attention network
                         (
@@ -841,12 +866,21 @@ def make_train(config):
                         train_state.attention_network_state.params,
                         mask,
                     )
-                    train_state.network_state = (
-                        train_state.network_state.apply_gradients(grads=grads)
-                    )
 
-                    train_state.attention_network_state = (
-                        train_state.attention_network_state.apply_gradients(grads=grads)
+                    grads_network, grads_consolidation, grads_attention = grads
+
+                    # train_state.network_state = (
+                    #     train_state.network_state.apply_gradients(grads=grads_network)
+                    # )
+                    #
+                    # train_state.attention_network_state = (
+                    #     train_state.attention_network_state.apply_gradients(grads=grads_attention)
+                    # )
+
+                    train_state = train_state.replace(
+                        network_state=train_state.network_state.apply_gradients(grads=grads_network),
+                        attention_network_state=train_state.attention_network_state.apply_gradients(
+                            grads=grads_attention),
                     )
 
                     train_state.network_state = train_state.network_state.replace(
@@ -918,7 +952,6 @@ def make_train(config):
                         attention_weights,
                         keys,
                         values,
-
                     )
 
                 def preprocess_transition(x, rng):
@@ -1033,10 +1066,10 @@ def make_train(config):
             print("values.shape", values.shape)
 
             # for i in range(config["NUM_BEAKERS"]):
-                # metrics[f"attn_logits_{i}"] = attn_logits[:, i, :].mean()
-                # metrics[f"attention_weights_{i}"] = attention_weights[:, i, :].mean()
-                # metrics[f"keys_{i}"] = keys[:, i, :].mean()
-                # metrics[f"values_{i}"] = values[:, i, :].mean()
+            # metrics[f"attn_logits_{i}"] = attn_logits[:, i, :].mean()
+            # metrics[f"attention_weights_{i}"] = attention_weights[:, i, :].mean()
+            # metrics[f"keys_{i}"] = keys[:, i, :].mean()
+            # metrics[f"values_{i}"] = values[:, i, :].mean()
 
             metrics.update({k: v.mean() for k, v in infos.items()})
             if config.get("TEST_DURING_TRAINING", False):
@@ -1222,6 +1255,16 @@ def single_run(config):
                     f'{alg_name}_exposure{cycle}_task{idx}_seed{config["SEED"]}.safetensors',
                 )
                 save_params(params, save_path)
+
+def apply_single_beaker(params, obs, task, batch_stats):
+    _, _, sf = network.apply(
+        {"params": params, "batch_stats": batch_stats},
+        obs,
+        task,
+        train=False,
+        mutable=False,
+    )
+    return sf  # shape: (batch, num_actions, sf_dim)
 
 
 def tune(default_config):
