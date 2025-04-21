@@ -31,6 +31,7 @@ Params = FrozenDict
 
 
 class CNN(nn.Module):
+    name: str
     num_tasks: int
     norm_type: str = "layer_norm"
 
@@ -49,7 +50,7 @@ class CNN(nn.Module):
             padding="VALID",
             kernel_init=nn.initializers.he_normal(),
             num_tasks=self.num_tasks,
-            name="conv_1",
+            name=self.name + "/conv_1",
         )(x, task_id)
         x = normalize(x)
         x = nn.relu(x)
@@ -60,7 +61,7 @@ class CNN(nn.Module):
             padding="VALID",
             kernel_init=nn.initializers.he_normal(),
             num_tasks=self.num_tasks,
-            name="conv_2",
+            name=self.name + "/conv_2",
         )(x, task_id)
         x = normalize(x)
         x = nn.relu(x)
@@ -71,7 +72,7 @@ class CNN(nn.Module):
             padding="VALID",
             kernel_init=nn.initializers.he_normal(),
             num_tasks=self.num_tasks,
-            name="conv_3",
+            name=self.name + "/conv_3",
         )(x, task_id)
         x = normalize(x)
         x = nn.relu(x)
@@ -79,7 +80,7 @@ class CNN(nn.Module):
         x = TaskModulatedDense(
             num_tasks=self.num_tasks,
             features=512,
-            name="dense_1",
+            name=self.name + "/dense_1",
         )(x, task_id)
         x = normalize(x)
         x = nn.relu(x)
@@ -87,6 +88,7 @@ class CNN(nn.Module):
 
 
 class QNetwork(nn.Module):
+    name: str
     action_dim: int
     num_tasks: int
     norm_type: str = "layer_norm"
@@ -101,11 +103,11 @@ class QNetwork(nn.Module):
             # dummy normalize input for global compatibility
             x_dummy = nn.BatchNorm(use_running_average=not train)(x)
             x = x / 255.0
-        x = CNN(norm_type=self.norm_type, num_tasks=self.num_tasks)(x, train, task_id)
+        x = CNN(norm_type=self.norm_type, num_tasks=self.num_tasks, name=self.name)(x, train, task_id)
         x = TaskModulatedDense(
             features=self.action_dim,
             num_tasks=self.num_tasks,
-            name="dense_2",
+            name=self.name + "/dense_2",
         )(x, task_id)
         return x
 
