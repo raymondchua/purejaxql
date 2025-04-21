@@ -24,13 +24,13 @@ import envpool
 
 from purejaxql.utils.atari_wrapper import JaxLogEnvPoolWrapper
 from purejaxql.utils.consolidation_helpers import update_and_accumulate_tree
-from purejaxql.utils.task_aware_helpers import TaskModulatedLayer
+from purejaxql.utils.task_aware_helpers import TaskModulatedDense, TaskModulatedConv
 
 Params = FrozenDict
 
 
 class CNN(nn.Module):
-
+    num_tasks: int
     norm_type: str = "layer_norm"
 
     @nn.compact
@@ -41,45 +41,43 @@ class CNN(nn.Module):
             normalize = lambda x: nn.BatchNorm(use_running_average=not train)(x)
         else:
             normalize = lambda x: x
-        x = TaskModulatedLayer(
+        x = TaskModulatedConv(
             features=32,
             task_id=task_id,
-            is_conv=True,
             kernel_size=(8, 8),
             strides=(4, 4),
             padding="VALID",
             kernel_init=nn.initializers.he_normal(),
+            num_tasks=self.num_tasks,
         )(x)
         x = normalize(x)
         x = nn.relu(x)
-        x = TaskModulatedLayer(
+        x = TaskModulatedConv(
             features=64,
             task_id=task_id,
-            is_conv=True,
             kernel_size=(4, 4),
             strides=(2, 2),
             padding="VALID",
             kernel_init=nn.initializers.he_normal(),
+            num_tasks=self.num_tasks,
         )(x)
         x = normalize(x)
         x = nn.relu(x)
-        x = TaskModulatedLayer(
+        x = TaskModulatedConv(
             features= 64,
             task_id=task_id,
-            is_conv=True,
             kernel_size=(3, 3),
             strides=(1, 1),
             padding="VALID",
             kernel_init=nn.initializers.he_normal(),
+            num_tasks=self.num_tasks,
         )(x)
         x = normalize(x)
         x = nn.relu(x)
         x = x.reshape((x.shape[0], -1))
-        x = TaskModulatedLayer(
+        x = TaskModulatedDense(
+            num_tasks=self.num_tasks,
             features=512,
-            task_id=task_id,
-            is_conv=False,
-            kernel_init=nn.initializers.he_normal(),
         )
         x = normalize(x)
         x = nn.relu(x)
@@ -88,6 +86,7 @@ class CNN(nn.Module):
 
 class QNetwork(nn.Module):
     action_dim: int
+    num_tasks: int
     norm_type: str = "layer_norm"
     norm_input: bool = False
 
@@ -101,12 +100,10 @@ class QNetwork(nn.Module):
             x_dummy = nn.BatchNorm(use_running_average=not train)(x)
             x = x / 255.0
         x = CNN(norm_type=self.norm_type)(x, train, task_id)
-        x = TaskModulatedLayer(
+        x = TaskModulatedDense(
             features=self.action_dim,
-            task_id=task_id,
-            is_conv=False,
-            kernel_init=nn.initializers.he_normal(),
-        )(x)
+            num_tasks=self.num_tasks,
+        )(x, task_id)
         return x
 
 
@@ -139,6 +136,7 @@ def create_agent(rng, config, max_num_actions, observation_space_shape):
         action_dim=max_num_actions,
         norm_type=config["NORM_TYPE"],
         norm_input=config.get("NORM_INPUT", False),
+        num_tasks=config["NUM_TASKS"],
     )
 
     init_x = jnp.zeros((1, *observation_space_shape))
