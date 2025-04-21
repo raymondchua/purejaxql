@@ -5,12 +5,13 @@ from typing import Callable, Tuple
 
 
 class TaskModulatedDense(nn.Module):
+    name: str
     num_tasks: int
     features: int
 
     @nn.compact
     def __call__(self, x, task_id: int):
-        layer = nn.Dense(features=self.features, use_bias=False)
+        layer = nn.Dense(features=self.features, use_bias=False, name=self.name)
         y = layer(x)
 
         # Initialize all task-specific gains and biases at once
@@ -28,6 +29,7 @@ class TaskModulatedDense(nn.Module):
 
 
 class TaskModulatedConv(nn.Module):
+    name: str
     num_tasks: int
     features: int
     kernel_size: tuple[int, int]
@@ -44,6 +46,7 @@ class TaskModulatedConv(nn.Module):
             strides=self.strides,
             padding=self.padding,
             kernel_init=self.kernel_init,
+            name=self.name,
         )
         y = layer(x)
 

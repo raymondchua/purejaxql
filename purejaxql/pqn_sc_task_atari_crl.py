@@ -48,6 +48,7 @@ class CNN(nn.Module):
             padding="VALID",
             kernel_init=nn.initializers.he_normal(),
             num_tasks=self.num_tasks,
+            name="conv_1",
         )(x, task_id)
         x = normalize(x)
         x = nn.relu(x)
@@ -58,6 +59,7 @@ class CNN(nn.Module):
             padding="VALID",
             kernel_init=nn.initializers.he_normal(),
             num_tasks=self.num_tasks,
+            name="conv_2",
         )(x, task_id)
         x = normalize(x)
         x = nn.relu(x)
@@ -68,6 +70,7 @@ class CNN(nn.Module):
             padding="VALID",
             kernel_init=nn.initializers.he_normal(),
             num_tasks=self.num_tasks,
+            name="conv_3",
         )(x, task_id)
         x = normalize(x)
         x = nn.relu(x)
@@ -75,6 +78,7 @@ class CNN(nn.Module):
         x = TaskModulatedDense(
             num_tasks=self.num_tasks,
             features=512,
+            name="dense_1",
         )(x, task_id)
         x = normalize(x)
         x = nn.relu(x)
@@ -100,6 +104,7 @@ class QNetwork(nn.Module):
         x = TaskModulatedDense(
             features=self.action_dim,
             num_tasks=self.num_tasks,
+            name="dense_2",
         )(x, task_id)
         return x
 
