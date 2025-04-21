@@ -605,8 +605,12 @@ def make_train(config):
                 metrics[f"params_norm_{idx}"] = jnp.mean(p)
 
                 # print params names
-                for name, param in zip(train_state.params.keys(), p):
-                    print(f"{name}: {param}, {param.shape}")
+                # Flatten the param dict and print full names
+                flat_params = flatten_dict(train_state.params, sep='/')
+
+                for name_tuple, param in flat_params.items():
+                    name = '/'.join(name_tuple)
+                    print(f"{name}: {param.shape}")
 
             metrics.update({k: v.mean() for k, v in infos.items()})
             if config.get("TEST_DURING_TRAINING", False):
