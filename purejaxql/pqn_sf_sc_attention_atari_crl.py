@@ -24,7 +24,7 @@ import envpool
 from purejaxql.utils.atari_wrapper import JaxLogEnvPoolWrapper
 from purejaxql.utils.l2_normalize import l2_normalize
 from purejaxql.utils.consolidation_helpers import update_and_accumulate_tree
-from flax.core import freeze, unfreeze,FrozenDict
+from flax.core import freeze, unfreeze, FrozenDict
 
 
 class CNN(nn.Module):
@@ -131,7 +131,9 @@ class SFAttentionNetwork(nn.Module):
         print("batch_size", batch_size)
 
         sf_first = sf_all[:, :1, :, :]  # shape (batch, 1, ...)
-        sf_rest = jax.lax.stop_gradient(sf_all[:, 1:, :, :])  # shape (batch, num_beakers-1, ...)
+        sf_rest = jax.lax.stop_gradient(
+            sf_all[:, 1:, :, :]
+        )  # shape (batch, num_beakers-1, ...)
         sf_all = jnp.concatenate([sf_first, sf_rest], axis=1)
 
         # apply mask so that the attention is only applied to the beakers that are available for recall
@@ -191,9 +193,7 @@ class SFAttentionNetwork(nn.Module):
 
         attention_weights = jax.nn.softmax(attn_logits, axis=2)
 
-        attended_sf = jnp.einsum(
-            "bqna,bnaf->bqaf", attention_weights, sf_all_masked
-        )
+        attended_sf = jnp.einsum("bqna,bnaf->bqaf", attention_weights, sf_all_masked)
 
         attended_sf = attended_sf.squeeze(1).swapaxes(1, 2)
 
@@ -501,16 +501,25 @@ def make_train(config):
                 ]
 
                 # Convert list of dicts into a batched PyTree
-                params_beakers_stacked = jax.tree_util.tree_map(lambda *x: jnp.stack(x), *params_beakers)
+                params_beakers_stacked = jax.tree_util.tree_map(
+                    lambda *x: jnp.stack(x), *params_beakers
+                )
 
                 num_beakers = config["NUM_BEAKERS"] - 1  # because beaker 0 is excluded
 
                 # Tile obs/task for each beaker
-                obs_tiled = jnp.broadcast_to(last_obs, (num_beakers, *last_obs.shape))  # [num_beakers, batch, ...]
-                task_tiled = jnp.broadcast_to(task,
-                                              (num_beakers, *train_state.task_state.params["w"][
-                                                             : -config["TEST_ENVS"], :
-                                                             ].shape))  # [num_beakers, batch, task_dim]
+                obs_tiled = jnp.broadcast_to(
+                    last_obs, (num_beakers, *last_obs.shape)
+                )  # [num_beakers, batch, ...]
+                task_tiled = jnp.broadcast_to(
+                    train_state.task_state.params["w"][: -config["TEST_ENVS"], :],
+                    (
+                        num_beakers,
+                        *train_state.task_state.params["w"][
+                            : -config["TEST_ENVS"], :
+                        ].shape,
+                    ),
+                )  # [num_beakers, batch, task_dim]
 
                 # Vectorized application
                 sf_beakers = jax.vmap(apply_single_beaker, in_axes=(0, 0, 0, None))(
@@ -636,14 +645,19 @@ def make_train(config):
             # )  # (batch_size, num_beakers, num_actions, sf_dim)
 
             # Convert list of dicts into a batched PyTree
-            params_beakers_stacked = jax.tree_util.tree_map(lambda *x: jnp.stack(x), *params_beakers)
+            params_beakers_stacked = jax.tree_util.tree_map(
+                lambda *x: jnp.stack(x), *params_beakers
+            )
 
             num_beakers = config["NUM_BEAKERS"] - 1  # because beaker 0 is excluded
 
             # Tile obs/task for each beaker
-            obs_tiled = jnp.broadcast_to(transitions.next_obs[-1], (num_beakers, *transitions.next_obs[-1].shape))  # [num_beakers, batch, ...]
-            task_tiled = jnp.broadcast_to(task_params_target,
-                                          (num_beakers, *task_params_target.shape))  # [num_beakers, batch, task_dim]
+            obs_tiled = jnp.broadcast_to(
+                transitions.next_obs[-1], (num_beakers, *transitions.next_obs[-1].shape)
+            )  # [num_beakers, batch, ...]
+            task_tiled = jnp.broadcast_to(
+                task_params_target, (num_beakers, *task_params_target.shape)
+            )  # [num_beakers, batch, task_dim]
 
             # Vectorized application
             last_sf_beakers = jax.vmap(apply_single_beaker, in_axes=(0, 0, 0, None))(
@@ -737,21 +751,32 @@ def make_train(config):
                         ]
 
                         # Convert list of dicts into a batched PyTree
-                        params_beakers_stacked = jax.tree_util.tree_map(lambda *x: jnp.stack(x), *params_beakers)
+                        params_beakers_stacked = jax.tree_util.tree_map(
+                            lambda *x: jnp.stack(x), *params_beakers
+                        )
 
-                        num_beakers = config["NUM_BEAKERS"] - 1  # because beaker 0 is excluded
+                        num_beakers = (
+                            config["NUM_BEAKERS"] - 1
+                        )  # because beaker 0 is excluded
 
                         # Tile obs/task for each beaker
-                        obs_tiled = jnp.broadcast_to(obs, (num_beakers, *minibatch.obs.shape))  # [num_beakers, batch, ...]
-                        task_tiled = jnp.broadcast_to(task,
-                                                      (num_beakers, *train_state.task_state.params["w"][
-                                : -config["TEST_ENVS"], :
-                            ].shape))  # [num_beakers, batch, task_dim]
+                        obs_tiled = jnp.broadcast_to(
+                            obs, (num_beakers, *minibatch.obs.shape)
+                        )  # [num_beakers, batch, ...]
+                        task_tiled = jnp.broadcast_to(
+                            task,
+                            (
+                                num_beakers,
+                                *train_state.task_state.params["w"][
+                                    : -config["TEST_ENVS"], :
+                                ].shape,
+                            ),
+                        )  # [num_beakers, batch, task_dim]
 
                         # Vectorized application
-                        sf_beakers = jax.vmap(apply_single_beaker, in_axes=(0, 0, 0, None))(
-                            params_beakers_stacked, obs_tiled, task_tiled
-                        )
+                        sf_beakers = jax.vmap(
+                            apply_single_beaker, in_axes=(0, 0, 0, None)
+                        )(params_beakers_stacked, obs_tiled, task_tiled)
 
                         sf_all = jnp.concatenate([sf[None], sf_beakers], axis=1)
                         print("sf_all.shape", sf_all.shape)
@@ -932,9 +957,12 @@ def make_train(config):
                     # )
 
                     train_state = train_state.replace(
-                        network_state=train_state.network_state.apply_gradients(grads=grads_network),
+                        network_state=train_state.network_state.apply_gradients(
+                            grads=grads_network
+                        ),
                         attention_network_state=train_state.attention_network_state.apply_gradients(
-                            grads=grads_attention),
+                            grads=grads_attention
+                        ),
                     )
 
                     train_state.network_state = train_state.network_state.replace(
@@ -1309,6 +1337,7 @@ def single_run(config):
                     f'{alg_name}_exposure{cycle}_task{idx}_seed{config["SEED"]}.safetensors',
                 )
                 save_params(params, save_path)
+
 
 def apply_single_beaker(params, obs, task):
     _, _, sf = network.apply(
