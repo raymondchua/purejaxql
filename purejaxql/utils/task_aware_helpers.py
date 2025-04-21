@@ -61,5 +61,7 @@ class TaskModulatedConv(nn.Module):
         gain = jnp.expand_dims(gain, axis=(0, 1))  # Now shape (1, 1, 1, features)
         bias = jnp.expand_dims(bias, axis=(0, 1))  # Now shape (1, 1, 1, features)
 
+        print("gain shape: ", gain.shape)
+
         y = gain * y + bias
         return y
