@@ -43,42 +43,39 @@ class CNN(nn.Module):
             normalize = lambda x: x
         x = TaskModulatedConv(
             features=32,
-            task_id=task_id,
             kernel_size=(8, 8),
             strides=(4, 4),
             padding="VALID",
             kernel_init=nn.initializers.he_normal(),
             num_tasks=self.num_tasks,
-        )(x)
+        )(x, task_id)
         x = normalize(x)
         x = nn.relu(x)
         x = TaskModulatedConv(
             features=64,
-            task_id=task_id,
             kernel_size=(4, 4),
             strides=(2, 2),
             padding="VALID",
             kernel_init=nn.initializers.he_normal(),
             num_tasks=self.num_tasks,
-        )(x)
+        )(x, task_id)
         x = normalize(x)
         x = nn.relu(x)
         x = TaskModulatedConv(
             features= 64,
-            task_id=task_id,
             kernel_size=(3, 3),
             strides=(1, 1),
             padding="VALID",
             kernel_init=nn.initializers.he_normal(),
             num_tasks=self.num_tasks,
-        )(x)
+        )(x, task_id)
         x = normalize(x)
         x = nn.relu(x)
         x = x.reshape((x.shape[0], -1))
         x = TaskModulatedDense(
             num_tasks=self.num_tasks,
             features=512,
-        )
+        )(x, task_id)
         x = normalize(x)
         x = nn.relu(x)
         return x
