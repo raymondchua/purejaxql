@@ -129,9 +129,10 @@ class SFAttentionNetwork(nn.Module):
         print("sf_all.shape", sf_all.shape)
         print("batch_size", batch_size)
 
-        sf_all[:, 1:, :, :] = jax.lax.stop_gradient(
-            sf_all[:, 1:, :, :]
-        )  # stop gradient for all beakers except the first one
+        # stop gradient for all beakers except the first one
+        sf_first = sf_all[:, :1, :, :]  # shape (batch, 1, ...)
+        sf_rest = jax.lax.stop_gradient(sf_all[:, 1:, :, :])  # shape (batch, num_beakers-1, ...)
+        sf_all = jnp.concatenate([sf_first, sf_rest], axis=1)
 
         # apply mask so that the attention is only applied to the beakers that are available for recall
         mask_first_beaker = jnp.ones((batch_size, 1, self.num_actions, self.sf_dim))
