@@ -175,10 +175,11 @@ def create_agent(rng, config, max_num_actions, observation_space_shape):
             action_dim=max_num_actions,
             norm_type=config["NORM_TYPE"],
             norm_input=config.get("NORM_INPUT", False),
+            num_tasks=config["NUM_TASKS"],
         )
 
         init_x = jnp.zeros((1, *observation_space_shape))
-        network_variables = current_network.init(rng, init_x, train=False)
+        network_variables = current_network.init(rng, init_x, task_id=0, train=False)
         consolidation_params_tree[f"network_{i}"] = network_variables["params"]
 
     train_state = CustomTrainState.create(
