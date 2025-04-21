@@ -471,28 +471,54 @@ def make_train(config):
                     train=False,
                 )
 
-                # grab the sf from the consolidation networks
-                sf_all = []
-                sf_all.append(sf)
-                for i in range(1, config["NUM_BEAKERS"]):
-                    sf_all.append(
-                        train_state.consolidation_networks[i].apply(
-                            {
-                                "params": train_state.network_state.consolidation_params_tree[
-                                    f"network_{i}"
-                                ],
-                                "batch_stats": train_state.network_state.batch_stats,
-                            },
-                            last_obs,
-                            train_state.task_state.params["w"],
-                            train=False,
-                        )[2]
-                    )
+                # # grab the sf from the consolidation networks
+                # sf_all = []
+                # sf_all.append(sf)
+                # for i in range(1, config["NUM_BEAKERS"]):
+                #     sf_all.append(
+                #         train_state.network_state.consolidation_networks[i].apply(
+                #             {
+                #                 "params": train_state.network_state.consolidation_params_tree[
+                #                     f"network_{i}"
+                #                 ],
+                #                 "batch_stats": train_state.network_state.batch_stats,
+                #             },
+                #             last_obs,
+                #             train_state.task_state.params["w"],
+                #             train=False,
+                #         )[2]
+                #     )
+                #
+                # # stack the sf from all beakers
+                # sf_all = jnp.stack(
+                #     sf_all, axis=1
+                # )  # (batch_size, num_beakers, num_actions, sf_dim)
+                # print("sf_all.shape", sf_all.shape)
 
-                # stack the sf from all beakers
-                sf_all = jnp.stack(
-                    sf_all, axis=1
-                )  # (batch_size, num_beakers, num_actions, sf_dim)
+                params_beakers = [
+                    train_state.network_state.consolidation_params_tree[f"network_{i}"]
+                    for i in range(1, config["NUM_BEAKERS"])
+                ]
+
+                # Convert list of dicts into a batched PyTree
+                params_beakers_stacked = jax.tree_util.tree_map(lambda *x: jnp.stack(x), *params_beakers)
+
+                num_beakers = config["NUM_BEAKERS"] - 1  # because beaker 0 is excluded
+
+                # Tile obs/task for each beaker
+                obs_tiled = jnp.broadcast_to(last_obs, (num_beakers, *last_obs.shape))  # [num_beakers, batch, ...]
+                task_tiled = jnp.broadcast_to(task,
+                                              (num_beakers, *train_state.task_state.params["w"][
+                                                             : -config["TEST_ENVS"], :
+                                                             ].shape))  # [num_beakers, batch, task_dim]
+
+                # Vectorized application
+                sf_beakers = jax.vmap(apply_single_beaker, in_axes=(0, 0, 0, None))(
+                    params_beakers_stacked, obs_tiled, task_tiled
+                )
+
+                sf_all = jnp.concatenate([sf[None], sf_beakers], axis=1)
+
                 print("sf_all.shape", sf_all.shape)
 
                 """
@@ -587,27 +613,45 @@ def make_train(config):
             )
 
             # grab the sf from the consolidation networks
-            last_sf_all = []
-            last_sf_all.append(last_sf)
-            for i in range(1, config["NUM_BEAKERS"]):
-                last_sf_all.append(
-                    train_state.consolidation_networks[i].apply(
-                        {
-                            "params": train_state.network_state.consolidation_params_tree[
-                                f"network_{i}"
-                            ],
-                            "batch_stats": train_state.network_state.batch_stats,
-                        },
-                        transitions.next_obs[-1],
-                        task_params_target,
-                        train=False,
-                    )[2]
-                )
+            # last_sf_all = []
+            # last_sf_all.append(last_sf)
+            # for i in range(1, config["NUM_BEAKERS"]):
+            #     last_sf_all.append(
+            #         train_state.network_state.consolidation_networks[i].apply(
+            #             {
+            #                 "params": train_state.network_state.consolidation_params_tree[
+            #                     f"network_{i}"
+            #                 ],
+            #                 "batch_stats": train_state.network_state.batch_stats,
+            #             },
+            #             transitions.next_obs[-1],
+            #             task_params_target,
+            #             train=False,
+            #         )[2]
+            #     )
+            #
+            # # stack the sf from all beakers
+            # last_sf_all = jnp.stack(
+            #     last_sf_all, axis=1
+            # )  # (batch_size, num_beakers, num_actions, sf_dim)
 
-            # stack the sf from all beakers
-            last_sf_all = jnp.stack(
-                last_sf_all, axis=1
-            )  # (batch_size, num_beakers, num_actions, sf_dim)
+            # Convert list of dicts into a batched PyTree
+            params_beakers_stacked = jax.tree_util.tree_map(lambda *x: jnp.stack(x), *params_beakers)
+
+            num_beakers = config["NUM_BEAKERS"] - 1  # because beaker 0 is excluded
+
+            # Tile obs/task for each beaker
+            obs_tiled = jnp.broadcast_to(transitions.next_obs[-1], (num_beakers, *transitions.next_obs[-1].shape))  # [num_beakers, batch, ...]
+            task_tiled = jnp.broadcast_to(task_params_target,
+                                          (num_beakers, *task_params_target.shape))  # [num_beakers, batch, task_dim]
+
+            # Vectorized application
+            last_sf_beakers = jax.vmap(apply_single_beaker, in_axes=(0, 0, 0, None))(
+                params_beakers_stacked, obs_tiled, task_tiled
+            )
+
+            last_sf_all = jnp.concatenate([last_sf[None], last_sf_beakers], axis=1)
+            print("last_sf_all.shape", last_sf_all.shape)
 
             """
             Make a mask to mask out the beakers in the consolidation system which has timescales less than the current time
@@ -688,7 +732,7 @@ def make_train(config):
                         )  # (batch_size*2, num_actions)
 
                         params_beakers = [
-                            train_state.consolidation_params_tree[f"network_{i}"]
+                            params_consolidation[f"network_{i}"]
                             for i in range(1, config["NUM_BEAKERS"])
                         ]
 
@@ -698,16 +742,19 @@ def make_train(config):
                         num_beakers = config["NUM_BEAKERS"] - 1  # because beaker 0 is excluded
 
                         # Tile obs/task for each beaker
-                        obs_tiled = jnp.broadcast_to(obs, (num_beakers, *obs.shape))  # [num_beakers, batch, ...]
+                        obs_tiled = jnp.broadcast_to(obs, (num_beakers, *minibatch.obs.shape))  # [num_beakers, batch, ...]
                         task_tiled = jnp.broadcast_to(task,
-                                                      (num_beakers, *task.shape))  # [num_beakers, batch, task_dim]
+                                                      (num_beakers, *train_state.task_state.params["w"][
+                                : -config["TEST_ENVS"], :
+                            ].shape))  # [num_beakers, batch, task_dim]
 
                         # Vectorized application
                         sf_beakers = jax.vmap(apply_single_beaker, in_axes=(0, 0, 0, None))(
-                            params_beakers_stacked, obs_tiled, task_tiled, train_state.network_state.batch_stats
+                            params_beakers_stacked, obs_tiled, task_tiled
                         )
 
                         sf_all = jnp.concatenate([sf[None], sf_beakers], axis=1)
+                        print("sf_all.shape", sf_all.shape)
 
                         # # grab the sf from the consolidation networks
                         # sf_all = []
@@ -1263,9 +1310,9 @@ def single_run(config):
                 )
                 save_params(params, save_path)
 
-def apply_single_beaker(params, obs, task, batch_stats):
+def apply_single_beaker(params, obs, task):
     _, _, sf = network.apply(
-        {"params": params, "batch_stats": batch_stats},
+        {"params": params},
         obs,
         task,
         train=False,
