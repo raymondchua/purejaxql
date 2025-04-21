@@ -522,9 +522,12 @@ def make_train(config):
                 )  # [num_beakers, batch, task_dim]
 
                 # Vectorized application
-                sf_beakers = jax.vmap(apply_single_beaker, in_axes=(0, 0, 0, None))(
-                    params_beakers_stacked, obs_tiled, task_tiled
-                )
+                inputs = (params_beakers_stacked, obs_tiled, task_tiled)
+
+                # zip them into a single list of inputs for vmap
+                zipped_inputs = list(zip(*inputs))  # shape: (num_beakers - 1, 3)
+
+                sf_beakers = jax.vmap(apply_single_beaker)(zipped_inputs)
 
                 sf_all = jnp.concatenate([sf[None], sf_beakers], axis=1)
 
@@ -659,10 +662,12 @@ def make_train(config):
                 task_params_target, (num_beakers, *task_params_target.shape)
             )  # [num_beakers, batch, task_dim]
 
-            # Vectorized application
-            last_sf_beakers = jax.vmap(apply_single_beaker, in_axes=(0, 0, 0, None))(
-                params_beakers_stacked, obs_tiled, task_tiled
-            )
+            inputs = (params_beakers_stacked, obs_tiled, task_tiled)
+
+            # zip them into a single list of inputs for vmap
+            zipped_inputs = list(zip(*inputs))  # shape: (num_beakers - 1, 3)
+
+            last_sf_beakers = jax.vmap(apply_single_beaker)(zipped_inputs)
 
             last_sf_all = jnp.concatenate([last_sf[None], last_sf_beakers], axis=1)
             print("last_sf_all.shape", last_sf_all.shape)
@@ -774,9 +779,12 @@ def make_train(config):
                         )  # [num_beakers, batch, task_dim]
 
                         # Vectorized application
-                        sf_beakers = jax.vmap(
-                            apply_single_beaker, in_axes=(0, 0, 0, None)
-                        )(params_beakers_stacked, obs_tiled, task_tiled)
+                        inputs = (params_beakers_stacked, obs_tiled, task_tiled)
+
+                        # zip them into a single list of inputs for vmap
+                        zipped_inputs = list(zip(*inputs))  # shape: (num_beakers - 1, 3)
+
+                        sf_beakers = jax.vmap(apply_single_beaker)(zipped_inputs)
 
                         sf_all = jnp.concatenate([sf[None], sf_beakers], axis=1)
                         print("sf_all.shape", sf_all.shape)
@@ -1339,7 +1347,8 @@ def single_run(config):
                 save_params(params, save_path)
 
 
-def apply_single_beaker(params, obs, task):
+def apply_single_beaker(inputs):
+    params, obs, task = inputs
     _, _, sf = network.apply(
         {"params": params},
         obs,
@@ -1347,7 +1356,7 @@ def apply_single_beaker(params, obs, task):
         train=False,
         mutable=False,
     )
-    return sf  # shape: (batch, num_actions, sf_dim)
+    return sf
 
 
 def tune(default_config):
