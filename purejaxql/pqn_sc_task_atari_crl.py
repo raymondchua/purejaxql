@@ -142,7 +142,7 @@ def create_agent(rng, config, max_num_actions, observation_space_shape):
     )
 
     init_x = jnp.zeros((1, *observation_space_shape))
-    network_variables = network.init(rng, init_x, train=False)
+    network_variables = network.init(rng, init_x, task_id=0, train=False)
 
     tx = optax.chain(
         optax.clip_by_global_norm(config["MAX_GRAD_NORM"]),
@@ -300,7 +300,7 @@ def make_train(config):
                     },
                     last_obs,
                     train=False,
-                    task_id=task_id,
+                    task_id=unique_task_id,
                 )
 
                 # different eps for each env
@@ -360,7 +360,7 @@ def make_train(config):
                 },
                 transitions.next_obs[-1],
                 train=False,
-                task_id=task_id,
+                task_id=unique_task_id,
             )
             last_q = jnp.max(last_q, axis=-1)
 
