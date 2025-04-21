@@ -4,43 +4,56 @@ import flax.linen as nn
 from typing import Callable, Tuple
 
 
-class TaskModulatedLayer(nn.Module):
-    """
-    A layer that modulates its output with gains and biases based on the task ID. This is done in both
-    "Continual Reinforcement Learning with Complex Synapses" paper and "Overcoming catastrophic forgetting in neural
-    networks"
-    """
-
+class TaskModulatedDense(nn.Module):
+    num_tasks: int
     features: int
-    task_id: int
-    is_conv: bool = True
-    kernel_size: Tuple[int, int] = (4, 4)
-    strides: Tuple[int, int] = (2, 2)
+
+    @nn.compact
+    def __call__(self, x, task_id: int):
+        layer = nn.Dense(features=self.features, use_bias=False)
+        y = layer(x)
+
+        # Initialize all task-specific gains and biases at once
+        gain_shape = (self.num_tasks, self.features)
+        bias_shape = (self.num_tasks, self.features)
+        gains = self.param("gains", nn.initializers.ones, gain_shape)
+        biases = self.param("biases", nn.initializers.zeros, bias_shape)
+
+        # Use the task_id to index into the gains and biases
+        gain = gains[task_id]
+        bias = biases[task_id]
+
+        y = gain * y + bias
+        return y
+
+
+class TaskModulatedConv(nn.Module):
+    num_tasks: int
+    features: int
+    kernel_size: tuple[int, int]
+    strides: tuple[int, int]
     padding: str = "VALID"
     kernel_init: Callable = nn.initializers.he_normal()
 
-    def setup(self):
-        if self.is_conv:
-            self.core = nn.Conv(
-                self.features,
-                kernel_size=self.kernel_size,
-                padding=self.padding,
-                strides=self.strides,
-                kernel_init=self.kernel_init,
-                use_bias=False,
-                dtype=jnp.float32,
-            )
-        else:
-            self.core = nn.Dense(self.features, kernel_init=self.kernel_init, use_bias=False, dtype=jnp.float32)
-        self.task_bias = self.param(
-            f"bias_task{self.task_id}", nn.initializers.zeros, (self.features,), dtype=jnp.float32
+    @nn.compact
+    def __call__(self, x, task_id: int):
+        layer = nn.Conv(
+            features=self.features,
+            kernel_size=self.kernel_size,
+            use_bias=False,
+            strides=self.strides,
+            padding=self.padding,
+            kernel_init=self.kernel_init,
         )
-        self.task_gain = self.param(
-            f"gain_task{self.task_id}", nn.initializers.ones, (self.features,), dtype=jnp.float32
-        )
+        y = layer(x)
 
-    def __call__(self, x):
-        y = self.core(x)
-        y = y + self.task_bias
-        y = y * self.task_gain
+        gain_shape = (self.num_tasks, self.features, 1, 1)
+        bias_shape = (self.num_tasks, self.features, 1, 1)
+        gains = self.param("gains", nn.initializers.ones, gain_shape)
+        biases = self.param("biases", nn.initializers.zeros, bias_shape)
+
+        gain = gains[task_id]
+        bias = biases[task_id]
+
+        y = gain * y + bias
         return y
