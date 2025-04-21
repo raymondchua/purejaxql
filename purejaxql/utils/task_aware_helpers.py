@@ -58,8 +58,8 @@ class TaskModulatedConv(nn.Module):
         bias = jnp.take(biases, task_id, axis=0)  # Shape (features, 1, 1)
 
         # Reshape gain and bias to be compatible with (batch_size, height, width, features)
-        gain = jnp.expand_dims(gain, axis=(0, 1))  # Now shape (1, 1, 1, features)
-        bias = jnp.expand_dims(bias, axis=(0, 1))  # Now shape (1, 1, 1, features)
+        gain = jnp.reshape(gain, (1, 1, 1, self.features))
+        bias = jnp.reshape(bias, (1, 1, 1, self.features))
 
         print("gain shape: ", gain.shape)
 
