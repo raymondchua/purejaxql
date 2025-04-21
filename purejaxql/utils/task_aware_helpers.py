@@ -49,17 +49,17 @@ class TaskModulatedConv(nn.Module):
 
         print("y shape: ", y.shape)
 
-        gain_shape = (self.num_tasks, self.num_filters, 1, 1)
-        bias_shape = (self.num_tasks, self.num_filters, 1, 1)
+        gain_shape = (self.num_tasks, self.features, 1, 1)
+        bias_shape = (self.num_tasks, self.features, 1, 1)
         gains = self.param('gains', nn.initializers.ones, gain_shape)
         biases = self.param('biases', nn.initializers.zeros, bias_shape)
 
-        gain = jnp.take(gains, task_id, axis=0)  # Shape (num_filters, 1, 1)
-        bias = jnp.take(biases, task_id, axis=0)  # Shape (num_filters, 1, 1)
+        gain = jnp.take(gains, task_id, axis=0)  # Shape (features, 1, 1)
+        bias = jnp.take(biases, task_id, axis=0)  # Shape (features, 1, 1)
 
-        # Reshape gain and bias to be compatible with (batch_size, height, width, num_filters)
-        gain = jnp.expand_dims(gain, axis=(0, 1))  # Now shape (1, 1, 1, num_filters)
-        bias = jnp.expand_dims(bias, axis=(0, 1))  # Now shape (1, 1, 1, num_filters)
+        # Reshape gain and bias to be compatible with (batch_size, height, width, features)
+        gain = jnp.expand_dims(gain, axis=(0, 1))  # Now shape (1, 1, 1, features)
+        bias = jnp.expand_dims(bias, axis=(0, 1))  # Now shape (1, 1, 1, features)
 
         y = gain * y + bias
         return y
