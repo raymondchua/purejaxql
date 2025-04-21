@@ -50,7 +50,7 @@ class CNN(nn.Module):
             padding="VALID",
             kernel_init=nn.initializers.he_normal(),
             num_tasks=self.num_tasks,
-            name="conv_2",
+            name="conv_1",
         )(x, task_id)
         x = normalize(x)
         x = nn.relu(x)
