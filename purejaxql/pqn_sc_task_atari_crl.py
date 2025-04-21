@@ -604,7 +604,7 @@ def make_train(config):
 
             diffs = compare_param_trees(train_state.params, train_state.consolidation_params_tree["network_1"])
             if diffs:
-                print("🔍 Different parameters:")
+                print("Different parameters:")
                 for key in diffs:
                     print(f"  {key}")
             else:
