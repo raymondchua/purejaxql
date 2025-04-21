@@ -71,6 +71,7 @@ class CNN(nn.Module):
         x = nn.relu(x)
         return x
 
+
 class SFNetwork(nn.Module):
     action_dim: int
     norm_type: str = "layer_norm"
@@ -116,11 +117,11 @@ class SFNetwork(nn.Module):
 
         return q_1, basis_features, sf_action
 
+
 class SFAttentionNetwork(nn.Module):
     sf_dim: int
+    num_actions: int
     num_beakers: int
-    update_encoder_from_consolidation: bool = False
-    replace_zero_logits: bool = False
 
     @nn.compact
     def __call__(self, sf_all, task, mask):
@@ -128,7 +129,9 @@ class SFAttentionNetwork(nn.Module):
         print("sf_all.shape", sf_all.shape)
         print("batch_size", batch_size)
 
-        sf_all[:, 1:, :, :] = jax.lax.stop_gradient(sf_all[:, 1:, :, :])    # stop gradient for all beakers except the first one
+        sf_all[:, 1:, :, :] = jax.lax.stop_gradient(
+            sf_all[:, 1:, :, :]
+        )  # stop gradient for all beakers except the first one
 
         # apply mask so that the attention is only applied to the beakers that are available for recall
         mask_first_beaker = jnp.ones((batch_size, 1, self.num_actions, self.sf_dim))
@@ -136,7 +139,61 @@ class SFAttentionNetwork(nn.Module):
             [mask_first_beaker, mask], axis=1
         )  # (batch_size, num_beakers, num_actions, sf_dim)
 
+        sf_all_masked = sf_all * mask
 
+        # Normalize and tile task
+        task_normalized = normalize()(task)
+        task_normalized = jnp.tile(
+            task_normalized[:, None, :], (1, self.num_beakers, 1)
+        )
+
+        # Attention mechanism
+        query = nn.Dense(features=self.sf_dim, name="query", use_bias=False)(
+            task_normalized[:, 0, :]
+        )[:, None, :]
+
+        # Different dense layers for each beaker to compute keys and values
+        keys_per_beaker = []
+        values_per_beaker = []
+        for i in range(self.num_beakers):
+            keys_layer = nn.Dense(
+                features=self.sf_dim, name=f"keys_beaker_{i}", use_bias=False
+            )
+            values_layer = nn.Dense(
+                features=self.sf_dim, name=f"values_beaker_{i}", use_bias=False
+            )
+            keys_per_beaker.append(
+                keys_layer(sf_all_masked[:, i, :, :])
+            )  # Apply to each beaker's SF
+            values_per_beaker.append(
+                values_layer(sf_all_masked[:, i, :, :])
+            )  # Apply to each beaker's SF
+
+        # Stack the keys and values along the beaker dimension
+        keys = jnp.stack(
+            keys_per_beaker, axis=1
+        )  # (batch_size, num_beakers, num_actions, sf_dim)
+        values = jnp.stack(
+            values_per_beaker, axis=1
+        )  # (batch_size, num_beakers, num_actions, sf_dim)
+
+        attn_logits = jnp.einsum("bqf,bnaf->bqna", query, keys) / jnp.sqrt(self.sf_dim)
+
+        # replace zero logits with a large negative number so that they are ignored in the softmax
+        attn_logits = jnp.where(attn_logits == 0, -1e9, attn_logits)
+
+        attention_weights = jax.nn.softmax(attn_logits, axis=2)
+
+        attended_sf = jnp.einsum(
+            "bqna,bnaf->bqaf", attention_weights, sf_all_beakers_masked
+        )
+
+        attended_sf = attended_sf.squeeze(1).swapaxes(1, 2)
+
+        # Compute Q-values
+        q_1 = jnp.einsum("bi,bij->bj", task, attended_sf)
+
+        return q_1, attended_sf, attn_logits, attention_weights, keys, values
 
 
 @chex.dataclass(frozen=True)
@@ -160,11 +217,14 @@ class CustomTrainState(TrainState):
     capacity: Any = None
     g_flow: Any = None
     timescales: Any = None
+    consolidation_networks: Any = None
+
 
 @chex.dataclass
 class MultiTrainState:
     network_state: CustomTrainState
     task_state: TrainState
+    attention_network_state: TrainState
 
 
 def init_meta(rng, sf_dim, num_env) -> chex.Array:
@@ -176,7 +236,7 @@ def init_meta(rng, sf_dim, num_env) -> chex.Array:
 
 
 def create_agent(rng, config, max_num_actions, observation_space_shape):
-    network = SFNetwork(
+    sf_network = SFNetwork(
         action_dim=max_num_actions,
         norm_type=config["NORM_TYPE"],
         norm_input=config.get("NORM_INPUT", False),
@@ -186,8 +246,26 @@ def create_agent(rng, config, max_num_actions, observation_space_shape):
 
     init_x = jnp.zeros((1, *observation_space_shape))
     init_task = jnp.zeros((1, config["SF_DIM"]))
-    network_variables = network.init(rng, init_x, init_task, train=False)
-    task_params = {"w": init_meta(rng, config["SF_DIM"], config["NUM_ENVS"] + config["TEST_ENVS"])}
+    network_variables = sf_network.init(rng, init_x, init_task, train=False)
+    task_params = {
+        "w": init_meta(rng, config["SF_DIM"], config["NUM_ENVS"] + config["TEST_ENVS"])
+    }
+
+    attention_network = SFAttentionNetwork(
+        sf_dim=config["SF_DIM"],
+        num_actions=max_num_actions,
+        num_beakers=config["NUM_BEAKERS"],
+    )
+
+    init_sf_all = jnp.zeros(
+        (1, config["NUM_BEAKERS"], max_num_actions, config["SF_DIM"])
+    )
+    init_mask = jnp.zeros(
+        (1, config["NUM_BEAKERS"] - 1, max_num_actions, config["SF_DIM"])
+    )
+    attention_network_variables = attention_network.init(
+        rng, init_sf_all, init_task, init_mask
+    )
 
     tx = optax.chain(
         optax.clip_by_global_norm(config["MAX_GRAD_NORM"]),
@@ -197,6 +275,11 @@ def create_agent(rng, config, max_num_actions, observation_space_shape):
     tx_task = optax.chain(
         optax.clip_by_global_norm(config["MAX_GRAD_NORM"]),
         optax.radam(learning_rate=config["LR_TASK"]),
+    )
+
+    tx_attention = optax.chain(
+        optax.clip_by_global_norm(config["MAX_GRAD_NORM"]),
+        optax.radam(learning_rate=config["LR"]),
     )
 
     # Initialize the consolidation parameters
@@ -225,6 +308,7 @@ def create_agent(rng, config, max_num_actions, observation_space_shape):
     print(f"Capacity: {capacity[:-1]}")
 
     consolidation_params_tree = {}
+    consolidation_networks = []
 
     for i in range(1, config["NUM_BEAKERS"]):
         network = SFNetwork(
@@ -239,9 +323,10 @@ def create_agent(rng, config, max_num_actions, observation_space_shape):
         init_task = jnp.zeros((1, config["SF_DIM"]))
         network_variables = network.init(rng, init_x, init_task, train=False)
         consolidation_params_tree[f"network_{i}"] = network_variables["params"]
+        consolidation_networks.append(network)
 
-    network_state = CustomTrainState.create(
-        apply_fn=network.apply,
+    sf_network_state = CustomTrainState.create(
+        apply_fn=sf_network.apply,
         params=network_variables["params"],
         batch_stats=network_variables["batch_stats"],
         tx=tx,
@@ -252,15 +337,26 @@ def create_agent(rng, config, max_num_actions, observation_space_shape):
     )
 
     task_state = TrainState.create(
-        apply_fn=network.apply,
+        apply_fn=sf_network.apply,
         params=task_params,
         tx=tx_task,
     )
 
-    return MultiTrainState(
-        network_state=network_state,
-        task_state=task_state
-    ), network
+    attention_network_state = TrainState.create(
+        apply_fn=attention_network.apply,
+        params=attention_network_variables["params"],
+        tx=tx_attention,
+    )
+
+    return (
+        MultiTrainState(
+            network_state=sf_network_state,
+            task_state=task_state,
+            attention_network_state=attention_network_state,
+        ),
+        sf_network,
+        attention_network,
+    )
 
 
 def make_train(config):
@@ -319,7 +415,7 @@ def make_train(config):
     # here reset must be out of vmap and jit
     init_obs, env_state = env.reset()
 
-    def train(rng, exposure, train_state, network, task_id):
+    def train(rng, exposure, train_state, sf_network, attention_network, task_id):
 
         original_seed = rng[0]
 
@@ -339,7 +435,9 @@ def make_train(config):
         lr = lr_scheduler if config.get("LR_LINEAR_DECAY", False) else config["LR"]
 
         rng, _rng = jax.random.split(rng)
-        train_state.network_state = train_state.network_state.replace(exploration_updates=0)
+        train_state.network_state = train_state.network_state.replace(
+            exploration_updates=0
+        )
 
         params_set_to_zero = unfreeze(
             jax.tree_util.tree_map(
@@ -356,13 +454,62 @@ def make_train(config):
             def _step_env(carry, _):
                 last_obs, env_state, rng = carry
                 rng, rng_a, rng_s = jax.random.split(rng, 3)
-                (q_vals, basis_features, sf) = network.apply(
+                (_, basis_features, sf) = sf_network.apply(
                     {
                         "params": train_state.network_state.params,
                         "batch_stats": train_state.network_state.batch_stats,
                     },
                     last_obs,
                     train_state.task_state.params["w"],
+                    train=False,
+                )
+
+                # grab the sf from the consolidation networks
+                sf_all = []
+                sf_all.append(sf)
+                for i in range(1, config["NUM_BEAKERS"]):
+                    sf_all.append(
+                        train_state.consolidation_networks[i].apply(
+                            {
+                                "params": train_state.network_state.consolidation_params_tree[
+                                    f"network_{i}"
+                                ],
+                                "batch_stats": train_state.network_state.batch_stats,
+                            },
+                            last_obs,
+                            train_state.task_state.params["w"],
+                            train=False,
+                        )[2]
+                    )
+
+                # stack the sf from all beakers
+                sf_all = jnp.stack(
+                    sf_all, axis=1
+                )  # (batch_size, num_beakers, num_actions, sf_dim)
+                print("sf_all.shape", sf_all.shape)
+
+                """
+                Make a mask to mask out the beakers in the consolidation system which has timescales less than the current time
+                step. 
+                """
+                mask = (
+                    jnp.asarray(train_state.timescales, dtype=np.uint32)
+                    < train_state.timesteps
+                )
+                mask = mask[
+                    :-1
+                ]  # remove the last column of the mask since the first beaker is always updated
+                mask = jnp.insert(mask, 0, 1)
+                mask = mask.astype(jnp.int32)
+
+                # attention network
+                q_vals, _, _, _, _, _ = attention_network.apply(
+                    {
+                        "params": train_state.attention_network_state.params,
+                    },
+                    sf_all,
+                    train_state.task_state.params["w"],
+                    mask,
                     train=False,
                 )
 
@@ -408,7 +555,9 @@ def make_train(config):
                 transitions = jax.tree_util.tree_map(
                     lambda x: x[:, : -config["TEST_ENVS"]], transitions
                 )
-                task_params_target = train_state.task_state.params["w"][: -config["TEST_ENVS"], :]
+                task_params_target = train_state.task_state.params["w"][
+                    : -config["TEST_ENVS"], :
+                ]
 
             train_state.network_state = train_state.network_state.replace(
                 timesteps=train_state.network_state.timesteps
@@ -416,10 +565,11 @@ def make_train(config):
             )  # update timesteps count
 
             train_state.network_state = train_state.network_state.replace(
-                total_returns=train_state.network_state.total_returns + transitions.reward.sum()
+                total_returns=train_state.network_state.total_returns
+                + transitions.reward.sum()
             )  # update total returns count
 
-            (last_q,_, _) = network.apply(
+            (_, _, last_sf) = sf_network.apply(
                 {
                     "params": train_state.network_state.params,
                     "batch_stats": train_state.network_state.batch_stats,
@@ -428,6 +578,55 @@ def make_train(config):
                 task_params_target,
                 train=False,
             )
+
+            # grab the sf from the consolidation networks
+            last_sf_all = []
+            last_sf_all.append(last_sf)
+            for i in range(1, config["NUM_BEAKERS"]):
+                last_sf_all.append(
+                    train_state.consolidation_networks[i].apply(
+                        {
+                            "params": train_state.network_state.consolidation_params_tree[
+                                f"network_{i}"
+                            ],
+                            "batch_stats": train_state.network_state.batch_stats,
+                        },
+                        transitions.next_obs[-1],
+                        task_params_target,
+                        train=False,
+                    )[2]
+                )
+
+            # stack the sf from all beakers
+            last_sf_all = jnp.stack(
+                last_sf_all, axis=1
+            )  # (batch_size, num_beakers, num_actions, sf_dim)
+
+            """
+            Make a mask to mask out the beakers in the consolidation system which has timescales less than the current time
+            step. 
+            """
+            mask = (
+                jnp.asarray(train_state.timescales, dtype=np.uint32)
+                < train_state.timesteps
+            )
+            mask = mask[
+                :-1
+            ]  # remove the last column of the mask since the first beaker is always updated
+            mask = jnp.insert(mask, 0, 1)
+            mask = mask.astype(jnp.int32)
+
+            # attention network
+            last_q, _, _, _, _, _ = attention_network.apply(
+                {
+                    "params": train_state.attention_network_state.params,
+                },
+                last_sf_all,
+                task_params_target,
+                mask,
+                train=False,
+            )
+
             last_q = jnp.max(last_q, axis=-1)
 
             def _compute_targets(last_q, q_vals, reward, done):
@@ -467,14 +666,58 @@ def make_train(config):
                     train_state, rng = carry
                     minibatch, target = minibatch_and_target
 
-                    def _loss_fn(params):
-                        (q_vals, basis_features, sf), updates = network.apply(
-                            {"params": params, "batch_stats": train_state.network_state.batch_stats},
+                    def _loss_fn(params, params_consolidation, params_attention, mask):
+                        (_, basis_features, sf), updates = network.apply(
+                            {
+                                "params": params,
+                                "batch_stats": train_state.network_state.batch_stats,
+                            },
                             minibatch.obs,
-                            train_state.task_state.params["w"][: -config["TEST_ENVS"], :],
+                            train_state.task_state.params["w"][
+                                : -config["TEST_ENVS"], :
+                            ],
                             train=True,
                             mutable=["batch_stats"],
                         )  # (batch_size*2, num_actions)
+
+                        # grab the sf from the consolidation networks
+                        sf_all = []
+                        sf_all.append(sf)
+                        for i in range(1, config["NUM_BEAKERS"]):
+                            sf_all.append(
+                                train_state.consolidation_networks[i].apply(
+                                    {
+                                        "params": params_consolidation[f"network_{i}"],
+                                        "batch_stats": train_state.network_state.batch_stats,
+                                    },
+                                    last_obs,
+                                    train_state.task_state.params["w"],
+                                    train=False,
+                                )[2]
+                            )
+
+                        # stack the sf from all beakers
+                        sf_all = jnp.stack(
+                            sf_all, axis=1
+                        )  # (batch_size, num_beakers, num_actions, sf_dim)
+
+                        # attention network
+                        (
+                            q_vals,
+                            attended_sf,
+                            attn_logits,
+                            attention_weights,
+                            keys,
+                            values,
+                        ) = attention_network.apply(
+                            {
+                                "params": params_attention,
+                            },
+                            sf_all,
+                            train_state.task_state.params["w"],
+                            mask,
+                            train=False,
+                        )
 
                         chosen_action_qvals = jnp.take_along_axis(
                             q_vals,
@@ -484,11 +727,21 @@ def make_train(config):
 
                         loss = 0.5 * jnp.square(chosen_action_qvals - target).mean()
 
-                        return loss, (updates, chosen_action_qvals, basis_features)
+                        return loss, (
+                            updates,
+                            chosen_action_qvals,
+                            basis_features,
+                            attn_logits,
+                            attention_weights,
+                            keys,
+                            values,
+                        )
 
                     def _reward_loss_fn(task_params, basis_features, reward):
-                        task_params_train = task_params["w"][:-config["TEST_ENVS"], : ]
-                        predicted_reward = jnp.einsum("ij,ij->i", basis_features, task_params_train)
+                        task_params_train = task_params["w"][: -config["TEST_ENVS"], :]
+                        predicted_reward = jnp.einsum(
+                            "ij,ij->i", basis_features, task_params_train
+                        )
                         loss = 0.5 * jnp.square(predicted_reward - reward).mean()
 
                         return loss
@@ -554,52 +807,88 @@ def make_train(config):
 
                             params_norm.append(current_param_norm)
 
-
                         return params, loss, params_norm
 
-                    (loss, (updates, qvals, basis_features)), grads = jax.value_and_grad(
-                        _loss_fn, has_aux=True
-                    )(train_state.network_state.params)
-                    train_state.network_state = train_state.network_state.apply_gradients(grads=grads)
-                    train_state.network_state = train_state.network_state.replace(
-                        grad_steps=train_state.network_state.grad_steps + 1,
-                        batch_stats=updates["batch_stats"],
-                    )
-
-                    # update task params using reward prediction loss
-                    old_task_params = train_state.task_state.params["w"]
-                    basis_features = jax.lax.stop_gradient(basis_features)
-                    reward_loss, grads_task = jax.value_and_grad(
-                        _reward_loss_fn
-                    )(train_state.task_state.params, basis_features, minibatch.reward)
-                    train_state.task_state = train_state.task_state.apply_gradients(grads=grads_task)
-                    new_task_params = train_state.task_state.params["w"]
-
-                    task_params_diff = jnp.linalg.norm(new_task_params - old_task_params, ord=2, axis=-1)
-
-                    # consolidation update
                     """
                     Make a mask to mask out the beakers in the consolidation system which has timescales less than the current time
                     step. 
                     """
                     mask = (
-                            jnp.asarray(train_state.timescales, dtype=np.uint32)
-                            < train_state.timesteps
+                        jnp.asarray(train_state.timescales, dtype=np.uint32)
+                        < train_state.timesteps
                     )
                     mask = mask[
-                           :-1
-                           ]  # remove the last column of the mask since the first beaker is always updated
+                        :-1
+                    ]  # remove the last column of the mask since the first beaker is always updated
                     mask = jnp.insert(mask, 0, 1)
                     mask = mask.astype(jnp.int32)
 
-                    # collect all the params
+                    (
+                        loss,
+                        (
+                            updates,
+                            qvals,
+                            basis_features,
+                            attn_logits,
+                            attention_weights,
+                            keys,
+                            values,
+                        ),
+                    ), grads = jax.value_and_grad(_loss_fn, has_aux=True)(
+                        train_state.network_state.params,
+                        train_state.network_state.consolidation_params_tree,
+                        train_state.attention_network_state.params,
+                        mask,
+                    )
+                    train_state.network_state = (
+                        train_state.network_state.apply_gradients(grads=grads)
+                    )
+
+                    train_state.attention_network_state = (
+                        train_state.attention_network_state.apply_gradients(grads=grads)
+                    )
+
+                    train_state.network_state = train_state.network_state.replace(
+                        grad_steps=train_state.network_state.grad_steps + 1,
+                        batch_stats=updates["batch_stats"],
+                    )
+
+                    train_state.attention_network_state = (
+                        train_state.attention_network_state.replace(
+                            grad_steps=train_state.attention_network_state.grad_steps
+                            + 1,
+                        )
+                    )
+
+                    # update task params using reward prediction loss
+                    old_task_params = train_state.task_state.params["w"]
+                    basis_features = jax.lax.stop_gradient(basis_features)
+                    reward_loss, grads_task = jax.value_and_grad(_reward_loss_fn)(
+                        train_state.task_state.params, basis_features, minibatch.reward
+                    )
+                    train_state.task_state = train_state.task_state.apply_gradients(
+                        grads=grads_task
+                    )
+                    new_task_params = train_state.task_state.params["w"]
+
+                    task_params_diff = jnp.linalg.norm(
+                        new_task_params - old_task_params, ord=2, axis=-1
+                    )
+
+                    # consolidation update
                     all_params = []
                     all_params.append(train_state.params)
 
                     for i in range(1, config["NUM_BEAKERS"]):
-                        all_params.append(train_state.consolidation_params_tree[f"network_{i}"])
+                        all_params.append(
+                            train_state.consolidation_params_tree[f"network_{i}"]
+                        )
 
-                    network_params, consolidation_loss, params_norm = _consolidation_update_fn(
+                    (
+                        network_params,
+                        consolidation_loss,
+                        params_norm,
+                    ) = _consolidation_update_fn(
                         params=all_params,
                         params_set_to_zero=params_set_to_zero,
                         g_flow=train_state.g_flow,
@@ -617,7 +906,19 @@ def make_train(config):
                         },
                     )
 
-                    return (train_state, rng), (loss, qvals, reward_loss, task_params_diff, consolidation_loss, params_norm)
+                    return (train_state, rng), (
+                        loss,
+                        qvals,
+                        reward_loss,
+                        task_params_diff,
+                        consolidation_loss,
+                        params_norm,
+                        attn_logits,
+                        attention_weights,
+                        keys,
+                        values,
+
+                    )
 
                 def preprocess_transition(x, rng):
                     x = x.reshape(
@@ -638,18 +939,53 @@ def make_train(config):
                 )
 
                 rng, _rng = jax.random.split(rng)
-                (train_state, rng), (loss, qvals, reward_loss, task_params_diff, consolidation_loss, params_norm) = jax.lax.scan(
+                (train_state, rng), (
+                    loss,
+                    qvals,
+                    reward_loss,
+                    task_params_diff,
+                    consolidation_loss,
+                    params_norm,
+                    attn_logits,
+                    attention_weights,
+                    keys,
+                    values,
+                ) = jax.lax.scan(
                     _learn_phase, (train_state, rng), (minibatches, targets)
                 )
 
-                return (train_state, rng), (loss, qvals, reward_loss, task_params_diff, consolidation_loss, params_norm)
+                return (train_state, rng), (
+                    loss,
+                    qvals,
+                    reward_loss,
+                    task_params_diff,
+                    consolidation_loss,
+                    params_norm,
+                    attn_logits,
+                    attention_weights,
+                    keys,
+                    values,
+                )
 
             rng, _rng = jax.random.split(rng)
-            (train_state, rng), (loss, qvals, reward_loss, task_params_diff, consolidation_loss, params_norm) = jax.lax.scan(
+            (train_state, rng), (
+                loss,
+                qvals,
+                reward_loss,
+                task_params_diff,
+                consolidation_loss,
+                params_norm,
+                attn_logits,
+                attention_weights,
+                keys,
+                values,
+            ) = jax.lax.scan(
                 _learn_epoch, (train_state, rng), None, config["NUM_EPOCHS"]
             )
 
-            train_state.network_state = train_state.network_state.replace(n_updates=train_state.network_state.n_updates + 1)
+            train_state.network_state = train_state.network_state.replace(
+                n_updates=train_state.network_state.n_updates + 1
+            )
             train_state.network_state = train_state.network_state.replace(
                 exploration_updates=train_state.network_state.exploration_updates + 1
             )
@@ -688,6 +1024,18 @@ def make_train(config):
             # add norm of each beaker params to metrics
             for idx, p in enumerate(params_norm):
                 metrics[f"params_norm_{idx}"] = jnp.mean(p)
+
+            # log per beaker metrics from the attention network
+            print("attn_logits.shape", attn_logits.shape)
+            print("attention_weights.shape", attention_weights.shape)
+            print("keys.shape", keys.shape)
+            print("values.shape", values.shape)
+
+            # for i in range(config["NUM_BEAKERS"]):
+                # metrics[f"attn_logits_{i}"] = attn_logits[:, i, :].mean()
+                # metrics[f"attention_weights_{i}"] = attention_weights[:, i, :].mean()
+                # metrics[f"keys_{i}"] = keys[:, i, :].mean()
+                # metrics[f"values_{i}"] = values[:, i, :].mean()
 
             metrics.update({k: v.mean() for k, v in infos.items()})
             if config.get("TEST_DURING_TRAINING", False):
@@ -755,7 +1103,11 @@ def make_train(config):
             _update_step, runner_state, None, config["NUM_UPDATES"]
         )
 
-        return {"runner_state": runner_state, "metrics": metrics, "train_state": runner_state[0]}
+        return {
+            "runner_state": runner_state,
+            "metrics": metrics,
+            "train_state": runner_state[0],
+        }
 
     return train
 
@@ -798,14 +1150,18 @@ def single_run(config):
     num_exposures = config["alg"].get("NUM_EXPOSURES", 1)
 
     # determine the max number of actions
-    max_num_actions = 18 # atari has at most 18 actions
+    max_num_actions = 18  # atari has at most 18 actions
     observation_space_shape = (4, 84, 84)
 
-    config["alg"]["TOTAL_TIMESTEPS_DECAY"] = config["alg"]["TOTAL_TIMESTEPS_DECAY"] * config["NUM_TASKS"]
+    config["alg"]["TOTAL_TIMESTEPS_DECAY"] = (
+        config["alg"]["TOTAL_TIMESTEPS_DECAY"] * config["NUM_TASKS"]
+    )
 
     rng = jax.random.PRNGKey(config["SEED"])
     rng, rng_agent = jax.random.split(rng)
-    agent_train_state, network = create_agent(rng_agent, config, max_num_actions, observation_space_shape)
+    agent_train_state, sf_network, attention_network = create_agent(
+        rng_agent, config, max_num_actions, observation_space_shape
+    )
 
     for cycle in range(num_exposures):
         print(f"\n=== Cycle {cycle + 1}/{num_exposures} ===")
@@ -818,7 +1174,14 @@ def single_run(config):
             else:
                 # outs = jax.jit(make_train(config))(rng, exposure)
                 outs = jax.jit(
-                    lambda rng: make_train(config)(rng, cycle, agent_train_state, network, task_id)
+                    lambda rng: make_train(config)(
+                        rng,
+                        cycle,
+                        agent_train_state,
+                        sf_network,
+                        attention_network,
+                        task_id,
+                    )
                 )(rng)
             print(f"Took {time.time()-start_time} seconds to complete.")
 
@@ -845,7 +1208,10 @@ def single_run(config):
                 os.makedirs(save_dir, exist_ok=True)
                 OmegaConf.save(
                     config,
-                    os.path.join(save_dir, f'{alg_name}_exposure{cycle}_task{idx}_seed{config["SEED"]}_config.yaml'),
+                    os.path.join(
+                        save_dir,
+                        f'{alg_name}_exposure{cycle}_task{idx}_seed{config["SEED"]}_config.yaml',
+                    ),
                 )
 
                 # assumes not vmpapped seeds
