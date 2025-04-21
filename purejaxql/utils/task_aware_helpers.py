@@ -11,7 +11,7 @@ class TaskModulatedDense(nn.Module):
 
     @nn.compact
     def __call__(self, x, task_id: int):
-        layer = nn.Dense(features=self.features, use_bias=False, name=self.name)
+        layer = nn.Dense(features=self.features, use_bias=False, name=self.name + "_dense")
         y = layer(x)
 
         # Initialize all task-specific gains and biases at once
@@ -46,7 +46,7 @@ class TaskModulatedConv(nn.Module):
             strides=self.strides,
             padding=self.padding,
             kernel_init=self.kernel_init,
-            name=self.name,
+            name=self.name + "_conv",
         )
         y = layer(x)
 
