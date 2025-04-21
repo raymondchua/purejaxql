@@ -24,6 +24,7 @@ import envpool
 from purejaxql.utils.atari_wrapper import JaxLogEnvPoolWrapper
 from purejaxql.utils.l2_normalize import l2_normalize
 from purejaxql.utils.consolidation_helpers import update_and_accumulate_tree
+from flax.core import freeze, unfreeze,FrozenDict
 
 
 class CNN(nn.Module):
