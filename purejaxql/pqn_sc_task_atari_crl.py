@@ -609,10 +609,8 @@ def make_train(config):
 
                 # print params names
                 # Flatten the param dict and print full names
-                flat_params = flatten_dict(train_state.params, sep='/')
-
-                for name_tuple, param in flat_params.items():
-                    name = '/'.join(name_tuple)
+                flat_params = flatten_dict(train_state.params, sep="/")  # 👈 use `sep="/"`
+                for name, param in flat_params.items():
                     print(f"{name}: {param.shape}")
 
             metrics.update({k: v.mean() for k, v in infos.items()})
