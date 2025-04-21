@@ -31,7 +31,6 @@ Params = FrozenDict
 
 
 class CNN(nn.Module):
-    name: str
     num_tasks: int
     norm_type: str = "layer_norm"
 
@@ -84,7 +83,6 @@ class CNN(nn.Module):
 
 
 class QNetwork(nn.Module):
-    name: str
     action_dim: int
     num_tasks: int
     norm_type: str = "layer_norm"
