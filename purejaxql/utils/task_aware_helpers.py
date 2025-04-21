@@ -5,20 +5,19 @@ from typing import Callable, Tuple
 
 
 class TaskModulatedDense(nn.Module):
-    name: str
     num_tasks: int
     features: int
 
     @nn.compact
     def __call__(self, x, task_id: int):
-        layer = nn.Dense(features=self.features, use_bias=False, name=self.name + "_dense")
+        layer = nn.Dense(features=self.features, use_bias=False)
         y = layer(x)
 
         # Initialize all task-specific gains and biases at once
         gain_shape = (self.num_tasks, self.features)
         bias_shape = (self.num_tasks, self.features)
-        gains = self.param(self.name + "_gains", nn.initializers.ones, gain_shape)
-        biases = self.param(self.name + "_biases", nn.initializers.zeros, bias_shape)
+        gains = self.param("gains", nn.initializers.ones, gain_shape)
+        biases = self.param("biases", nn.initializers.zeros, bias_shape)
 
         # Use the task_id to index into the gains and biases
         gain = gains[task_id]
@@ -29,7 +28,6 @@ class TaskModulatedDense(nn.Module):
 
 
 class TaskModulatedConv(nn.Module):
-    name: str
     num_tasks: int
     features: int
     kernel_size: tuple[int, int]
@@ -52,8 +50,8 @@ class TaskModulatedConv(nn.Module):
 
         gain_shape = (self.num_tasks, self.features, 1, 1)
         bias_shape = (self.num_tasks, self.features, 1, 1)
-        gains = self.param(self.name + "_gains", nn.initializers.ones, gain_shape)
-        biases = self.param(self.name + "_biases", nn.initializers.zeros, bias_shape)
+        gains = self.param("gains", nn.initializers.ones, gain_shape)
+        biases = self.param("biases", nn.initializers.zeros, bias_shape)
 
         gain = jnp.take(gains, task_id, axis=0)  # Shape (features, 1, 1)
         bias = jnp.take(biases, task_id, axis=0)  # Shape (features, 1, 1)
