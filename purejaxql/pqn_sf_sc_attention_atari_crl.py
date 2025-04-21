@@ -191,7 +191,7 @@ class SFAttentionNetwork(nn.Module):
         attention_weights = jax.nn.softmax(attn_logits, axis=2)
 
         attended_sf = jnp.einsum(
-            "bqna,bnaf->bqaf", attention_weights, sf_all_beakers_masked
+            "bqna,bnaf->bqaf", attention_weights, sf_all_masked
         )
 
         attended_sf = attended_sf.squeeze(1).swapaxes(1, 2)
