@@ -527,6 +527,12 @@ def make_train(config):
                 # zip them into a single list of inputs for vmap
                 zipped_inputs = list(zip(*inputs))  # shape: (num_beakers - 1, 3)
 
+                print("Tree structure:")
+                print(tree_structure(params_beakers_stacked))
+
+                print("Shapes of each leaf:")
+                tree_map(lambda x: print(x.shape), params_beakers_stacked)
+
                 sf_beakers = jax.vmap(apply_single_beaker)(zipped_inputs)
 
                 sf_all = jnp.concatenate([sf[None], sf_beakers], axis=1)
