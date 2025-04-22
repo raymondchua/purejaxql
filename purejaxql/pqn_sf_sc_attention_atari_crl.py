@@ -790,7 +790,9 @@ def make_train(config):
                                 "params": params_attention,
                             },
                             sf_all,
-                            train_state.task_state.params["w"],
+                            train_state.task_state.params["w"][
+                            : -config["TEST_ENVS"], :
+                            ],
                             mask_tiled,
                         )
 
