@@ -539,10 +539,10 @@ def make_train(config):
                 ]  # remove the last column of the mask since the first beaker is always updated
                 mask = jnp.insert(mask, 0, 1)
                 mask = mask.astype(jnp.int32)
-                mask_tiled = jnp.broadcast_to(
-                    mask, (sf_all.shape[0], *mask.shape)
-                )
+                mask = mask.reshape(1, -1, 1, 1)
 
+                # broadcast the mask to the shape of (batch_size, num_beakers-1, num_actions, sf_dim)
+                mask_tiled = jnp.broadcast_to(mask, (sf_all.shape[0], mask.shape[1], sf_all.shape[2], sf_all.shape[3]))
 
                 # attention network
                 q_vals, _, _, _, _, _ = attention_network.apply(
@@ -679,9 +679,8 @@ def make_train(config):
             ]  # remove the last column of the mask since the first beaker is always updated
             mask = jnp.insert(mask, 0, 1)
             mask = mask.astype(jnp.int32)
-            mask_tiled = jnp.broadcast_to(
-                mask, (last_sf_all.shape[0], *mask.shape)
-            )
+            mask = mask.reshape(1, -1, 1, 1)
+            mask_tiled = jnp.broadcast_to(mask, (last_sf_all.shape[0], mask.shape[1], last_sf_all.shape[2], last_sf_all.shape[3]))
 
             # attention network
             last_q, _, _, _, _, _ = attention_network.apply(
@@ -782,9 +781,9 @@ def make_train(config):
                         sf_all = jnp.concatenate([sf[None], sf_beakers], axis=0)
                         sf_all = jnp.transpose(sf_all, (1, 0, 2, 3))  # (batch_size, num_beakers, num_actions, sf_dim)
                         print("sf_all.shape", sf_all.shape)
-                        mask_tiled = jnp.broadcast_to(
-                            mask, (sf_all.shape[0], *mask.shape)
-                        )
+                        mask = mask.reshape(1, -1, 1, 1)
+                        mask_tiled = jnp.broadcast_to(mask, (
+                        sf_all.shape[0], mask.shape[1], sf_all.shape[2], sf_all.shape[3]))
 
                         # attention network
                         (
