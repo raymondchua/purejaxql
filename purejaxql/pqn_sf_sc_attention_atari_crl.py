@@ -522,7 +522,7 @@ def make_train(config):
                 )
 
                 sf_all = jnp.concatenate([sf[None], sf_beakers], axis=0)
-                sf_all = jnp.transpose(sf_all, (1, 0, 2, 3))  # (batch_size, num_beakers, num_actions, sf_dim)
+                sf_all = jnp.transpose(sf_all, (1, 0, 3, 2))  # (batch_size, num_beakers, num_actions, sf_dim)
 
                 print("sf_all.shape", sf_all.shape)
 
@@ -663,7 +663,7 @@ def make_train(config):
             )
 
             last_sf_all = jnp.concatenate([last_sf[None], last_sf_beakers], axis=0)
-            last_sf_all = jnp.transpose(last_sf_all, (1, 0, 2, 3))  # (batch_size, num_beakers, num_actions, sf_dim)
+            last_sf_all = jnp.transpose(last_sf_all, (1, 0, 3, 2))  # (batch_size, num_beakers, num_actions, sf_dim)
             print("last_sf_all.shape", last_sf_all.shape)
 
             """
@@ -779,7 +779,7 @@ def make_train(config):
                         )
 
                         sf_all = jnp.concatenate([sf[None], sf_beakers], axis=0)
-                        sf_all = jnp.transpose(sf_all, (1, 0, 2, 3))  # (batch_size, num_beakers, num_actions, sf_dim)
+                        sf_all = jnp.transpose(sf_all, (1, 0, 3, 2))  # (batch_size, num_beakers, num_actions, sf_dim)
                         print("sf_all.shape", sf_all.shape)
                         mask = mask.reshape(1, -1, 1, 1)
                         mask_tiled = jnp.broadcast_to(mask, (
