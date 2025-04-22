@@ -721,22 +721,6 @@ def make_train(config):
                     train_state, rng = carry
                     minibatch, target = minibatch_and_target
 
-                    """
-                    Make a mask to mask out the beakers in the consolidation system which has timescales less than the current time
-                    step. 
-                    """
-                    mask = (
-                            jnp.asarray(train_state.network_state.timescales, dtype=np.uint32)
-                            < train_state.network_state.timesteps
-                    )
-                    mask = mask[
-                           :-1
-                           ]  # remove the last column of the mask since the first beaker is always updated
-                    mask = jnp.insert(mask, 0, 1)
-                    mask = mask.astype(jnp.int32)
-
-                    print("mask.shape", mask.shape)
-
                     def _loss_fn(params, params_consolidation, params_attention):
                         (_, basis_features, sf), updates = sf_network.apply(
                             {
@@ -900,6 +884,22 @@ def make_train(config):
                             params_norm.append(current_param_norm)
 
                         return params, loss, params_norm
+
+                    """
+                    Make a mask to mask out the beakers in the consolidation system which has timescales less than the current time
+                    step. 
+                    """
+                    mask = (
+                            jnp.asarray(train_state.network_state.timescales, dtype=np.uint32)
+                            < train_state.network_state.timesteps
+                    )
+                    mask = mask[
+                           :-1
+                           ]  # remove the last column of the mask since the first beaker is always updated
+                    mask = jnp.insert(mask, 0, 1)
+                    mask = mask.astype(jnp.int32)
+
+                    print("mask.shape", mask.shape)
 
                     (
                         loss,
