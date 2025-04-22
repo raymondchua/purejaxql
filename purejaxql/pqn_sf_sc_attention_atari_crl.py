@@ -920,14 +920,17 @@ def make_train(config):
                         mask,
                     )
 
-                    print("len of grads: ", len(grads))
+                    for k, v in grads:
+                        print("keys: ", k)
 
-                    grads_network, grads_consolidation, grads_attention, _, _ = grads
-
-                    print("grads: ", grads)
-                    print("grads_network: ", grads_network)
-                    print("grads_attention: ", grads_attention)
-                    print("grads_consolidation: ", grads_consolidation)
+                    # print("len of grads: ", len(grads))
+                    #
+                    # grads_network, grads_consolidation, grads_attention, _, _ = grads
+                    #
+                    # print("grads: ", grads)
+                    # print("grads_network: ", grads_network)
+                    # print("grads_attention: ", grads_attention)
+                    # print("grads_consolidation: ", grads_consolidation)
 
                     # train_state.network_state = (
                     #     train_state.network_state.apply_gradients(grads=grads_network)
