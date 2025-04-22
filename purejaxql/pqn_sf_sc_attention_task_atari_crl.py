@@ -331,6 +331,7 @@ def create_agent(rng, config, max_num_actions, observation_space_shape):
             norm_input=config.get("NORM_INPUT", False),
             sf_dim=config["SF_DIM"],
             feature_dim=config["FEATURE_DIM"],
+            num_tasks=config["NUM_TASKS"],
         )
 
         init_x = jnp.zeros((1, *observation_space_shape))
