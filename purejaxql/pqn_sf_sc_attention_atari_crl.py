@@ -136,6 +136,8 @@ class SFAttentionNetwork(nn.Module):
         )  # shape (batch, num_beakers-1, ...)
         sf_all = jnp.concatenate([sf_first, sf_rest], axis=1)
 
+        print("mask input shape: ", mask.shape)
+
         # apply mask so that the attention is only applied to the beakers that are available for recall
         mask_first_beaker = jnp.ones((batch_size, 1, self.num_actions, self.sf_dim))
         mask = jnp.concatenate(
