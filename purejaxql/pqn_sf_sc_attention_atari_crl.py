@@ -937,7 +937,7 @@ def make_train(config):
                         mask,
                     )
 
-                    print("grads: ", grads)
+                    # print("grads: ", grads)
                     #
                     # grads_network, grads_consolidation, grads_attention, _, _ = grads
                     #
@@ -956,10 +956,10 @@ def make_train(config):
 
                     train_state = train_state.replace(
                         network_state=train_state.network_state.apply_gradients(
-                            grads=grads_network
+                            grads=grads["sf"]
                         ),
                         attention_network_state=train_state.attention_network_state.apply_gradients(
-                            grads=grads_attention
+                            grads=grads["attention"]
                         ),
                     )
 
