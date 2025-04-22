@@ -481,30 +481,6 @@ def make_train(config):
                     train=False,
                 )
 
-                # # grab the sf from the consolidation networks
-                # sf_all = []
-                # sf_all.append(sf)
-                # for i in range(1, config["NUM_BEAKERS"]):
-                #     sf_all.append(
-                #         train_state.network_state.consolidation_networks[i].apply(
-                #             {
-                #                 "params": train_state.network_state.consolidation_params_tree[
-                #                     f"network_{i}"
-                #                 ],
-                #                 "batch_stats": train_state.network_state.batch_stats,
-                #             },
-                #             last_obs,
-                #             train_state.task_state.params["w"],
-                #             train=False,
-                #         )[2]
-                #     )
-                #
-                # # stack the sf from all beakers
-                # sf_all = jnp.stack(
-                #     sf_all, axis=1
-                # )  # (batch_size, num_beakers, num_actions, sf_dim)
-                # print("sf_all.shape", sf_all.shape)
-
                 params_beakers = [
                     train_state.network_state.consolidation_params_tree[f"network_{i}"]
                     for i in range(1, config["NUM_BEAKERS"])
@@ -563,6 +539,10 @@ def make_train(config):
                 ]  # remove the last column of the mask since the first beaker is always updated
                 mask = jnp.insert(mask, 0, 1)
                 mask = mask.astype(jnp.int32)
+                mask_tiled = jnp.broadcast_to(
+                    mask, (sf_all.shape[0], *mask.shape)
+                )
+
 
                 # attention network
                 q_vals, _, _, _, _, _ = attention_network.apply(
@@ -571,7 +551,7 @@ def make_train(config):
                     },
                     sf_all,
                     train_state.task_state.params["w"],
-                    mask,
+                    mask_tiled,
                 )
 
                 # different eps for each env
@@ -699,6 +679,9 @@ def make_train(config):
             ]  # remove the last column of the mask since the first beaker is always updated
             mask = jnp.insert(mask, 0, 1)
             mask = mask.astype(jnp.int32)
+            mask_tiled = jnp.broadcast_to(
+                mask, (last_sf_all.shape[0], *mask.shape)
+            )
 
             # attention network
             last_q, _, _, _, _, _ = attention_network.apply(
@@ -707,7 +690,7 @@ def make_train(config):
                 },
                 last_sf_all,
                 task_params_target,
-                mask,
+                mask_tiled,
             )
 
             last_q = jnp.max(last_q, axis=-1)
@@ -799,31 +782,9 @@ def make_train(config):
                         sf_all = jnp.concatenate([sf[None], sf_beakers], axis=0)
                         sf_all = jnp.transpose(sf_all, (1, 0, 2, 3))  # (batch_size, num_beakers, num_actions, sf_dim)
                         print("sf_all.shape", sf_all.shape)
-
-                        # # grab the sf from the consolidation networks
-                        # sf_all = []
-                        # sf_all.append(sf)
-                        # for i in range(1, config["NUM_BEAKERS"]):
-                        #     sf_all.append(
-                        #         jax.lax.stop_gradient(
-                        #             train_state.consolidation_networks[i].apply(
-                        #                 {
-                        #                     "params": params_consolidation[
-                        #                         f"network_{i}"
-                        #                     ],
-                        #                     "batch_stats": train_state.network_state.batch_stats,
-                        #                 },
-                        #                 minibatch.obs,
-                        #                 train_state.task_state.params["w"],
-                        #                 train=False,
-                        #             )[2]
-                        #         )
-                        #     )
-                        #
-                        # # stack the sf from all beakers
-                        # sf_all = jnp.stack(
-                        #     sf_all, axis=1
-                        # )  # (batch_size, num_beakers, num_actions, sf_dim)
+                        mask_tiled = jnp.broadcast_to(
+                            mask, (sf_all.shape[0], *mask.shape)
+                        )
 
                         # attention network
                         (
@@ -839,7 +800,7 @@ def make_train(config):
                             },
                             sf_all,
                             train_state.task_state.params["w"],
-                            mask,
+                            mask_tiled,
                         )
 
                         chosen_action_qvals = jnp.take_along_axis(
