@@ -452,6 +452,16 @@ def make_train(config):
             )
         )
 
+        def apply_single_beaker(params, obs, task):
+            _, _, sf = sf_network.apply(
+                {"params": params},
+                obs,
+                task,
+                train=False,
+                mutable=False,
+            )
+            return sf  # shape: (batch, num_actions, sf_dim)
+
         # TRAINING LOOP
         def _update_step(runner_state, unused):
 
@@ -1345,17 +1355,6 @@ def single_run(config):
                     f'{alg_name}_exposure{cycle}_task{idx}_seed{config["SEED"]}.safetensors',
                 )
                 save_params(params, save_path)
-
-
-def apply_single_beaker(params, obs, task):
-    _, _, sf = network.apply(
-        {"params": params},
-        obs,
-        task,
-        train=False,
-        mutable=False,
-    )
-    return sf  # shape: (batch, num_actions, sf_dim)
 
 
 def tune(default_config):
