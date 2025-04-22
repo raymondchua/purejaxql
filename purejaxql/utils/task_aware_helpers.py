@@ -23,6 +23,10 @@ class TaskModulatedDense(nn.Module):
         gain = gains[task_id]
         bias = biases[task_id]
 
+        print("name:", self.name)
+        print("gain norm:", jnp.linalg.norm(gain))
+        print("bias norm:", jnp.linalg.norm(bias))
+
         y = gain * y + bias
         return y
 
@@ -58,6 +62,10 @@ class TaskModulatedConv(nn.Module):
         # Reshape gain and bias to be compatible with (batch_size, height, width, features)
         gain = jnp.reshape(gain, (1, 1, 1, self.features))
         bias = jnp.reshape(bias, (1, 1, 1, self.features))
+
+        print("name:", self.name)
+        print("gain norm:", jnp.linalg.norm(gain))
+        print("bias norm:", jnp.linalg.norm(bias))
 
         y = gain * y + bias
         return y
