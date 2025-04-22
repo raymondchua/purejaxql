@@ -920,7 +920,7 @@ def make_train(config):
                         mask,
                     )
 
-                    for k, v in grads:
+                    for k, v in grads.items():
                         print("keys: ", k)
 
                     # print("len of grads: ", len(grads))
