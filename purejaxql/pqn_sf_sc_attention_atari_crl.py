@@ -512,12 +512,10 @@ def make_train(config):
                     last_obs, (num_beakers, *last_obs.shape)
                 )  # [num_beakers, batch, ...]
                 task_tiled = jnp.broadcast_to(
-                    train_state.task_state.params["w"][: -config["TEST_ENVS"], :],
+                    train_state.task_state.params["w"],
                     (
                         num_beakers,
-                        *train_state.task_state.params["w"][
-                            : -config["TEST_ENVS"], :
-                        ].shape,
+                        *train_state.task_state.params["w"].shape,
                     ),
                 )  # [num_beakers, batch, task_dim]
 
@@ -534,7 +532,7 @@ def make_train(config):
                 jax.tree_util.tree_map(lambda x: print(x.shape), params_beakers_stacked)
 
                 print("obs shape:", last_obs.shape)
-                print("task shape:", train_state.task_state.params["w"][: -config["TEST_ENVS"], :].shape)
+                print("task shape:", train_state.task_state.params["w"].shape)
                 print("obs_tiled shape:", obs_tiled.shape)
                 print("task_tiled shape:", task_tiled.shape)
 
