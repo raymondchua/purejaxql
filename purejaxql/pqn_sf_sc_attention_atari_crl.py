@@ -754,7 +754,9 @@ def make_train(config):
                             minibatch.obs, (num_beakers, *minibatch.obs.shape)
                         )  # [num_beakers, batch, ...]
                         task_tiled = jnp.broadcast_to(
-                            task,
+                            train_state.task_state.params["w"][
+                            : -config["TEST_ENVS"], :
+                            ],
                             (
                                 num_beakers,
                                 *train_state.task_state.params["w"][
