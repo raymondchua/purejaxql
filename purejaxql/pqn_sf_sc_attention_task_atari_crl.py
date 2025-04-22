@@ -823,7 +823,7 @@ def make_train(config):
                         # First beaker
                         scale_first = g_flow[0] / capacity[0]
                         params[0], loss = update_and_accumulate_tree(
-                            params[0], params[1], scale_first, loss
+                            params[0], params[1], scale_first, loss, config["MAX_GRAD_NORM"]
                         )
 
                         # Last beaker
@@ -831,10 +831,10 @@ def make_train(config):
                         scale_second_last = g_flow[-2] / capacity[-1]
 
                         params[-1], loss = update_and_accumulate_tree(
-                            params[-1], params_set_to_zero, scale_last, loss
+                            params[-1], params_set_to_zero, scale_last, loss, config["MAX_GRAD_NORM"]
                         )
                         params[-1], loss = update_and_accumulate_tree(
-                            params[-1], params[-2], scale_second_last, loss
+                            params[-1], params[-2], scale_second_last, loss, config["MAX_GRAD_NORM"]
                         )
 
                         # Middle beakers: 1 to num_beakers - 2
@@ -844,13 +844,13 @@ def make_train(config):
 
                             # Consolidate from previous beaker
                             params[i], loss = update_and_accumulate_tree(
-                                params[i], params[i - 1], scale_prev, loss
+                                params[i], params[i - 1], scale_prev, loss, config["MAX_GRAD_NORM"]
                             )
 
                             # Recall from next beaker, conditionally
                             def do_recall(p, l):
                                 return update_and_accumulate_tree(
-                                    p, params[i + 1], scale_next, l
+                                    p, params[i + 1], scale_next, l, config["MAX_GRAD_NORM"]
                                 )
 
                             def no_recall(p, l):
