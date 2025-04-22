@@ -532,6 +532,9 @@ def make_train(config):
                     #     },
                     # )
 
+                    consolidation_loss = 0.0
+                    params_norm = [0.0] * config["NUM_BEAKERS"]
+
                     return (train_state, rng), (loss, qvals, consolidation_loss, params_norm)
 
                 def preprocess_transition(x, rng):
