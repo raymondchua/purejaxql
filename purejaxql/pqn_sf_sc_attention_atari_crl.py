@@ -722,7 +722,7 @@ def make_train(config):
                     minibatch, target = minibatch_and_target
 
                     def _loss_fn(params, params_consolidation, params_attention, mask):
-                        (_, basis_features, sf), updates = network.apply(
+                        (_, basis_features, sf), updates = sf_network.apply(
                             {
                                 "params": params,
                                 "batch_stats": train_state.network_state.batch_stats,
