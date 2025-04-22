@@ -146,6 +146,8 @@ class SFAttentionNetwork(nn.Module):
 
         print("mask in attn net.shape", mask.shape)
 
+        print("mask: ", mask[0, :, 0, 0])
+
         sf_all_masked = sf_all * mask
 
         # Normalize and tile task
