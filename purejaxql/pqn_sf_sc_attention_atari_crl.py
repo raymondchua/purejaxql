@@ -721,10 +721,10 @@ def make_train(config):
                     train_state, rng = carry
                     minibatch, target = minibatch_and_target
 
-                    def _loss_fn(params, params_consolidation, params_attention, mask):
+                    def _loss_fn(params, params_consolidation, mask):
                         (_, basis_features, sf), updates = sf_network.apply(
                             {
-                                "params": params,
+                                "params": params["sf"],
                                 "batch_stats": train_state.network_state.batch_stats,
                             },
                             minibatch.obs,
@@ -787,7 +787,7 @@ def make_train(config):
                             values,
                         ) = attention_network.apply(
                             {
-                                "params": params_attention,
+                                "params": params["attention"],
                             },
                             sf_all,
                             train_state.task_state.params["w"][
@@ -913,6 +913,13 @@ def make_train(config):
                     for k,v in train_state.attention_network_state.params.items():
                         print("attention_network_state.params: ", k)
 
+                    # merge train_state.network_state.params and train_state.attention_network_state.params
+                    # into a single params tree
+                    combined_params = {
+                        "sf": train_state.network_state.params,
+                        "attention": train_state.attention_network_state.params,
+                    }
+
                     (
                         loss,
                         (
@@ -925,13 +932,12 @@ def make_train(config):
                             values,
                         ),
                     ), grads = jax.value_and_grad(_loss_fn, has_aux=True)(
-                        train_state.network_state.params,
+                        combined_params,
                         train_state.network_state.consolidation_params_tree,
-                        train_state.attention_network_state.params,
                         mask,
                     )
 
-                    # print("len of grads: ", len(grads))
+                    print("grads: ", grads)
                     #
                     # grads_network, grads_consolidation, grads_attention, _, _ = grads
                     #
