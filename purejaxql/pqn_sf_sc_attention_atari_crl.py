@@ -900,21 +900,7 @@ def make_train(config):
                     mask = jnp.insert(mask, 0, 1)
                     mask = mask.astype(jnp.int32)
 
-                    # print("train_state.network_state.params: ", train_state.network_state.params)
-                    # print("train_state.network_state.consolidation_params_tree: ", train_state.network_state.consolidation_params_tree)
-                    # print("train_state.attention_network_state.params: ", train_state.attention_network_state.params)
-
-                    for k,v in train_state.network_state.params.items():
-                        print("network_state.params: ", k)
-
-                    for k,v in train_state.network_state.consolidation_params_tree.items():
-                        print("consolidation_params_tree: ", k)
-
-                    for k,v in train_state.attention_network_state.params.items():
-                        print("attention_network_state.params: ", k)
-
-                    # merge train_state.network_state.params and train_state.attention_network_state.params
-                    # into a single params tree
+                    # combined params so that the gradients are computed for both networks
                     combined_params = {
                         "sf": train_state.network_state.params,
                         "attention": train_state.attention_network_state.params,
@@ -966,13 +952,6 @@ def make_train(config):
                     train_state.network_state = train_state.network_state.replace(
                         grad_steps=train_state.network_state.grad_steps + 1,
                         batch_stats=updates["batch_stats"],
-                    )
-
-                    train_state.attention_network_state = (
-                        train_state.attention_network_state.replace(
-                            grad_steps=train_state.attention_network_state.grad_steps
-                            + 1,
-                        )
                     )
 
                     # update task params using reward prediction loss
