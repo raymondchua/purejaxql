@@ -971,7 +971,7 @@ def make_train(config):
 
                     # consolidation update
                     all_params = []
-                    all_params.append(train_state.params)
+                    all_params.append(train_state.network_state.params)
 
                     for i in range(1, config["NUM_BEAKERS"]):
                         all_params.append(
