@@ -9,7 +9,7 @@ import os
 import jax
 import jax.numpy as jnp
 import numpy as np
-from typing import Any
+from typing import Any, List, Tuple
 
 import chex
 import optax
