@@ -649,6 +649,11 @@ def make_train(config):
             #     last_sf_all, axis=1
             # )  # (batch_size, num_beakers, num_actions, sf_dim)
 
+            params_beakers = [
+                train_state.network_state.params_consolidation[f"network_{i}"]
+                for i in range(1, config["NUM_BEAKERS"])
+            ]
+
             # Convert list of dicts into a batched PyTree
             params_beakers_stacked = jax.tree_util.tree_map(
                 lambda *x: jnp.stack(x), *params_beakers
