@@ -650,7 +650,7 @@ def make_train(config):
             # )  # (batch_size, num_beakers, num_actions, sf_dim)
 
             params_beakers = [
-                train_state.network_state.params_consolidation[f"network_{i}"]
+                train_state.network_state.consolidation_params_tree[f"network_{i}"]
                 for i in range(1, config["NUM_BEAKERS"])
             ]
 
