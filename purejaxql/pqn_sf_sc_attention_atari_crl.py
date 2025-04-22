@@ -735,6 +735,8 @@ def make_train(config):
                     mask = jnp.insert(mask, 0, 1)
                     mask = mask.astype(jnp.int32)
 
+                    print("mask.shape", mask.shape)
+
                     def _loss_fn(params, params_consolidation, params_attention):
                         (_, basis_features, sf), updates = sf_network.apply(
                             {
