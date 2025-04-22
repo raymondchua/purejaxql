@@ -751,7 +751,7 @@ def make_train(config):
 
                         # Tile obs/task for each beaker
                         obs_tiled = jnp.broadcast_to(
-                            obs, (num_beakers, *minibatch.obs.shape)
+                            minibatch.obs, (num_beakers, *minibatch.obs.shape)
                         )  # [num_beakers, batch, ...]
                         task_tiled = jnp.broadcast_to(
                             task,
