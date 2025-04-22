@@ -531,7 +531,7 @@ def make_train(config):
                 print(jax.tree_util.tree_structure(params_beakers_stacked))
 
                 print("Shapes of each leaf:")
-                tree_map(lambda x: print(x.shape), params_beakers_stacked)
+                jax.tree_util.tree_map(lambda x: print(x.shape), params_beakers_stacked)
 
                 sf_beakers = jax.vmap(apply_single_beaker)(zipped_inputs)
 
