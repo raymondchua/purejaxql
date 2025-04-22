@@ -129,27 +129,12 @@ class SFAttentionNetwork(nn.Module):
     @nn.compact
     def __call__(self, sf_all, task, mask):
         batch_size = sf_all.shape[0]
-        print("sf_all.shape", sf_all.shape)
-        print("batch_size", batch_size)
 
         sf_first = sf_all[:, :1, :, :]  # shape (batch, 1, ...)
         sf_rest = jax.lax.stop_gradient(
             sf_all[:, 1:, :, :]
         )  # shape (batch, num_beakers-1, ...)
         sf_all = jnp.concatenate([sf_first, sf_rest], axis=1)
-
-        print("mask input shape: ", mask.shape)
-
-        # apply mask so that the attention is only applied to the beakers that are available for recall
-        # mask_first_beaker = jnp.ones((batch_size, 1, self.num_actions, self.sf_dim))
-        # mask = jnp.concatenate(
-        #     [mask_first_beaker, mask], axis=1
-        # )  # (batch_size, num_beakers, num_actions, sf_dim)
-
-        print("mask in attn net.shape", mask.shape)
-
-        print("mask: ", mask[0, :, 0, 0])
-
         sf_all_masked = sf_all * mask
 
         # Normalize and tile task
@@ -188,11 +173,6 @@ class SFAttentionNetwork(nn.Module):
         values = jnp.stack(
             values_per_beaker, axis=1
         )  # (batch_size, num_beakers, num_actions, sf_dim)
-
-        print("task_normalized.shape", task_normalized.shape)
-        print("keys.shape", keys.shape)
-        print("values.shape", values.shape)
-        print("query.shape", query.shape)
 
         attn_logits = jnp.einsum("bqf,bnaf->bqna", query, keys) / jnp.sqrt(self.sf_dim)
 
@@ -513,26 +493,13 @@ def make_train(config):
                     ),
                 )  # [num_beakers, batch, task_dim]
 
-                # Vectorized application
-                print("Tree structure:")
-                print(jax.tree_util.tree_structure(params_beakers_stacked))
-
-                print("Shapes of each leaf:")
-                jax.tree_util.tree_map(lambda x: print(x.shape), params_beakers_stacked)
-
-                print("obs shape:", last_obs.shape)
-                print("task shape:", train_state.task_state.params["w"].shape)
-                print("obs_tiled shape:", obs_tiled.shape)
-                print("task_tiled shape:", task_tiled.shape)
-
+                # Vectorized application of getting sf for each beaker
                 sf_beakers = jax.vmap(apply_single_beaker, in_axes=(0, 0, 0, None))(
                     params_beakers_stacked, obs_tiled, task_tiled, train_state.network_state.batch_stats
                 )
 
                 sf_all = jnp.concatenate([sf[None], sf_beakers], axis=0)
                 sf_all = jnp.transpose(sf_all, (1, 0, 3, 2))  # (batch_size, num_beakers, num_actions, sf_dim)
-
-                print("sf_all.shape", sf_all.shape)
 
                 """
                 Make a mask to mask out the beakers in the consolidation system which has timescales less than the current time
@@ -654,7 +621,6 @@ def make_train(config):
 
             last_sf_all = jnp.concatenate([last_sf[None], last_sf_beakers], axis=0)
             last_sf_all = jnp.transpose(last_sf_all, (1, 0, 3, 2))  # (batch_size, num_beakers, num_actions, sf_dim)
-            print("last_sf_all.shape", last_sf_all.shape)
 
             """
             Make a mask to mask out the beakers in the consolidation system which has timescales less than the current time
@@ -772,7 +738,7 @@ def make_train(config):
 
                         sf_all = jnp.concatenate([sf[None], sf_beakers], axis=0)
                         sf_all = jnp.transpose(sf_all, (1, 0, 3, 2))  # (batch_size, num_beakers, num_actions, sf_dim)
-                        print("sf_all.shape", sf_all.shape)
+
                         mask = mask.reshape(1, -1, 1, 1)
                         mask_tiled = jnp.broadcast_to(mask, (
                         sf_all.shape[0], mask.shape[1], sf_all.shape[2], sf_all.shape[3]))
@@ -922,23 +888,6 @@ def make_train(config):
                         train_state.network_state.consolidation_params_tree,
                         mask,
                     )
-
-                    # print("grads: ", grads)
-                    #
-                    # grads_network, grads_consolidation, grads_attention, _, _ = grads
-                    #
-                    # print("grads: ", grads)
-                    # print("grads_network: ", grads_network)
-                    # print("grads_attention: ", grads_attention)
-                    # print("grads_consolidation: ", grads_consolidation)
-
-                    # train_state.network_state = (
-                    #     train_state.network_state.apply_gradients(grads=grads_network)
-                    # )
-                    #
-                    # train_state.attention_network_state = (
-                    #     train_state.attention_network_state.apply_gradients(grads=grads_attention)
-                    # )
 
                     train_state = train_state.replace(
                         network_state=train_state.network_state.apply_gradients(
@@ -1124,11 +1073,11 @@ def make_train(config):
             print("keys.shape", keys.shape)
             print("values.shape", values.shape)
 
-            # for i in range(config["NUM_BEAKERS"]):
-            # metrics[f"attn_logits_{i}"] = attn_logits[:, i, :].mean()
-            # metrics[f"attention_weights_{i}"] = attention_weights[:, i, :].mean()
-            # metrics[f"keys_{i}"] = keys[:, i, :].mean()
-            # metrics[f"values_{i}"] = values[:, i, :].mean()
+            for i in range(config["NUM_BEAKERS"]):
+                metrics[f"attn_logits_{i}"] = attn_logits[..., i, :].mean()
+                metrics[f"attention_weights_{i}"] = attention_weights[..., i, :].mean()
+                metrics[f"keys_{i}"] = keys[..., i, :, :].mean()
+                metrics[f"values_{i}"] = values[..., i, :, :].mean()
 
             metrics.update({k: v.mean() for k, v in infos.items()})
             if config.get("TEST_DURING_TRAINING", False):
@@ -1153,28 +1102,6 @@ def make_train(config):
 
                         if metrics["update_steps"] % 10 == 0:
                             print(f"{k}: {v}")
-                        #     if k == "env_step":
-                        #         print(f"{k}: {v}")
-                        #     if k == "update_steps":
-                        #         print(f"{k}: {v}")
-                        #     if k == "total_returns":
-                        #         print(f"{k}: {v}")
-                        #     if k == "reward_loss":
-                        #         print(f"{k}: {v}")
-                        #     if k == "returned_episode_returns":
-                        #         print(f"{k}: {v}")
-                        #     if k == "rewards":
-                        #         print(f"{k}: {v}")
-
-                        # print(f"{k}: {v}")
-                        # if k == "env_step":
-                        #     print(f"{k}: {v}")
-                        #
-                        # if k == "update_steps":
-                        #     print(f"{k}: {v}")
-                        #
-                        # if k == "eps":
-                        #     print(f"{k}: {v}")
 
                     wandb.log(metrics, step=metrics["update_steps"])
 
@@ -1279,17 +1206,6 @@ def single_run(config):
             print(f"Took {time.time()-start_time} seconds to complete.")
 
             agent_train_state = outs["train_state"]
-
-            # Debug print statements
-            # metrics = outs["metrics"]
-            # env_step = metrics["env_step"]
-            # update_steps = metrics["update_steps"]
-            # print(f"env_step: {env_step}")
-            # print(f"update_steps: {update_steps}")
-            #
-            # print("train_state timesteps:", train_state.network_state.timesteps)
-            # print("train_state n_updates:", train_state.network_state.n_updates)
-            # print("train_state grad_steps:", train_state.network_state.grad_steps)
 
             # save params
             if config.get("SAVE_PATH", None) is not None:
