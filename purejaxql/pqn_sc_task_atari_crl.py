@@ -596,6 +596,7 @@ def make_train(config):
                 "total_returns": train_state.total_returns,
                 "extrinsic rewards": transitions.reward.mean(),
                 "consolidation_loss": consolidation_loss.mean(),
+                "unique_task_id": unique_task_id,
             }
 
             # add norm of each beaker params to metrics
