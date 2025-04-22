@@ -272,7 +272,7 @@ def create_agent(rng, config, max_num_actions, observation_space_shape):
         (1, config["NUM_BEAKERS"], max_num_actions, config["SF_DIM"])
     )
     init_mask = jnp.zeros(
-        (1, config["NUM_BEAKERS"] - 1, max_num_actions, config["SF_DIM"])
+        (1, config["NUM_BEAKERS"], max_num_actions, config["SF_DIM"])
     )
     attention_network_variables = attention_network.init(
         rng, init_sf_all, init_task, init_mask
