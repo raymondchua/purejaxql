@@ -26,6 +26,8 @@ from purejaxql.utils.l2_normalize import l2_normalize
 from purejaxql.utils.consolidation_helpers import update_and_accumulate_tree
 from flax.core import freeze, unfreeze, FrozenDict
 
+Params = FrozenDict
+
 
 class CNN(nn.Module):
 
@@ -625,29 +627,6 @@ def make_train(config):
                 task_params_target,
                 train=False,
             )
-
-            # grab the sf from the consolidation networks
-            # last_sf_all = []
-            # last_sf_all.append(last_sf)
-            # for i in range(1, config["NUM_BEAKERS"]):
-            #     last_sf_all.append(
-            #         train_state.network_state.consolidation_networks[i].apply(
-            #             {
-            #                 "params": train_state.network_state.consolidation_params_tree[
-            #                     f"network_{i}"
-            #                 ],
-            #                 "batch_stats": train_state.network_state.batch_stats,
-            #             },
-            #             transitions.next_obs[-1],
-            #             task_params_target,
-            #             train=False,
-            #         )[2]
-            #     )
-            #
-            # # stack the sf from all beakers
-            # last_sf_all = jnp.stack(
-            #     last_sf_all, axis=1
-            # )  # (batch_size, num_beakers, num_actions, sf_dim)
 
             params_beakers = [
                 train_state.network_state.consolidation_params_tree[f"network_{i}"]
