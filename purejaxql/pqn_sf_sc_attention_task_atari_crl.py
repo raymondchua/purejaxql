@@ -31,7 +31,7 @@ Params = FrozenDict
 
 
 class CNN(nn.Module):
-
+    num_tasks: int
     norm_type: str = "layer_norm"
 
     @nn.compact
@@ -84,6 +84,7 @@ class CNN(nn.Module):
 
 class SFNetwork(nn.Module):
     action_dim: int
+    num_tasks: int
     norm_type: str = "layer_norm"
     norm_input: bool = False
     feature_dim: int = 128
@@ -254,6 +255,7 @@ def create_agent(rng, config, max_num_actions, observation_space_shape):
         norm_input=config.get("NORM_INPUT", False),
         sf_dim=config["SF_DIM"],
         feature_dim=config["FEATURE_DIM"],
+        num_tasks=config["NUM_TASKS"],
     )
 
     init_x = jnp.zeros((1, *observation_space_shape))
