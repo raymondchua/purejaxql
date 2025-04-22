@@ -555,7 +555,7 @@ def make_train(config):
                 step. 
                 """
                 mask = (
-                    jnp.asarray(train_state.timescales, dtype=np.uint32)
+                    jnp.asarray(train_state.network_state.timescales, dtype=np.uint32)
                     < train_state.timesteps
                 )
                 mask = mask[
@@ -692,7 +692,7 @@ def make_train(config):
             step. 
             """
             mask = (
-                jnp.asarray(train_state.timescales, dtype=np.uint32)
+                jnp.asarray(train_state.network_state.timescales, dtype=np.uint32)
                 < train_state.timesteps
             )
             mask = mask[
@@ -940,7 +940,7 @@ def make_train(config):
                     step. 
                     """
                     mask = (
-                        jnp.asarray(train_state.timescales, dtype=np.uint32)
+                        jnp.asarray(train_state.network_state.timescales, dtype=np.uint32)
                         < train_state.timesteps
                     )
                     mask = mask[
