@@ -918,6 +918,8 @@ def make_train(config):
                         mask,
                     )
 
+                    print("len of grads: ", len(grads))
+
                     grads_network, grads_consolidation, grads_attention = grads
 
                     # train_state.network_state = (
