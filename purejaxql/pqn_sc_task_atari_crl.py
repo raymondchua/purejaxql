@@ -631,13 +631,13 @@ def make_train(config):
                             print(f"{k}: {v}")
 
                             # print the norm of the params of each network
-                            network_params = train_state.params
-
-                            # traverse the params tree and print the norm of each param
-                            for k, v in flatten_dict(network_params).items():
-                                if isinstance(v, jnp.ndarray):
-                                    print(f"{k}: {v}")
-                                    print(f"norm of {k}: {jnp.linalg.norm(v)}")
+                            # network_params = train_state.params
+                            #
+                            # # traverse the params tree and print the norm of each param
+                            # for k, v in flatten_dict(network_params).items():
+                            #     if isinstance(v, jnp.ndarray):
+                            #         print(f"{k}: {v}")
+                            #         print(f"norm of {k}: {jnp.linalg.norm(v)}")
 
 
                             # if k == "env_step":
