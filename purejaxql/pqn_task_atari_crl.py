@@ -461,8 +461,8 @@ def make_train(config):
                         if isinstance(v, np.ndarray):
                             metrics[k] = v.item()
 
-                        # if metrics["update_steps"] % 1 == 0:
-                        #     print(f"{k}: {v}")
+                        if metrics["update_steps"] % 10 == 0:
+                            print(f"{k}: {v}")
 
                             # # traverse the params tree and print the norm of each param
                             # for k, v in flatten_dict(network_params).items():
