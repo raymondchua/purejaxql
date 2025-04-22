@@ -975,7 +975,7 @@ def make_train(config):
 
                     for i in range(1, config["NUM_BEAKERS"]):
                         all_params.append(
-                            train_state.consolidation_params_tree[f"network_{i}"]
+                            train_state.network_state.consolidation_params_tree[f"network_{i}"]
                         )
 
                     (
