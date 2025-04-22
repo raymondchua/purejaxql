@@ -900,7 +900,9 @@ def make_train(config):
                     mask = jnp.insert(mask, 0, 1)
                     mask = mask.astype(jnp.int32)
 
-                    print("mask.shape", mask.shape)
+                    print("train_state.network_state.params: ", train_state.network_state.params)
+                    print("train_state.network_state.consolidation_params_tree: ", train_state.network_state.consolidation_params_tree)
+                    print("train_state.attention_network_state.params: ", train_state.attention_network_state.params)
 
                     (
                         loss,
@@ -919,9 +921,6 @@ def make_train(config):
                         train_state.attention_network_state.params,
                         mask,
                     )
-
-                    for k, v in grads.items():
-                        print("keys: ", k)
 
                     # print("len of grads: ", len(grads))
                     #
