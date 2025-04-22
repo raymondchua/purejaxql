@@ -533,6 +533,11 @@ def make_train(config):
                 print("Shapes of each leaf:")
                 jax.tree_util.tree_map(lambda x: print(x.shape), params_beakers_stacked)
 
+                print("obs shape:", obs.shape)
+                print("task shape:", task.shape)
+                print("obs_tiled shape:", obs_tiled.shape)
+                print("task_tiled shape:", task_tiled.shape)
+
                 sf_beakers = jax.vmap(apply_single_beaker)(zipped_inputs)
 
                 sf_all = jnp.concatenate([sf[None], sf_beakers], axis=1)
