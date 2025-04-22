@@ -545,7 +545,8 @@ def make_train(config):
                     params_beakers_stacked, obs_tiled, task_tiled, train_state.network_state.batch_stats
                 )
 
-                sf_all = jnp.concatenate([sf[None], sf_beakers], axis=1)
+                sf_all = jnp.concatenate([sf[None], sf_beakers], axis=0)
+                sf_all = jnp.transpose(sf_all, (1, 0, 2, 3))  # (batch_size, num_beakers, num_actions, sf_dim)
 
                 print("sf_all.shape", sf_all.shape)
 
@@ -682,7 +683,8 @@ def make_train(config):
                 params_beakers_stacked, obs_tiled, task_tiled, train_state.network_state.batch_stats
             )
 
-            last_sf_all = jnp.concatenate([last_sf[None], last_sf_beakers], axis=1)
+            last_sf_all = jnp.concatenate([last_sf[None], last_sf_beakers], axis=0)
+            last_sf_all = jnp.transpose(last_sf_all, (1, 0, 2, 3))  # (batch_size, num_beakers, num_actions, sf_dim)
             print("last_sf_all.shape", last_sf_all.shape)
 
             """
@@ -796,7 +798,8 @@ def make_train(config):
                             params_beakers_stacked, obs_tiled, task_tiled, train_state.network_state.batch_stats
                         )
 
-                        sf_all = jnp.concatenate([sf[None], sf_beakers], axis=1)
+                        sf_all = jnp.concatenate([sf[None], sf_beakers], axis=0)
+                        sf_all = jnp.transpose(sf_all, (1, 0, 2, 3))  # (batch_size, num_beakers, num_actions, sf_dim)
                         print("sf_all.shape", sf_all.shape)
 
                         # # grab the sf from the consolidation networks
