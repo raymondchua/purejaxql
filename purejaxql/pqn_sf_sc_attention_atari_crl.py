@@ -533,8 +533,8 @@ def make_train(config):
                 print("Shapes of each leaf:")
                 jax.tree_util.tree_map(lambda x: print(x.shape), params_beakers_stacked)
 
-                print("obs shape:", obs.shape)
-                print("task shape:", task.shape)
+                print("obs shape:", last_obs.shape)
+                print("task shape:", train_state.task_state.params["w"][: -config["TEST_ENVS"], :].shape)
                 print("obs_tiled shape:", obs_tiled.shape)
                 print("task_tiled shape:", task_tiled.shape)
 
