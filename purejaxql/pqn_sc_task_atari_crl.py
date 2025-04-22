@@ -440,10 +440,10 @@ def make_train(config):
                         scale_second_last = g_flow[-2] / capacity[-1]
 
                         params[-1], loss = update_and_accumulate_tree(
-                            params[-1], params_set_to_zero, scale_last, loss, config["MAX_GRAD_NORM"]
+                            params[-1], params_set_to_zero, scale_last, loss, max_norm=1.0
                         )
                         params[-1], loss = update_and_accumulate_tree(
-                            params[-1], params[-2], scale_second_last, loss, config["MAX_GRAD_NORM"]
+                            params[-1], params[-2], scale_second_last, loss, max_norm=1.0
                         )
 
                         # Middle beakers: 1 to num_beakers - 2
@@ -453,13 +453,13 @@ def make_train(config):
 
                             # Consolidate from previous beaker
                             params[i], loss = update_and_accumulate_tree(
-                                params[i], params[i - 1], scale_prev, loss, config["MAX_GRAD_NORM"]
+                                params[i], params[i - 1], scale_prev, loss, max_norm=1.0
                             )
 
                             # Recall from next beaker, conditionally
                             def do_recall(p, l):
                                 return update_and_accumulate_tree(
-                                    p, params[i + 1], scale_next, l, config["MAX_GRAD_NORM"]
+                                    p, params[i + 1], scale_next, l, max_norm=1.0
                                 )
 
                             def no_recall(p, l):
@@ -514,23 +514,23 @@ def make_train(config):
                     for i in range(1, config["NUM_BEAKERS"]):
                         all_params.append(train_state.consolidation_params_tree[f"network_{i}"])
 
-                    network_params, consolidation_loss, params_norm = _consolidation_update_fn(
-                        params=all_params,
-                        params_set_to_zero=params_set_to_zero,
-                        g_flow=train_state.g_flow,
-                        capacity=train_state.capacity,
-                        mask=mask,
-                        num_beakers=config["NUM_BEAKERS"],
-                    )
-
-                    #replace train_state params with the new params
-                    train_state = train_state.replace(
-                        params=network_params[0],
-                        consolidation_params_tree={
-                            f"network_{i}": network_params[i]
-                            for i in range(1, config["NUM_BEAKERS"])
-                        },
-                    )
+                    # network_params, consolidation_loss, params_norm = _consolidation_update_fn(
+                    #     params=all_params,
+                    #     params_set_to_zero=params_set_to_zero,
+                    #     g_flow=train_state.g_flow,
+                    #     capacity=train_state.capacity,
+                    #     mask=mask,
+                    #     num_beakers=config["NUM_BEAKERS"],
+                    # )
+                    #
+                    # #replace train_state params with the new params
+                    # train_state = train_state.replace(
+                    #     params=network_params[0],
+                    #     consolidation_params_tree={
+                    #         f"network_{i}": network_params[i]
+                    #         for i in range(1, config["NUM_BEAKERS"])
+                    #     },
+                    # )
 
                     return (train_state, rng), (loss, qvals, consolidation_loss, params_norm)
 
@@ -624,7 +624,7 @@ def make_train(config):
                         if isinstance(v, np.ndarray):
                             metrics[k] = v.item()
 
-                        if metrics["update_steps"] % 10 == 0:
+                        if metrics["update_steps"] % 1 == 0:
                             print(f"{k}: {v}")
                             # if k == "env_step":
                             #     print(f"{k}: {v}")
