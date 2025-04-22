@@ -1094,8 +1094,8 @@ def make_train(config):
                         if isinstance(v, np.ndarray):
                             metrics[k] = v.item()
 
-                        if metrics["update_steps"] % 10 == 0:
-                            print(f"{k}: {v}")
+                        # if metrics["update_steps"] % 10 == 0:
+                        #     print(f"{k}: {v}")
 
                     wandb.log(metrics, step=metrics["update_steps"])
 
