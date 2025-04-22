@@ -721,7 +721,7 @@ def make_train(config):
                     train_state, rng = carry
                     minibatch, target = minibatch_and_target
 
-                    def _loss_fn(params, params_consolidation, params_attention):
+                    def _loss_fn(params, params_consolidation, params_attention, mask):
                         (_, basis_features, sf), updates = sf_network.apply(
                             {
                                 "params": params,
@@ -829,6 +829,7 @@ def make_train(config):
                         g_flow: chex.Array,
                         capacity: chex.Array,
                         num_beakers: int,
+                        mask: chex.Array,
                     ) -> Tuple[List[Params], float]:
                         loss = 0.0
 
@@ -916,6 +917,7 @@ def make_train(config):
                         train_state.network_state.params,
                         train_state.network_state.consolidation_params_tree,
                         train_state.attention_network_state.params,
+                        mask,
                     )
 
                     print("len of grads: ", len(grads))
@@ -985,6 +987,7 @@ def make_train(config):
                         g_flow=train_state.g_flow,
                         capacity=train_state.capacity,
                         num_beakers=config["NUM_BEAKERS"],
+                        mask=mask,
                     )
 
                     # replace train_state params with the new params
