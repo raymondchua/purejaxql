@@ -43,4 +43,4 @@ source /home/chuaraym/pqn_atari_env311/bin/activate
 cd /home/chuaraym/purejaxql/
 
 # Run the experiment
-python purejaxql/pqn_sc_task_atari_crl.py +alg=pqn_sc_task_atari_crl SEED=${SEED} SAVE_PATH=${OUT_DIR}
+python purejaxql/pqn_sf_sc_attention_task_atari_crl.py +alg=pqn_sf_sc_attention_task_atari_crl SEED=${SEED} SAVE_PATH=${OUT_DIR}
