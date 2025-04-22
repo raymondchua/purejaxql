@@ -1347,8 +1347,7 @@ def single_run(config):
                 save_params(params, save_path)
 
 
-def apply_single_beaker(inputs):
-    params, obs, task = inputs
+def apply_single_beaker(params, obs, task):
     _, _, sf = network.apply(
         {"params": params},
         obs,
@@ -1356,7 +1355,7 @@ def apply_single_beaker(inputs):
         train=False,
         mutable=False,
     )
-    return sf
+    return sf  # shape: (batch, num_actions, sf_dim)
 
 
 def tune(default_config):
