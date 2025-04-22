@@ -452,9 +452,9 @@ def make_train(config):
             )
         )
 
-        def apply_single_beaker(params, obs, task):
+        def apply_single_beaker(params, obs, task, batch_stats):
             _, _, sf = sf_network.apply(
-                {"params": params},
+                {"params": params, "batch_stats": batch_stats},
                 obs,
                 task,
                 train=False,
@@ -541,8 +541,8 @@ def make_train(config):
                 print("obs_tiled shape:", obs_tiled.shape)
                 print("task_tiled shape:", task_tiled.shape)
 
-                sf_beakers = jax.vmap(apply_single_beaker, in_axes=(0, 0, 0))(
-                    params_beakers_stacked, obs_tiled, task_tiled
+                sf_beakers = jax.vmap(apply_single_beaker, in_axes=(0, 0, 0, None))(
+                    params_beakers_stacked, obs_tiled, task_tiled, train_state.network_state.batch_stats
                 )
 
                 sf_all = jnp.concatenate([sf[None], sf_beakers], axis=1)
@@ -678,8 +678,8 @@ def make_train(config):
                 task_params_target, (num_beakers, *task_params_target.shape)
             )  # [num_beakers, batch, task_dim]
 
-            last_sf_beakers = jax.vmap(apply_single_beaker, in_axes=(0, 0, 0))(
-                params_beakers_stacked, obs_tiled, task_tiled
+            last_sf_beakers = jax.vmap(apply_single_beaker, in_axes=(0, 0, 0, None))(
+                params_beakers_stacked, obs_tiled, task_tiled, train_state.network_state.batch_stats
             )
 
             last_sf_all = jnp.concatenate([last_sf[None], last_sf_beakers], axis=1)
@@ -792,8 +792,8 @@ def make_train(config):
                         )  # [num_beakers, batch, task_dim]
 
                         # Vectorized application
-                        sf_beakers = jax.vmap(apply_single_beaker, in_axes=(0, 0, 0))(
-                            params_beakers_stacked, obs_tiled, task_tiled
+                        sf_beakers = jax.vmap(apply_single_beaker, in_axes=(0, 0, 0, None))(
+                            params_beakers_stacked, obs_tiled, task_tiled, train_state.network_state.batch_stats
                         )
 
                         sf_all = jnp.concatenate([sf[None], sf_beakers], axis=1)
