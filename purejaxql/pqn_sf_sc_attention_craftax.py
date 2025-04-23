@@ -418,6 +418,16 @@ def make_train(config):
             )
         )
 
+        def apply_single_beaker(params, obs, task, batch_stats):
+            (_, _, sf) = sf_network.apply(
+                {"params": params, "batch_stats": batch_stats},
+                obs,
+                task,
+                train=False,
+                mutable=False,
+            )
+            return sf  # shape: (batch, num_actions, sf_dim)
+
         # TRAINING LOOP
         def _update_step(runner_state, unused):
 
