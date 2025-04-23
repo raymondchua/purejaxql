@@ -664,7 +664,7 @@ def make_train(config):
                                 ],
                                 (
                                     num_beakers,
-                                    *train_state.task_state.params["w"][
+                                    *multi_train_state.task_state.params["w"][
                                      : -config["TEST_ENVS"], :
                                      ].shape,
                                 ),
