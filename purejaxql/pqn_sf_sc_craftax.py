@@ -684,7 +684,7 @@ def make_train(config):
             def _env_step(carry, _):
                 env_state, last_obs, rng = carry
                 rng, _rng = jax.random.split(rng)
-                q_vals = network.apply(
+                q_vals, _ = network.apply(
                     {
                         "params": multi_train_state.network_state.params,
                         "batch_stats": multi_train_state.network_state.batch_stats,
