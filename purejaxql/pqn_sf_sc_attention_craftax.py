@@ -91,6 +91,92 @@ class SFNetwork(nn.Module):
 
         return q_1, basis_features, sf_action
 
+class SFAttentionNetwork(nn.Module):
+    feature_dim: int
+    sf_dim: int
+    num_actions: int
+    num_beakers: int
+
+    @nn.compact
+    def __call__(self, sf_all, task, mask, task_id):
+
+        sf_first = sf_all[:, :1, :, :]  # shape (batch, 1, ...)
+        sf_rest = jax.lax.stop_gradient(
+            sf_all[:, 1:, :, :]
+        )  # shape (batch, num_beakers-1, ...)
+        sf_all = jnp.concatenate([sf_first, sf_rest], axis=1)
+        sf_all_masked = sf_all * mask
+
+        # Normalize and tile task
+        task = jax.lax.stop_gradient(task)
+        task_normalized = task / jnp.linalg.norm(task, ord=2, axis=-1, keepdims=True)
+        task_normalized = jnp.tile(
+            task_normalized[:, None, :], (1, self.num_beakers, 1)
+        )
+
+        # Attention mechanism
+        query = nn.Dense(features=self.sf_dim, name="query", use_bias=False)(
+            task_normalized[:, 0, :]
+        )[:, None, :]
+
+        # Different dense layers for each beaker to compute keys and values
+        keys_per_beaker = []
+        values_per_beaker = []
+        for i in range(self.num_beakers):
+            keys1_layer = nn.Dense(
+                features=self.feature_dim, name=f"keys1_beaker_{i}"
+            )
+
+            keys2_layer = nn.Dense(
+                features=self.sf_dim, name=f"keys2_beaker_{i}"
+            )
+
+            values1_layer = nn.Dense(
+                features=self.feature_dim, name=f"values1_beaker_{i}"
+            )
+
+            values2_layer = nn.Dense(
+                features=self.sf_dim, name=f"values2_beaker_{i}"
+            )
+
+            # Add mlp for keys and values so that the attention network can learn to transform the sf
+            keys1 = keys1_layer(sf_all_masked[:, i, :, :])
+            keys1 = nn.relu(keys1)
+
+            values1 = values1_layer(sf_all_masked[:, i, :, :])
+            values1 = nn.relu(values1)
+
+            keys_per_beaker.append(
+                keys2_layer(keys1)
+            )  # Apply to each beaker's SF
+            values_per_beaker.append(
+                values2_layer(values1)
+            )  # Apply to each beaker's SF
+
+        # Stack the keys and values along the beaker dimension
+        keys = jnp.stack(
+            keys_per_beaker, axis=1
+        )  # (batch_size, num_beakers, num_actions, sf_dim)
+        values = jnp.stack(
+            values_per_beaker, axis=1
+        )  # (batch_size, num_beakers, num_actions, sf_dim)
+
+        attn_logits = jnp.einsum("bqf,bnaf->bqna", query, keys) / jnp.sqrt(self.sf_dim)
+
+        # replace zero logits with a large negative number so that they are ignored in the softmax
+        attn_logits = jnp.where(attn_logits == 0, -1e9, attn_logits)
+
+        attention_weights = jax.nn.softmax(attn_logits, axis=2)
+
+        attended_sf = jnp.einsum("bqna,bnaf->bqaf", attention_weights, sf_all_masked)
+
+        attended_sf = attended_sf.squeeze(1).swapaxes(1, 2)
+
+        # Compute Q-values
+        q_1 = jnp.einsum("bi,bij->bj", task, attended_sf)
+
+        return q_1, attended_sf, attn_logits, attention_weights, keys, values
+
 
 @chex.dataclass(frozen=True)
 class Transition:
@@ -118,6 +204,7 @@ class CustomTrainState(TrainState):
 class MultiTrainState:
     network_state: CustomTrainState
     task_state: TrainState
+    attention_network_state: TrainState
 
 def make_train(config):
 
@@ -202,6 +289,12 @@ def make_train(config):
             num_layers=config["NUM_LAYERS"],
         )
 
+        attention_network = SFAttentionNetwork(
+            sf_dim=config["SF_DIM"],
+            num_actions=env.action_space(env_params).n,
+            num_beakers=config["NUM_BEAKERS"],
+        )
+
         def init_meta(rng, sf_dim, num_env) -> chex.Array:
             _, task_rng_key = jax.random.split(rng)
             task = jax.random.uniform(task_rng_key, shape=(sf_dim,))
@@ -215,6 +308,16 @@ def make_train(config):
             network_variables = network.init(rng, init_x, init_task, train=False)
             task_params = {"w": init_meta(rng, config["SF_DIM"], config["NUM_ENVS"])}
 
+            init_sf_all = jnp.zeros(
+                (1, config["NUM_BEAKERS"], max_num_actions, config["SF_DIM"])
+            )
+            init_mask = jnp.zeros(
+                (1, config["NUM_BEAKERS"], max_num_actions, config["SF_DIM"])
+            )
+            attention_network_variables = attention_network.init(
+                rng, init_sf_all, init_task, init_mask
+            )
+
             tx = optax.chain(
                 optax.clip_by_global_norm(config["MAX_GRAD_NORM"]),
                 optax.radam(learning_rate=lr),
@@ -223,6 +326,11 @@ def make_train(config):
             tx_task = optax.chain(
                 optax.clip_by_global_norm(config["MAX_GRAD_NORM"]),
                 optax.radam(learning_rate=lr_task),
+            )
+
+            tx_attention = optax.chain(
+                optax.clip_by_global_norm(config["MAX_GRAD_NORM"]),
+                optax.radam(learning_rate=config["LR"]),
             )
 
             # Initialize the consolidation parameters
@@ -288,9 +396,16 @@ def make_train(config):
                 tx=tx_task,
             )
 
+            attention_network_state = TrainState.create(
+                apply_fn=attention_network.apply,
+                params=attention_network_variables["params"],
+                tx=tx_attention,
+            )
+
             return MultiTrainState(
                 network_state=network_state,
-                task_state=task_state
+                task_state=task_state,
+                attention_network_state=attention_network_state,
             )
 
         rng, _rng = jax.random.split(rng)
