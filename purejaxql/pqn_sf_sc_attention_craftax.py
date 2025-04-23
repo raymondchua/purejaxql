@@ -413,6 +413,23 @@ def make_train(config):
         rng, _rng = jax.random.split(rng)
         multi_train_state = create_agent(rng)
 
+        params_set_to_zero = unfreeze(
+            jax.tree_util.tree_map(
+                lambda x: jnp.zeros_like(x), unfreeze(train_state.network_state.params)
+            )
+        )
+
+        def apply_single_beaker(params, obs, task, batch_stats):
+            _, _, sf = sf_network.apply(
+                {"params": params, "batch_stats": batch_stats},
+                obs,
+                task,
+                train=False,
+                mutable=False,
+                task_id=unique_task_id,
+            )
+            return sf  # shape: (batch, num_actions, sf_dim)
+
         # TRAINING LOOP
         def _update_step(runner_state, unused):
 
