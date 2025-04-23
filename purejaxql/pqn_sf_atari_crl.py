@@ -247,7 +247,7 @@ def make_train(config):
     # here reset must be out of vmap and jit
     init_obs, env_state = env.reset()
 
-    def train(rng, exposure, train_state, network, task_id):
+    def train(rng, exposure, train_state, network, task_id, unique_task_id):
 
         original_seed = rng[0]
 
@@ -499,6 +499,8 @@ def make_train(config):
                 "exploration_updates": train_state.network_state.exploration_updates,
                 "total_returns": train_state.network_state.total_returns,
                 "task_params_diff": task_params_diff.mean(),
+                "extrinsic rewards": transitions.reward.mean(),
+                "unique_task_id": unique_task_id,
             }
 
             metrics.update({k: v.mean() for k, v in infos.items()})
@@ -624,13 +626,14 @@ def single_run(config):
         for idx, env_name in enumerate(env_names):
             print(f"\n--- Running environment: {env_name} ---")
             task_id = cycle * config["alg"]["NUM_TASKS"] + idx
+            unique_task_id = task_id % config["alg"]["NUM_TASKS"]
             config["ENV_NAME"] = env_name
             if config["NUM_SEEDS"] > 1:
                 raise NotImplementedError("Vmapped seeds not supported yet.")
             else:
                 # outs = jax.jit(make_train(config))(rng, exposure)
                 outs = jax.jit(
-                    lambda rng: make_train(config)(rng, cycle, agent_train_state, network, task_id)
+                    lambda rng: make_train(config)(rng, cycle, agent_train_state, network, task_id, unique_task_id)
                 )(rng)
             print(f"Took {time.time()-start_time} seconds to complete.")
 
