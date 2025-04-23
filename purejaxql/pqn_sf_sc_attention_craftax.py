@@ -452,7 +452,7 @@ def make_train(config):
                     multi_train_state.task_state.params["w"],
                     (
                         num_beakers,
-                        *train_state.task_state.params["w"].shape,
+                        *multi_train_state.task_state.params["w"].shape,
                     ),
                 )  # [num_beakers, batch, task_dim]
 
