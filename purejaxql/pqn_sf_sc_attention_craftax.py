@@ -353,22 +353,26 @@ def make_train(config):
                 timescales = adapted_timescales
                 g_flow = adapted_g_flow
 
-            g_flow = jnp.array(g_flow)
-            capacity = jnp.array(capacity)
             print(f"timescales: {timescales[:-1]}")
             print(f"g_flow: {g_flow[:-1]}")
             print(f"Capacity: {capacity[:-1]}")
+
+            g_flow = jnp.array(g_flow)
+            capacity = jnp.array(capacity)
+
 
             consolidation_params_tree = {}
             consolidation_networks = []
 
             for i in range(1, config["NUM_BEAKERS"]):
                 network_sc = SFNetwork(
-                    action_dim=max_num_actions,
+                    action_dim=env.action_space(env_params).n,
                     norm_type=config["NORM_TYPE"],
                     norm_input=config.get("NORM_INPUT", False),
                     sf_dim=config["SF_DIM"],
                     feature_dim=config["FEATURE_DIM"],
+                    hidden_size=config["HIDDEN_SIZE"],
+                    num_layers=config["NUM_LAYERS"],
                 )
 
                 init_x = jnp.zeros((1, *env.observation_space(env_params).shape))
