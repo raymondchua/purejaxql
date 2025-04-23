@@ -138,17 +138,17 @@ class SFAttentionNetwork(nn.Module):
             )
 
             # Add mlp for keys and values so that the attention network can learn to transform the sf
-            keys1 = keys_layer1(sf_all_masked[:, i, :, :], task_id)
+            keys1 = keys_layer1(sf_all_masked[:, i, :, :])
             keys1 = nn.relu(keys1)
 
-            values1 = values_layer1(sf_all_masked[:, i, :, :], task_id)
+            values1 = values_layer1(sf_all_masked[:, i, :, :])
             values1 = nn.relu(values1)
 
             keys_per_beaker.append(
-                keys_layer2(keys1, task_id)
+                keys_layer2(keys1)
             )  # Apply to each beaker's SF
             values_per_beaker.append(
-                values_layer2(values1, task_id)
+                values_layer2(values1)
             )  # Apply to each beaker's SF
 
         # Stack the keys and values along the beaker dimension
