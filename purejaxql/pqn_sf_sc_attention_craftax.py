@@ -287,6 +287,13 @@ def make_train(config):
             num_layers=config["NUM_LAYERS"],
         )
 
+        attention_network = SFAttentionNetwork(
+            feature_dim=config["FEATURE_DIM"],
+            sf_dim=config["SF_DIM"],
+            num_actions=max_num_actions,
+            num_beakers=config["NUM_BEAKERS"],
+        )
+
         def init_meta(rng, sf_dim, num_env) -> chex.Array:
             _, task_rng_key = jax.random.split(rng)
             task = jax.random.uniform(task_rng_key, shape=(sf_dim,))
@@ -301,13 +308,6 @@ def make_train(config):
             task_params = {"w": init_meta(rng, config["SF_DIM"], config["NUM_ENVS"])}
 
             max_num_actions = env.action_space(env_params).n
-
-            attention_network = SFAttentionNetwork(
-                feature_dim = config["FEATURE_DIM"],
-                sf_dim=config["SF_DIM"],
-                num_actions=max_num_actions,
-                num_beakers=config["NUM_BEAKERS"],
-            )
 
             init_sf_all = jnp.zeros(
                 (1, config["NUM_BEAKERS"], max_num_actions, config["SF_DIM"])
