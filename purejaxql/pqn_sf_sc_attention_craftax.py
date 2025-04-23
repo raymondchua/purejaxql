@@ -1034,15 +1034,15 @@ def make_train(config):
                     )
 
                     # replace train_state params with the new params
-                    multi_train_state.network_state = (
-                        multi_train_state.network_state.replace(
-                            params=network_params[0],
-                            consolidation_params_tree={
-                                f"network_{i}": network_params[i]
-                                for i in range(1, config["NUM_BEAKERS"])
-                            },
-                        )
-                    )
+                    # multi_train_state.network_state = (
+                    #     multi_train_state.network_state.replace(
+                    #         params=network_params[0],
+                    #         consolidation_params_tree={
+                    #             f"network_{i}": network_params[i]
+                    #             for i in range(1, config["NUM_BEAKERS"])
+                    #         },
+                    #     )
+                    # )
 
                     return (multi_train_state, rng), (
                         loss,
