@@ -128,7 +128,6 @@ class SFAttentionNetwork(nn.Module):
 
     @nn.compact
     def __call__(self, sf_all, task, mask):
-        batch_size = sf_all.shape[0]
 
         sf_first = sf_all[:, :1, :, :]  # shape (batch, 1, ...)
         sf_rest = jax.lax.stop_gradient(
@@ -507,7 +506,7 @@ def make_train(config):
                 """
                 mask = (
                     jnp.asarray(train_state.network_state.timescales, dtype=np.uint32)
-                    < train_state.network_state.timesteps
+                    < train_state.network_state.grad_steps
                 )
                 mask = mask[
                     :-1
@@ -628,7 +627,7 @@ def make_train(config):
             """
             mask = (
                 jnp.asarray(train_state.network_state.timescales, dtype=np.uint32)
-                < train_state.network_state.timesteps
+                < train_state.network_state.grad_steps
             )
             mask = mask[
                 :-1
@@ -858,7 +857,7 @@ def make_train(config):
                     """
                     mask = (
                             jnp.asarray(train_state.network_state.timescales, dtype=np.uint32)
-                            < train_state.network_state.timesteps
+                            < train_state.network_state.grad_steps
                     )
                     mask = mask[
                            :-1
