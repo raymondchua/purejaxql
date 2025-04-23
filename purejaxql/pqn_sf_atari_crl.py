@@ -524,8 +524,8 @@ def make_train(config):
                         if isinstance(v, np.ndarray):
                             metrics[k] = v.item()
 
-                        # if metrics["update_steps"] % 10 == 0:
-                        #     print(f"{k}: {v}")
+                        if metrics["update_steps"] % 10 == 0:
+                            print(f"{k}: {v}")
                         #     if k == "env_step":
                         #         print(f"{k}: {v}")
                         #     if k == "update_steps":
