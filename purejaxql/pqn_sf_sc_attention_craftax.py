@@ -381,7 +381,7 @@ def make_train(config):
                 init_task = jnp.zeros((1, config["SF_DIM"]))
                 network_variables = network_sc.init(rng, init_x, init_task, train=False)
                 consolidation_params_tree[f"network_{i}"] = network_variables["params"]
-                consolidation_networks.append(network)
+                consolidation_networks.append(network_sc)
 
             network_state = CustomTrainState.create(
                 apply_fn=network.apply,
