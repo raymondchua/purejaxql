@@ -415,7 +415,7 @@ def make_train(config):
 
         params_set_to_zero = unfreeze(
             jax.tree_util.tree_map(
-                lambda x: jnp.zeros_like(x), unfreeze(train_state.network_state.params)
+                lambda x: jnp.zeros_like(x), unfreeze(multi_train_state.network_state.params)
             )
         )
 
@@ -902,8 +902,8 @@ def make_train(config):
 
                     # combined params so that the gradients are computed for both networks
                     combined_params = {
-                        "sf": train_state.network_state.params,
-                        "attention": train_state.attention_network_state.params,
+                        "sf": multi_train_state.network_state.params,
+                        "attention": multi_train_state.attention_network_state.params,
                     }
 
                     (loss, (updates, qvals, basis_features)), grads = jax.value_and_grad(
