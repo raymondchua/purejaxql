@@ -28,7 +28,10 @@ from purejaxql.utils.craftax_wrappers import (
     BatchEnvWrapper,
 )
 from purejaxql.utils.batch_renorm import BatchRenorm
-from jax.scipy.special import logsumexp
+from flax.core import freeze, unfreeze, FrozenDict
+
+Params = FrozenDict
+
 
 class SFNetwork(nn.Module):
     action_dim: int
@@ -107,6 +110,8 @@ class CustomTrainState(TrainState):
     capacity: Any = None
     g_flow: Any = None
     timescales: Any = None
+    consolidation_networks: Any = None
+
 
 @chex.dataclass
 class MultiTrainState:
@@ -118,6 +123,8 @@ def make_train(config):
     config["NUM_UPDATES"] = (
             config["TOTAL_TIMESTEPS"] // config["NUM_STEPS"] // config["NUM_ENVS"]
     )
+
+    print(f"NUM_UPDATES: {config['NUM_UPDATES']}")
 
     config["NUM_UPDATES_DECAY"] = (
             config["TOTAL_TIMESTEPS_DECAY"] // config["NUM_STEPS"] // config["NUM_ENVS"]
@@ -236,33 +243,42 @@ def make_train(config):
                 timescales = adapted_timescales
                 g_flow = adapted_g_flow
 
-            g_flow = jnp.array(g_flow)
-            capacity = jnp.array(capacity)
             print(f"timescales: {timescales[:-1]}")
             print(f"g_flow: {g_flow[:-1]}")
             print(f"Capacity: {capacity[:-1]}")
 
+            g_flow = jnp.array(g_flow)
+            capacity = jnp.array(capacity)
+
             consolidation_params_tree = {}
+            consolidation_networks = []
 
             for i in range(1, config["NUM_BEAKERS"]):
                 network_sc = SFNetwork(
-                    action_dim=max_num_actions,
+                    action_dim=env.action_space(env_params).n,
                     norm_type=config["NORM_TYPE"],
                     norm_input=config.get("NORM_INPUT", False),
                     sf_dim=config["SF_DIM"],
                     feature_dim=config["FEATURE_DIM"],
+                    hidden_size=config["HIDDEN_SIZE"],
+                    num_layers=config["NUM_LAYERS"],
                 )
 
-                init_x = jnp.zeros((1, *observation_space_shape))
+                init_x = jnp.zeros((1, *env.observation_space(env_params).shape))
                 init_task = jnp.zeros((1, config["SF_DIM"]))
                 network_variables = network_sc.init(rng, init_x, init_task, train=False)
                 consolidation_params_tree[f"network_{i}"] = network_variables["params"]
+                consolidation_networks.append(network_sc)
 
             network_state = CustomTrainState.create(
                 apply_fn=network.apply,
                 params=network_variables["params"],
                 batch_stats=network_variables["batch_stats"],
                 tx=tx,
+                capacity=capacity,
+                g_flow=g_flow,
+                timescales=timescales,
+                consolidation_params_tree=consolidation_params_tree,
             )
 
             task_state = TrainState.create(
@@ -278,6 +294,12 @@ def make_train(config):
 
         rng, _rng = jax.random.split(rng)
         multi_train_state = create_agent(rng)
+
+        params_set_to_zero = unfreeze(
+            jax.tree_util.tree_map(
+                lambda x: jnp.zeros_like(x), unfreeze(multi_train_state.network_state.params)
+            )
+        )
 
         # TRAINING LOOP
         def _update_step(runner_state, unused):
@@ -297,7 +319,6 @@ def make_train(config):
                     task=multi_train_state.task_state.params["w"],
                     train=False,
                 )
-
                 # different eps for each env
                 _rngs = jax.random.split(rng_a, config["NUM_ENVS"])
                 eps = jnp.full(config["NUM_ENVS"], eps_scheduler(multi_train_state.network_state.n_updates))
@@ -341,8 +362,6 @@ def make_train(config):
                 task=multi_train_state.task_state.params["w"],
                 train=False,
             )
-
-            last_q = jnp.max(last_q, axis=-1)
 
             def _get_target(lambda_returns_and_next_q, transition):
                 lambda_returns, next_q = lambda_returns_and_next_q
