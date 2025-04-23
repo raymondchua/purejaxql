@@ -272,8 +272,8 @@ def make_train(config):
             init_value=config["LR"],
             end_value=1e-20,
             transition_steps=(config["NUM_UPDATES_DECAY"])
-                             * config["NUM_MINIBATCHES"]
-                             * config["NUM_EPOCHS"],
+            * config["NUM_MINIBATCHES"]
+            * config["NUM_EPOCHS"],
         )
         lr = lr_scheduler if config.get("LR_LINEAR_DECAY", False) else config["LR"]
         lr_task = config["LR_TASK"]
@@ -701,24 +701,7 @@ def make_train(config):
                             mask_tiled = jnp.broadcast_to(mask, (
                                 sf_all.shape[0], mask.shape[1], sf_all.shape[2], sf_all.shape[3]))
 
-                            # attention network
-                            (
-                                q_vals,
-                                attended_sf,
-                                attn_logits,
-                                attention_weights,
-                                keys,
-                                values,
-                            ) = attention_network.apply(
-                                {
-                                    "params": params["attention"],
-                                },
-                                sf_all,
-                                multi_train_state.task_state.params["w"][
-                                : -config["TEST_ENVS"], :
-                                ],
-                                mask_tiled,
-                            )
+
 
 
 
