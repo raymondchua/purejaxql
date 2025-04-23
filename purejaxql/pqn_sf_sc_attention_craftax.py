@@ -443,7 +443,7 @@ def make_train(config):
                         "batch_stats": multi_train_state.network_state.batch_stats,
                     },
                     last_obs,
-                    train_state.task_state.params["w"],
+                    multi_train_state.task_state.params["w"],
                     train=False,
                 )
 
@@ -464,10 +464,10 @@ def make_train(config):
                     last_obs, (num_beakers, *last_obs.shape)
                 )  # [num_beakers, batch, ...]
                 task_tiled = jnp.broadcast_to(
-                    train_state.task_state.params["w"],
+                    multi_train_state.task_state.params["w"],
                     (
                         num_beakers,
-                        *train_state.task_state.params["w"].shape,
+                        *multi_train_state.task_state.params["w"].shape,
                     ),
                 )  # [num_beakers, batch, task_dim]
 
@@ -503,7 +503,7 @@ def make_train(config):
                         "params": train_state.attention_network_state.params,
                     },
                     sf_all,
-                    train_state.task_state.params["w"],
+                    multi_train_state.task_state.params["w"],
                     mask_tiled,
                 )
 
