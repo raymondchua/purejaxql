@@ -437,10 +437,10 @@ def make_train(config):
                 #     train=False,
                 # )
 
-                (_, basis_features, sf) = sf_network.apply(
+                (_, basis_features, sf) = network.apply(
                     {
-                        "params": train_state.network_state.params,
-                        "batch_stats": train_state.network_state.batch_stats,
+                        "params": multi_train_state.network_state.params,
+                        "batch_stats": multi_train_state.network_state.batch_stats,
                     },
                     last_obs,
                     train_state.task_state.params["w"],
@@ -448,7 +448,7 @@ def make_train(config):
                 )
 
                 params_beakers = [
-                    train_state.network_state.consolidation_params_tree[f"network_{i}"]
+                    multi_train_state.network_state.consolidation_params_tree[f"network_{i}"]
                     for i in range(1, config["NUM_BEAKERS"])
                 ]
 
@@ -473,7 +473,7 @@ def make_train(config):
 
                 # Vectorized application of getting sf for each beaker
                 sf_beakers = jax.vmap(apply_single_beaker, in_axes=(0, 0, 0, None))(
-                    params_beakers_stacked, obs_tiled, task_tiled, train_state.network_state.batch_stats
+                    params_beakers_stacked, obs_tiled, task_tiled, multi_train_state.network_state.batch_stats
                 )
 
                 sf_all = jnp.concatenate([sf[None], sf_beakers], axis=0)
@@ -484,8 +484,8 @@ def make_train(config):
                 step. 
                 """
                 mask = (
-                        jnp.asarray(train_state.network_state.timescales, dtype=np.uint32)
-                        < train_state.network_state.grad_steps
+                        jnp.asarray(multi_train_state.network_state.timescales, dtype=np.uint32)
+                        < multi_train_state.network_state.grad_steps
                 )
                 mask = mask[
                        :-1
