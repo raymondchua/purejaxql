@@ -28,7 +28,7 @@ from purejaxql.utils.craftax_wrappers import (
     BatchEnvWrapper,
 )
 from purejaxql.utils.batch_renorm import BatchRenorm
-from jax.scipy.special import logsumexp
+from flax.core import freeze, unfreeze, FrozenDict
 
 
 class SFNetwork(nn.Module):
