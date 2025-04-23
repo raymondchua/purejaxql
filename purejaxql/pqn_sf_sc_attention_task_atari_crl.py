@@ -81,7 +81,6 @@ class CNN(nn.Module):
         x = nn.relu(x)
         return x
 
-
 class SFNetwork(nn.Module):
     action_dim: int
     num_tasks: int
@@ -140,13 +139,13 @@ class SFNetwork(nn.Module):
 
 
 class SFAttentionNetwork(nn.Module):
+    feature_dim: int
     sf_dim: int
     num_actions: int
     num_beakers: int
 
     @nn.compact
-    def __call__(self, sf_all, task, mask):
-        batch_size = sf_all.shape[0]
+    def __call__(self, sf_all, task, mask, task_id):
 
         sf_first = sf_all[:, :1, :, :]  # shape (batch, 1, ...)
         sf_rest = jax.lax.stop_gradient(
@@ -171,17 +170,55 @@ class SFAttentionNetwork(nn.Module):
         keys_per_beaker = []
         values_per_beaker = []
         for i in range(self.num_beakers):
-            keys_layer = nn.Dense(
-                features=self.sf_dim, name=f"keys_beaker_{i}", use_bias=False
+            # keys_layer = nn.Dense(
+            #     features=self.sf_dim, name=f"keys_beaker_{i}", use_bias=False
+            # )
+            # values_layer = nn.Dense(
+            #     features=self.sf_dim, name=f"values_beaker_{i}", use_bias=False
+            # )
+            # keys_per_beaker.append(
+            #     keys_layer(sf_all_masked[:, i, :, :])
+            # )  # Apply to each beaker's SF
+            # values_per_beaker.append(
+            #     values_layer(sf_all_masked[:, i, :, :])
+            # )  # Apply to each beaker's SF
+
+            keys_layer1 = TaskModulatedDense(
+                features=self.feature_dim,
+                num_tasks=self.num_tasks,
+                name=f"keys1_beaker_{i}"
             )
-            values_layer = nn.Dense(
-                features=self.sf_dim, name=f"values_beaker_{i}", use_bias=False
+
+            keys_layer2 = TaskModulatedDense(
+                features=self.sf_dim,
+                num_tasks=self.num_tasks,
+                name=f"keys2_beaker_{i}"
             )
+
+            values_layer1 = TaskModulatedDense(
+                features=self.feature_dim,
+                num_tasks=self.num_tasks,
+                name=f"values1_beaker_{i}"
+            )
+
+            values_layer2 = TaskModulatedDense(
+                features=self.sf_dim,
+                num_tasks=self.num_tasks,
+                name=f"values2_beaker_{i}"
+            )
+
+            # Add mlp for keys and values so that the attention network can learn to transform the sf
+            keys1 = keys_layer1(sf_all_masked[:, i, :, :], task_id)
+            keys1 = nn.relu(keys1)
+
+            values1 = values_layer1(sf_all_masked[:, i, :, :], task_id)
+            values1 = nn.relu(values1)
+
             keys_per_beaker.append(
-                keys_layer(sf_all_masked[:, i, :, :])
+                keys_layer2(keys1, task_id)
             )  # Apply to each beaker's SF
             values_per_beaker.append(
-                values_layer(sf_all_masked[:, i, :, :])
+                values_layer2(values1, task_id)
             )  # Apply to each beaker's SF
 
         # Stack the keys and values along the beaker dimension
@@ -528,8 +565,8 @@ def make_train(config):
                 step. 
                 """
                 mask = (
-                    jnp.asarray(train_state.network_state.timescales, dtype=np.uint32)
-                    < train_state.network_state.timesteps
+                        jnp.asarray(train_state.network_state.timescales, dtype=np.uint32)
+                        < train_state.network_state.grad_steps
                 )
                 mask = mask[
                     :-1
@@ -651,7 +688,7 @@ def make_train(config):
             """
             mask = (
                 jnp.asarray(train_state.network_state.timescales, dtype=np.uint32)
-                < train_state.network_state.timesteps
+                < train_state.network_state.grad_steps
             )
             mask = mask[
                 :-1
@@ -882,7 +919,7 @@ def make_train(config):
                     """
                     mask = (
                             jnp.asarray(train_state.network_state.timescales, dtype=np.uint32)
-                            < train_state.network_state.timesteps
+                            < train_state.network_state.grad_steps
                     )
                     mask = mask[
                            :-1
