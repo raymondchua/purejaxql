@@ -551,14 +551,79 @@ def make_train(config):
                           + config["NUM_STEPS"] * config["NUM_ENVS"]
             )  # update timesteps count
 
-            (last_q, _, _) = network.apply(
+            # (last_q, _, _) = network.apply(
+            #     {
+            #         "params": multi_train_state.network_state.params,
+            #         "batch_stats": multi_train_state.network_state.batch_stats,
+            #     },
+            #     transitions.next_obs[-1],
+            #     task=multi_train_state.task_state.params["w"],
+            #     train=False,
+            # )
+
+            (_, _, last_sf) = network.apply(
                 {
                     "params": multi_train_state.network_state.params,
                     "batch_stats": multi_train_state.network_state.batch_stats,
                 },
                 transitions.next_obs[-1],
-                task=multi_train_state.task_state.params["w"],
+                task_params_target,
                 train=False,
+                task_id=unique_task_id,
+            )
+
+            params_beakers = [
+                multi_train_state.network_state.consolidation_params_tree[f"network_{i}"]
+                for i in range(1, config["NUM_BEAKERS"])
+            ]
+
+            # Convert list of dicts into a batched PyTree
+            params_beakers_stacked = jax.tree_util.tree_map(
+                lambda *x: jnp.stack(x), *params_beakers
+            )
+
+            num_beakers = config["NUM_BEAKERS"] - 1  # because beaker 0 is excluded
+
+            # Tile obs/task for each beaker
+            obs_tiled = jnp.broadcast_to(
+                transitions.next_obs[-1], (num_beakers, *transitions.next_obs[-1].shape)
+            )  # [num_beakers, batch, ...]
+            task_tiled = jnp.broadcast_to(
+                task_params_target, (num_beakers, *task_params_target.shape)
+            )  # [num_beakers, batch, task_dim]
+
+            last_sf_beakers = jax.vmap(apply_single_beaker, in_axes=(0, 0, 0, None))(
+                params_beakers_stacked, obs_tiled, task_tiled, multi_train_state.network_state.batch_stats
+            )
+
+            last_sf_all = jnp.concatenate([last_sf[None], last_sf_beakers], axis=0)
+            last_sf_all = jnp.transpose(last_sf_all, (1, 0, 3, 2))  # (batch_size, num_beakers, num_actions, sf_dim)
+
+            """
+            Make a mask to mask out the beakers in the consolidation system which has timescales less than the current time
+            step. 
+            """
+            mask = (
+                    jnp.asarray(multi_train_state.network_state.timescales, dtype=np.uint32)
+                    < multi_train_state.network_state.grad_steps
+            )
+            mask = mask[
+                   :-1
+                   ]  # remove the last column of the mask since the first beaker is always updated
+            mask = jnp.insert(mask, 0, 1)
+            mask = mask.astype(jnp.int32)
+            mask = mask.reshape(1, -1, 1, 1)
+            mask_tiled = jnp.broadcast_to(mask, (
+            last_sf_all.shape[0], mask.shape[1], last_sf_all.shape[2], last_sf_all.shape[3]))
+
+            # attention network
+            last_q, _, _, _, _, _ = attention_network.apply(
+                {
+                    "params": multi_train_state.attention_network_state.params,
+                },
+                last_sf_all,
+                task_params_target,
+                mask_tiled,
             )
 
             last_q = jnp.max(last_q, axis=-1)
@@ -864,8 +929,8 @@ def make_train(config):
                             )
                         wandb.log(metrics, step=metrics["update_steps"])
 
-                        # for k, v in metrics.items():
-                        #     print(f"{k}: {v}")
+                        for k, v in metrics.items():
+                            print(f"{k}: {v}")
 
                 jax.debug.callback(callback, metrics, original_rng)
 
