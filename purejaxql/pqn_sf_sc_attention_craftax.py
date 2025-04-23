@@ -98,7 +98,7 @@ class SFAttentionNetwork(nn.Module):
     num_beakers: int
 
     @nn.compact
-    def __call__(self, sf_all, task, mask, task_id):
+    def __call__(self, sf_all, task, mask):
 
         sf_first = sf_all[:, :1, :, :]  # shape (batch, 1, ...)
         sf_rest = jax.lax.stop_gradient(
@@ -445,7 +445,6 @@ def make_train(config):
                     last_obs,
                     train_state.task_state.params["w"],
                     train=False,
-                    task_id=unique_task_id,
                 )
 
                 params_beakers = [
