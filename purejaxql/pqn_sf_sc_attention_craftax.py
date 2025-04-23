@@ -510,7 +510,7 @@ def make_train(config):
                 # attention network
                 q_vals, _, _, _, _, _ = attention_network.apply(
                     {
-                        "params": train_state.attention_network_state.params,
+                        "params": multi_train_state.attention_network_state.params,
                     },
                     sf_all,
                     multi_train_state.task_state.params["w"],
