@@ -419,7 +419,7 @@ def make_train(config):
         )
 
         def apply_single_beaker(params, obs, task, batch_stats):
-            (_, _, sf) = sf_network.apply(
+            (_, _, sf) = network.apply(
                 {"params": params, "batch_stats": batch_stats},
                 obs,
                 task,
