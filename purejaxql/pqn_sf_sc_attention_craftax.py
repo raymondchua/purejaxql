@@ -307,9 +307,11 @@ def make_train(config):
             network_variables = network.init(rng, init_x, init_task, train=False)
             task_params = {"w": init_meta(rng, config["SF_DIM"], config["NUM_ENVS"])}
 
+            max_num_actions = env.action_space(env_params).n
+
             attention_network = SFAttentionNetwork(
                 sf_dim=config["SF_DIM"],
-                num_actions=env.action_space(env_params).n,
+                num_actions=max_num_actions,
                 num_beakers=config["NUM_BEAKERS"],
             )
 
