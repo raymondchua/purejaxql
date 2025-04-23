@@ -426,7 +426,6 @@ def make_train(config):
                 task,
                 train=False,
                 mutable=False,
-                task_id=unique_task_id,
             )
             return sf  # shape: (batch, num_actions, sf_dim)
 
