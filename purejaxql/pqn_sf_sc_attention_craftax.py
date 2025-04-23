@@ -30,6 +30,8 @@ from purejaxql.utils.craftax_wrappers import (
 from purejaxql.utils.batch_renorm import BatchRenorm
 from flax.core import freeze, unfreeze, FrozenDict
 
+Params = FrozenDict
+
 
 class SFNetwork(nn.Module):
     action_dim: int
