@@ -23,6 +23,12 @@ LAMBDA: 0
 FEATURE_DIM: 32
 SF_DIM: 64
 
+# consolidation specific
+FLOW_INIT_INDEX: 9 # meaning the g_1_2 starts from 0.125
+BEAKER_CAPACITY: 2
+NUM_BEAKERS: 7
+CONSOLIDATE_EARLIER: true # set to true to consolidate earlier using timescales =  2^k/g_1_2 ratio
+
 
 # env specific
 ENV_NAME: "Craftax-Symbolic-v1"
