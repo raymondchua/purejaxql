@@ -363,6 +363,8 @@ def make_train(config):
                 train=False,
             )
 
+            last_q = jnp.max(last_q, axis=-1)
+
             def _get_target(lambda_returns_and_next_q, transition):
                 lambda_returns, next_q = lambda_returns_and_next_q
                 target_bootstrap = (
