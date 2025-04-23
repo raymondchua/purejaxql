@@ -310,10 +310,10 @@ def make_train(config):
             task_params = {"w": init_meta(rng, config["SF_DIM"], config["NUM_ENVS"])}
 
             init_sf_all = jnp.zeros(
-                (1, config["NUM_BEAKERS"], max_num_actions, config["SF_DIM"])
+                (1, config["NUM_BEAKERS"], env.action_space(env_params).n, config["SF_DIM"])
             )
             init_mask = jnp.zeros(
-                (1, config["NUM_BEAKERS"], max_num_actions, config["SF_DIM"])
+                (1, config["NUM_BEAKERS"], env.action_space(env_params).n, config["SF_DIM"])
             )
             attention_network_variables = attention_network.init(
                 rng, init_sf_all, init_task, init_mask
