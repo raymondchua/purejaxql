@@ -290,7 +290,7 @@ def make_train(config):
         attention_network = SFAttentionNetwork(
             feature_dim=config["FEATURE_DIM"],
             sf_dim=config["SF_DIM"],
-            num_actions=max_num_actions,
+            num_actions=env.action_space(env_params).n,
             num_beakers=config["NUM_BEAKERS"],
         )
 
