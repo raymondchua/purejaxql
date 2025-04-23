@@ -90,6 +90,7 @@ class SFNetwork(nn.Module):
 
 
 class SFAttentionNetwork(nn.Module):
+    feature_dim: int
     sf_dim: int
     num_actions: int
     num_beakers: int
@@ -302,6 +303,7 @@ def make_train(config):
             max_num_actions = env.action_space(env_params).n
 
             attention_network = SFAttentionNetwork(
+                feature_dim = config["FEATURE_DIM"],
                 sf_dim=config["SF_DIM"],
                 num_actions=max_num_actions,
                 num_beakers=config["NUM_BEAKERS"],
