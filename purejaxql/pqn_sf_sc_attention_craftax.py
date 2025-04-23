@@ -120,28 +120,20 @@ class SFAttentionNetwork(nn.Module):
         keys_per_beaker = []
         values_per_beaker = []
         for i in range(self.num_beakers):
-            keys_layer1 = TaskModulatedDense(
-                features=self.feature_dim,
-                num_tasks=self.num_tasks,
-                name=f"keys1_beaker_{i}"
+            keys_layer1 = nn.Dense(
+                features=self.feature_dim, name=f"keys1_beaker_{i}"
             )
 
-            keys_layer2 = TaskModulatedDense(
-                features=self.sf_dim,
-                num_tasks=self.num_tasks,
-                name=f"keys2_beaker_{i}"
+            keys_layer2 = nn.Dense(
+                features=self.sf_dim, name=f"keys2_beaker_{i}"
             )
 
-            values_layer1 = TaskModulatedDense(
-                features=self.feature_dim,
-                num_tasks=self.num_tasks,
-                name=f"values1_beaker_{i}"
+            values_layer1 = nn.Dense(
+                features=self.feature_dim, name=f"values1_beaker_{i}"
             )
 
-            values_layer2 = TaskModulatedDense(
-                features=self.sf_dim,
-                num_tasks=self.num_tasks,
-                name=f"values2_beaker_{i}"
+            values_layer2 = nn.Dense(
+                features=self.sf_dim, name=f"values2_beaker_{i}"
             )
 
             # Add mlp for keys and values so that the attention network can learn to transform the sf
