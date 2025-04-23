@@ -485,8 +485,8 @@ def make_train(config):
                 step. 
                 """
                 mask = (
-                    jnp.asarray(train_state.network_state.timescales, dtype=np.uint32)
-                    < train_state.network_state.grad_steps
+                    jnp.asarray(multi_train_state.network_state.timescales, dtype=np.uint32)
+                    < multi_train_state.network_state.grad_steps
                 )
                 mask = mask[
                     :-1
@@ -584,8 +584,8 @@ def make_train(config):
             step. 
             """
             mask = (
-                    jnp.asarray(train_state.network_state.timescales, dtype=np.uint32)
-                    < train_state.network_state.grad_steps
+                    jnp.asarray(multi_train_state.network_state.timescales, dtype=np.uint32)
+                    < multi_train_state.network_state.grad_steps
             )
             mask = mask[
                    :-1
@@ -891,8 +891,8 @@ def make_train(config):
                     step. 
                     """
                     mask = (
-                            jnp.asarray(train_state.network_state.timescales, dtype=np.uint32)
-                            < train_state.network_state.grad_steps
+                            jnp.asarray(multi_train_state.network_state.timescales, dtype=np.uint32)
+                            < multi_train_state.network_state.grad_steps
                     )
                     mask = mask[
                            :-1
