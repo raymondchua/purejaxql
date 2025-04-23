@@ -427,7 +427,6 @@ def make_train(config):
                 obs,
                 task,
                 train=False,
-                mutable=False,
             )
             return sf  # shape: (batch, num_actions, sf_dim)
 
