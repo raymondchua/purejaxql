@@ -563,7 +563,7 @@ def make_train(config):
             )
 
             num_beakers = config["NUM_BEAKERS"] - 1  # because beaker 0 is excluded
-            task_params_target = train_state.task_state.params["w"]
+            task_params_target = multi_train_state.task_state.params["w"]
 
             # Tile obs/task for each beaker
             obs_tiled = jnp.broadcast_to(
