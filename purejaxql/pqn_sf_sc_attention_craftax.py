@@ -560,7 +560,7 @@ def make_train(config):
             #     task=multi_train_state.task_state.params["w"],
             #     train=False,
             # )
-            task_params_target = train_state.task_state.params["w"]
+            task_params_target = multi_train_state.task_state.params["w"]
 
             (_, _, last_sf) = network.apply(
                 {
