@@ -28,6 +28,7 @@ from purejaxql.utils.craftax_wrappers import (
     BatchEnvWrapper,
 )
 from purejaxql.utils.batch_renorm import BatchRenorm
+from purejaxql.utils.consolidation_helpers import update_and_accumulate_tree
 from flax.core import freeze, unfreeze, FrozenDict
 
 Params = FrozenDict
