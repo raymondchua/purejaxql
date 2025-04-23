@@ -433,7 +433,7 @@ def make_train(config):
                 )
 
                 params_beakers = [
-                    train_state.network_state.consolidation_params_tree[f"network_{i}"]
+                    multi_train_state.network_state.consolidation_params_tree[f"network_{i}"]
                     for i in range(1, config["NUM_BEAKERS"])
                 ]
 
@@ -537,7 +537,7 @@ def make_train(config):
             )
 
             params_beakers = [
-                train_state.network_state.consolidation_params_tree[f"network_{i}"]
+                multi_train_state.network_state.consolidation_params_tree[f"network_{i}"]
                 for i in range(1, config["NUM_BEAKERS"])
             ]
 
