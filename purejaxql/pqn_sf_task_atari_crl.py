@@ -183,7 +183,7 @@ def create_agent(rng, config, max_num_actions, observation_space_shape):
     init_x = jnp.zeros((1, *observation_space_shape))
     init_task = jnp.zeros((1, config["SF_DIM"]))
     network_variables = network.init(rng, init_x, init_task, task_id=0, train=False)
-    tasks_states_all = dict()
+    task_states_all = dict()
 
     for i in range(config["NUM_TASKS"]):
         task_params = {
@@ -201,17 +201,12 @@ def create_agent(rng, config, max_num_actions, observation_space_shape):
             tx=tx_task,
         )
 
-        tasks_states_all[f"task_{i}"] = task_state
+        task_states_all[f"task_{i}"] = task_state
 
     tx = optax.chain(
         optax.clip_by_global_norm(config["MAX_GRAD_NORM"]),
         optax.radam(learning_rate=config["LR"]),
     )
-
-    # tx_task = optax.chain(
-    #     optax.clip_by_global_norm(config["MAX_GRAD_NORM"]),
-    #     optax.radam(learning_rate=config["LR_TASK"]),
-    # )
 
     network_state = CustomTrainState.create(
         apply_fn=network.apply,
