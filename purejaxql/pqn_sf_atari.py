@@ -120,7 +120,7 @@ class SFNetwork(nn.Module):
         # )  # (batch_size, action_dim)
 
         # x = CNN(norm_type=self.norm_type)(x, train)
-        sf = nn.Dense(features=self.sf_dim * self.action_dim)(rep)
+        sf = nn.Dense(features=10 * self.action_dim)(rep)
         q_1 = nn.Dense(self.action_dim)(sf)
 
         return q_1, basis_features
