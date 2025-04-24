@@ -568,15 +568,23 @@ def make_train(config):
                 # repeat mask for batch size
                 mask_tiled = jnp.repeat(mask, sf_all.shape[0], axis=0)
 
+                print("mask_tiled1.shape", mask_tiled.shape)
+
                 mask_tiled = jnp.expand_dims(mask_tiled, 0)
                 mask_tiled = jnp.tile(mask_tiled, (sf_all.shape[0], 1))
+
+                print("mask_tiled2.shape", mask_tiled.shape)
 
                 mask_tiled = jnp.expand_dims(mask_tiled, -1)
                 mask_tiled = jnp.tile(mask_tiled, (1, 1, sf_all.shape[2]))
 
+                print("mask_tiled3.shape", mask_tiled.shape)
+
                 mask_tiled = jnp.expand_dims(mask_tiled, -1)
                 mask_tiled = jnp.tile(mask_tiled, (1, 1, 1, sf_all.shape[3]))
                 mask_tiled = mask_tiled.astype(np.int32)
+
+                print("mask_tiled4.shape", mask_tiled.shape)
 
 
 
