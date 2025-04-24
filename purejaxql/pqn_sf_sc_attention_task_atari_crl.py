@@ -1076,7 +1076,11 @@ def make_train(config):
                         basis_features,
                         minibatch.reward,
                     )
-                    train_state.task_state = train_state.task_state.apply_gradients(
+                    train_state.task_states_all[
+                        f"task_{unique_task_id}"
+                    ] = train_state.task_states_all[
+                        f"task_{unique_task_id}"
+                    ].apply_gradients(
                         grads=grads_task
                     )
                     new_task_params = train_state.task_states_all[
