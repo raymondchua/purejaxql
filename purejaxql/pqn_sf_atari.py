@@ -87,7 +87,7 @@ class SFNetwork(nn.Module):
             x_dummy = nn.BatchNorm(use_running_average=not train)(x)
             x = x / 255.0
         x = CNN(norm_type=self.norm_type)(x, train)
-        rep = nn.Dense(self.feature_dim)(x)
+        rep = nn.Dense(self.sf_dim)(x)
         # rep = nn.LayerNorm()(rep)
         # rep = nn.tanh(rep)
         # rep = nn.Dense(self.sf_dim)(rep)
