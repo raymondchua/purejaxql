@@ -75,7 +75,6 @@ class SFNetwork(nn.Module):
     norm_input: bool = False
     feature_dim: int = 8
     sf_dim: int = 16
-    hidden_dim: int = 32
 
     @nn.compact
     def __call__(self, x: jnp.ndarray, task: jnp.ndarray, train: bool):
@@ -95,7 +94,7 @@ class SFNetwork(nn.Module):
         rep_task = jnp.concatenate([rep, task_normalized], axis=-1)
 
         # features for SF
-        features_critic_sf = nn.Dense(features=self.feature_dim)(rep_task)
+        features_critic_sf = nn.Dense(features=self.sf_dim)(rep_task)
         features_critic_sf = nn.relu(features_critic_sf)
 
         # SF
