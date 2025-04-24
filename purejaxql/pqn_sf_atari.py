@@ -122,6 +122,8 @@ class SFNetwork(nn.Module):
         x = CNN(norm_type=self.norm_type)(x, train)
         q_1 = nn.Dense(self.action_dim)(x)
 
+        basis_features = x / jnp.linalg.norm(x, ord=2, axis=-1, keepdims=True)
+
         return q_1, basis_features
 
 
