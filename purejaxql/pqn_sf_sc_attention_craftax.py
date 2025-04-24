@@ -172,7 +172,7 @@ class SFAttentionNetwork(nn.Module):
         # Compute Q-values
         q_1 = jnp.einsum("bi,bij->bj", task, attended_sf)
 
-        return q_1, attended_sf, attn_logits, attention_weights, keys_masked, values_masked
+        return q_1, attended_sf, attn_logits, attention_weights, keys_masked, values_masked, mask
 
 
 @chex.dataclass(frozen=True)
@@ -450,15 +450,6 @@ def make_train(config):
             def _step_env(carry, _):
                 last_obs, env_state, rng = carry
                 rng, rng_a, rng_s = jax.random.split(rng, 3)
-                # (q_vals, _, _) = network.apply(
-                #     {
-                #         "params": multi_train_state.network_state.params,
-                #         "batch_stats": multi_train_state.network_state.batch_stats,
-                #     },
-                #     last_obs,
-                #     task=multi_train_state.task_state.params["w"],
-                #     train=False,
-                # )
 
                 (_, basis_features, sf) = network.apply(
                     {
@@ -533,7 +524,7 @@ def make_train(config):
                 )
 
                 # attention network
-                q_vals, _, _, _, _, _ = attention_network.apply(
+                q_vals, _, _, _, _, _, _ = attention_network.apply(
                     {
                         "params": multi_train_state.attention_network_state.params,
                     },
@@ -650,7 +641,7 @@ def make_train(config):
             )
 
             # attention network
-            last_q, _, _, _, _, _ = attention_network.apply(
+            last_q, _, _, _, _, _, _ = attention_network.apply(
                 {
                     "params": multi_train_state.attention_network_state.params,
                 },
@@ -770,6 +761,7 @@ def make_train(config):
                                 attention_weights,
                                 keys,
                                 values,
+                                mask_output,
                             ) = attention_network.apply(
                                 {
                                     "params": params["attention"],
@@ -861,6 +853,7 @@ def make_train(config):
                                 attention_weights,
                                 keys,
                                 values,
+                                mask_output,
                             ) = attention_network.apply(
                                 {
                                     "params": params["attention"],
@@ -894,6 +887,7 @@ def make_train(config):
                             attention_weights,
                             keys,
                             values,
+                            mask_output,
                         )
 
                     def _reward_loss_fn(task_params, basis_features):
@@ -1008,6 +1002,7 @@ def make_train(config):
                             attention_weights,
                             keys,
                             values,
+                            mask_output,
                         ),
                     ), grads = jax.value_and_grad(_loss_fn, has_aux=True)(
                         combined_params,
@@ -1090,6 +1085,7 @@ def make_train(config):
                         attention_weights,
                         keys,
                         values,
+                        mask_output,
                     )
 
                 def preprocess_transition(x, rng):
@@ -1122,6 +1118,7 @@ def make_train(config):
                     attention_weights,
                     keys,
                     values,
+                    mask_output,
                 ) = jax.lax.scan(
                     _learn_phase, (multi_train_state, rng), (minibatches, targets)
                 )
@@ -1137,6 +1134,7 @@ def make_train(config):
                     attention_weights,
                     keys,
                     values,
+                    mask_output,
                 )
 
             rng, _rng = jax.random.split(rng)
@@ -1151,6 +1149,7 @@ def make_train(config):
                 attention_weights,
                 keys,
                 values,
+                mask_output,
             ) = jax.lax.scan(
                 _learn_epoch, (multi_train_state, rng), None, config["NUM_EPOCHS"]
             )
@@ -1181,6 +1180,7 @@ def make_train(config):
                 metrics[f"attention_weights_{i}"] = attention_weights[..., i, :].mean()
                 metrics[f"keys_{i}"] = keys[..., i, :, :].mean()
                 metrics[f"values_{i}"] = values[..., i, :, :].mean()
+                metrics[f"mask_output_{i}"] = mask_output[..., i, :].mean()
 
             done_infos = jax.tree_util.tree_map(
                 lambda x: (x * infos["returned_episode"]).sum()
