@@ -1187,7 +1187,7 @@ def make_train(config):
                 metrics[f"attention_weights_{i}"] = attention_weights[..., i, :].mean()
                 metrics[f"keys_{i}"] = keys[..., i, :, :].mean()
                 metrics[f"values_{i}"] = values[..., i, :, :].mean()
-                metrics[f"mask_output_{i}"] = mask_output[..., i, :].mean()
+                metrics[f"mask_output_{i}"] = mask_output[..., i, :, :].mean()
 
             done_infos = jax.tree_util.tree_map(
                 lambda x: (x * infos["returned_episode"]).sum()
