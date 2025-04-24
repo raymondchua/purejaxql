@@ -444,7 +444,9 @@ def make_train(config):
                             # ],
                             train_state.task_states_all[
                                 f"task_{unique_task_id}"
-                            ].params["w"],
+                            ].params["w"][
+                                : -config["TEST_ENVS"], :
+                            ],
                             train=True,
                             mutable=["batch_stats"],
                             task_id=unique_task_id,
