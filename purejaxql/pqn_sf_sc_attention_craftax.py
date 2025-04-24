@@ -821,7 +821,7 @@ def make_train(config):
                                     "params": params["attention"],
                                 },
                                 sf_all,
-                                multi_train_state.task_state.params["w"],
+                                task_concat,
                                 mask_tiled,
                             )
 
