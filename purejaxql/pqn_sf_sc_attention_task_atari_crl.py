@@ -292,6 +292,7 @@ def create_agent(rng, config, max_num_actions, observation_space_shape):
     }
 
     attention_network = SFAttentionNetwork(
+        feature_dim=config["FEATURE_DIM"],
         sf_dim=config["SF_DIM"],
         num_actions=max_num_actions,
         num_beakers=config["NUM_BEAKERS"],
