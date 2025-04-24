@@ -943,7 +943,14 @@ def make_train(config):
                     )(combined_params,
                         multi_train_state.network_state.consolidation_params_tree,
                         mask,)
-                    multi_train_state.network_state = multi_train_state.network_state.apply_gradients(grads=grads)
+                    multi_train_state = multi_train_state.replace(
+                        network_state=multi_train_state.network_state.apply_gradients(
+                            grads=grads["sf"]
+                        ),
+                        attention_network_state=multi_train_state.attention_network_state.apply_gradients(
+                            grads=grads["attention"]
+                        ),
+                    )
                     multi_train_state.network_state = multi_train_state.network_state.replace(
                         grad_steps=multi_train_state.network_state.grad_steps + 1,
                         batch_stats=updates["batch_stats"],
