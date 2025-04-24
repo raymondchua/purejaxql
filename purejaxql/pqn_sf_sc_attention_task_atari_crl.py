@@ -1160,7 +1160,7 @@ def make_train(config):
                 metrics[f"params_norm_{idx}"] = jnp.mean(p)
 
             print("mask_output shape: ", mask_output.shape)
-            print("mask_tiled shape: ", mask_tired.shape)
+            print("mask_tiled shape: ", mask_tiled.shape)
 
             for i in range(config["NUM_BEAKERS"]):
                 metrics[f"attn_logits_{i}"] = attn_logits[..., i, :].mean()
