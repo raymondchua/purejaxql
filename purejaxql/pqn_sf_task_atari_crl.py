@@ -498,7 +498,7 @@ def make_train(config):
                     )
                     train_state.task_states_all[
                         f"task_{unique_task_id}"
-                    ].task_state = train_state.task_states_all[
+                    ] = train_state.task_states_all[
                             f"task_{unique_task_id}"
                         ].apply_gradients(
                         grads=grads_task
