@@ -305,7 +305,7 @@ def create_agent(rng, config, max_num_actions, observation_space_shape):
         (1, config["NUM_BEAKERS"], max_num_actions, config["SF_DIM"])
     )
     attention_network_variables = attention_network.init(
-        rng, init_sf_all, init_task, init_mask
+        rng, init_sf_all, init_task, init_mask, task_id=0,
     )
 
     tx = optax.chain(
