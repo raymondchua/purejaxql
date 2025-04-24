@@ -575,7 +575,7 @@ def make_train(config):
                 mask_tiled = jnp.tile(mask_tiled, (1, 1, sf_all.shape[2]))
 
                 mask_tiled = jnp.expand_dims(mask_tiled, -1)
-                mask_tiled = jnp.tile(mask_tiled, (1, 1, 1, sf_all.shape[4]))
+                mask_tiled = jnp.tile(mask_tiled, (1, 1, 1, sf_all.shape[3]))
                 mask_tiled = mask_tiled.astype(np.int32)
 
 
