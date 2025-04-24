@@ -93,7 +93,7 @@ class SFNetwork(nn.Module):
         # # rep = nn.Dense(self.sf_dim)(rep)
         basis_features = rep / jnp.linalg.norm(rep, ord=2, axis=-1, keepdims=True)
         #
-        # task = jax.lax.stop_gradient(task)
+        task = jax.lax.stop_gradient(task)
         # task_normalized = task / jnp.linalg.norm(task, ord=2, axis=-1, keepdims=True)
         # rep_task = jnp.concatenate([rep, task_normalized], axis=-1)
         #
@@ -120,7 +120,8 @@ class SFNetwork(nn.Module):
         # )  # (batch_size, action_dim)
 
         # x = CNN(norm_type=self.norm_type)(x, train)
-        q_1 = nn.Dense(self.action_dim)(rep)
+        sf = nn.Dense(features=self.sf_dim * self.action_dim)(rep)
+        q_1 = nn.Dense(self.action_dim)(sf)
 
         return q_1, basis_features
 
