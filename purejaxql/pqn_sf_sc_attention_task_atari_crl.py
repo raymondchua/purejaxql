@@ -564,6 +564,9 @@ def make_train(config):
                 mask = mask[
                     :-1
                 ]  # remove the last column of the mask since the first beaker is always updated
+
+                print("mask.shape", mask.shape)
+
                 mask = jnp.insert(mask, 0, 1)
                 # repeat mask for batch size
                 mask_tiled = jnp.repeat(mask, sf_all.shape[0], axis=0)
