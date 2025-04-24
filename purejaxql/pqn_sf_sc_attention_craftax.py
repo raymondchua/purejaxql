@@ -746,16 +746,85 @@ def make_train(config):
 
                         else:
                             # if not using q_lambda, re-pass the next_obs through the network to compute target
-                            (all_q_vals, basis_features, _), updates = network.apply(
+                            # (all_q_vals, basis_features, _), updates = network.apply(
+                            #     {
+                            #         "params": params,
+                            #         "batch_stats": multi_train_state.network_state.batch_stats,
+                            #     },
+                            #     jnp.concatenate((minibatch.obs, minibatch.next_obs)),
+                            #     train=True,
+                            #     mutable=["batch_stats"],
+                            #     task=jnp.concatenate((multi_train_state.task_state.params["w"], multi_train_state.task_state.params["w"])),
+                            # )
+                            task_concat = jnp.concatenate((multi_train_state.task_state.params["w"], multi_train_state.task_state.params["w"]))
+                            obs_concat = jnp.concatenate((minibatch.obs, minibatch.next_obs))
+                            (_, basis_features, sf), updates = network.apply(
                                 {
-                                    "params": params,
+                                    "params": params["sf"],
                                     "batch_stats": multi_train_state.network_state.batch_stats,
                                 },
-                                jnp.concatenate((minibatch.obs, minibatch.next_obs)),
+                                obs_concat,
                                 train=True,
                                 mutable=["batch_stats"],
-                                task=jnp.concatenate((multi_train_state.task_state.params["w"], multi_train_state.task_state.params["w"])),
+                                task=task_concat,
                             )
+
+                            params_beakers = [
+                                params_consolidation[f"network_{i}"]
+                                for i in range(1, config["NUM_BEAKERS"])
+                            ]
+
+                            # Convert list of dicts into a batched PyTree
+                            params_beakers_stacked = jax.tree_util.tree_map(
+                                lambda *x: jnp.stack(x), *params_beakers
+                            )
+
+                            num_beakers = (
+                                    config["NUM_BEAKERS"] - 1
+                            )  # because beaker 0 is excluded
+
+                            # Tile obs/task for each beaker
+                            obs_tiled = jnp.broadcast_to(
+                                obs_concat, (num_beakers, *obs_concat.shape)
+                            )  # [num_beakers, batch, ...]
+                            task_tiled = jnp.broadcast_to(
+                                task_concat,
+                                (
+                                    num_beakers,
+                                    *task_concat.shape,
+                                ),
+                            )  # [num_beakers, batch, task_dim]
+
+                            # Vectorized application
+                            sf_beakers = jax.vmap(apply_single_beaker, in_axes=(0, 0, 0, None))(
+                                params_beakers_stacked, obs_tiled, task_tiled, train_state.network_state.batch_stats
+                            )
+
+                            sf_all = jnp.concatenate([sf[None], sf_beakers], axis=0)
+                            sf_all = jnp.transpose(sf_all,
+                                                   (1, 0, 3, 2))  # (batch_size, num_beakers, num_actions, sf_dim)
+
+                            mask = mask.reshape(1, -1, 1, 1)
+                            mask_tiled = jnp.broadcast_to(mask, (
+                                sf_all.shape[0], mask.shape[1], sf_all.shape[2], sf_all.shape[3]))
+
+                            # attention network
+                            (
+                                all_q_vals,
+                                attended_sf,
+                                attn_logits,
+                                attention_weights,
+                                keys,
+                                values,
+                            ) = attention_network.apply(
+                                {
+                                    "params": params["attention"],
+                                },
+                                sf_all,
+                                multi_train_state.task_state.params["w"],
+                                mask_tiled,
+                            )
+
                             q_vals, q_next = jnp.split(all_q_vals, 2)
                             q_next = jax.lax.stop_gradient(q_next)
                             q_next = jnp.max(q_next, axis=-1)  # (batch_size,)
