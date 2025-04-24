@@ -755,9 +755,6 @@ def make_train(config):
                                 ),
                             )
 
-                            print("sf_all shape:", sf_all.shape)
-                            print("mask shape:", mask.shape)
-
                             # attention network
                             (
                                 q_vals,
@@ -850,6 +847,9 @@ def make_train(config):
                                     sf_all.shape[3],
                                 ),
                             )
+
+                            print("sf_all shape:", sf_all.shape)
+                            print("mask shape:", mask.shape)
 
                             # attention network
                             (
