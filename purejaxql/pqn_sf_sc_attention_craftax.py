@@ -570,7 +570,6 @@ def make_train(config):
                 transitions.next_obs[-1],
                 task_params_target,
                 train=False,
-                task_id=unique_task_id,
             )
 
             params_beakers = [
