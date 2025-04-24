@@ -316,7 +316,7 @@ def make_train(config):
                         "batch_stats": train_state.network_state.batch_stats,
                     },
                     last_obs,
-                    train_state.task_state.params["w"],
+                    train_state.task_states_all[f"task_{unique_task_id}"].params["w"],
                     train=False,
                     task_id=unique_task_id,
                 )
