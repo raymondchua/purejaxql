@@ -569,14 +569,8 @@ def make_train(config):
 
                 # tile the mask for batch size, action dim and sf dim
                 mask = jnp.expand_dims(mask, 0)
-                mask_tiled = jnp.tile(mask, (sf_all.shape[0], 1))
-
-                mask_tiled = jnp.expand_dims(mask_tiled, -1)
-                mask_tiled = jnp.tile(mask_tiled, (1, 1, sf_all.shape[2]))
-
-                mask_tiled = jnp.expand_dims(mask_tiled, -1)
-                mask_tiled = jnp.tile(mask_tiled, (1, 1, 1, sf_all.shape[3]))
-                mask_tiled = mask_tiled.astype(np.int32)
+                mask_tiled = jnp.broadcast_to(mask, (
+                last_sf_all.shape[0], mask.shape[1], last_sf_all.shape[2], last_sf_all.shape[3]))
 
                 # attention network
                 q_vals, _, _, _, _, _, _ = attention_network.apply(
@@ -844,7 +838,6 @@ def make_train(config):
                             keys,
                             values,
                             mask_output,
-                            mask_tiled,
                         )
 
                     def _reward_loss_fn(task_params, basis_features, reward):
@@ -950,7 +943,6 @@ def make_train(config):
                             keys,
                             values,
                             mask_output,
-                            mask_tiled,
                         ),
                     ), grads = jax.value_and_grad(_loss_fn, has_aux=True)(
                         combined_params,
@@ -1030,7 +1022,6 @@ def make_train(config):
                         keys,
                         values,
                         mask_output,
-                        mask_tiled,
                     )
 
                 def preprocess_transition(x, rng):
@@ -1064,7 +1055,6 @@ def make_train(config):
                     keys,
                     values,
                     mask_output,
-                    mask_tiled,
                 ) = jax.lax.scan(
                     _learn_phase, (train_state, rng), (minibatches, targets)
                 )
@@ -1081,7 +1071,6 @@ def make_train(config):
                     keys,
                     values,
                     mask_output,
-                    mask_tiled,
                 )
 
             rng, _rng = jax.random.split(rng)
@@ -1097,7 +1086,6 @@ def make_train(config):
                 keys,
                 values,
                 mask_output,
-                mask_tiled,
             ) = jax.lax.scan(
                 _learn_epoch, (train_state, rng), None, config["NUM_EPOCHS"]
             )
@@ -1141,20 +1129,6 @@ def make_train(config):
                 "unique_task_id": unique_task_id,
             }
 
-            """
-            Make a mask to mask out the beakers in the consolidation system which has timescales less than the current time
-            step. 
-            """
-            mask_temp = (
-                    jnp.asarray(train_state.network_state.timescales, dtype=np.uint32)
-                    < train_state.network_state.grad_steps
-            )
-            mask_temp = mask_temp[
-                   :-1
-                   ]  # remove the last column of the mask since the first beaker is always updated
-            mask_temp = jnp.insert(mask_temp, 0, 1)
-            mask_temp = mask_temp.astype(jnp.int32)
-
             # add norm of each beaker params to metrics
             for idx, p in enumerate(params_norm):
                 metrics[f"params_norm_{idx}"] = jnp.mean(p)
@@ -1165,8 +1139,6 @@ def make_train(config):
                 metrics[f"keys_{i}"] = keys[..., i, :, :].mean()
                 metrics[f"values_{i}"] = values[..., i, :, :].mean()
                 metrics[f"mask_output_{i}"] = mask_output[..., i, :, :].mean()
-                metrics[f"mask_{i}"] = mask_temp[i].mean()
-                metrics[f"mask_tiled_{i}"] = mask_tiled[..., i, :, :].mean()
 
             metrics.update({k: v.mean() for k, v in infos.items()})
             if config.get("TEST_DURING_TRAINING", False):
