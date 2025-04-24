@@ -73,9 +73,9 @@ class SFNetwork(nn.Module):
     action_dim: int
     norm_type: str = "layer_norm"
     norm_input: bool = False
-    feature_dim: int = 128
-    sf_dim: int = 256
-    hidden_dim: int = 512
+    feature_dim: int = 8
+    sf_dim: int = 16
+    hidden_dim: int = 32
 
     @nn.compact
     def __call__(self, x: jnp.ndarray, task: jnp.ndarray, train: bool):
