@@ -143,6 +143,7 @@ class SFAttentionNetwork(nn.Module):
     sf_dim: int
     num_actions: int
     num_beakers: int
+    num_tasks: int
 
     @nn.compact
     def __call__(self, sf_all, task, mask, task_id):
@@ -296,6 +297,7 @@ def create_agent(rng, config, max_num_actions, observation_space_shape):
         sf_dim=config["SF_DIM"],
         num_actions=max_num_actions,
         num_beakers=config["NUM_BEAKERS"],
+        num_tasks=config["NUM_TASKS"],
     )
 
     init_sf_all = jnp.zeros(
