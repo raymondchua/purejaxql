@@ -715,7 +715,7 @@ def make_train(config):
 
                             # Vectorized application
                             sf_beakers = jax.vmap(apply_single_beaker, in_axes=(0, 0, 0, None))(
-                                params_beakers_stacked, obs_tiled, task_tiled, train_state.network_state.batch_stats
+                                params_beakers_stacked, obs_tiled, task_tiled, multi_train_state.network_state.batch_stats
                             )
 
                             sf_all = jnp.concatenate([sf[None], sf_beakers], axis=0)
@@ -797,7 +797,7 @@ def make_train(config):
 
                             # Vectorized application
                             sf_beakers = jax.vmap(apply_single_beaker, in_axes=(0, 0, 0, None))(
-                                params_beakers_stacked, obs_tiled, task_tiled, train_state.network_state.batch_stats
+                                params_beakers_stacked, obs_tiled, task_tiled, multi_train_state.network_state.batch_stats
                             )
 
                             sf_all = jnp.concatenate([sf[None], sf_beakers], axis=0)
