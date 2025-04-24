@@ -253,6 +253,7 @@ class CustomTrainState(TrainState):
     grad_steps: int = 0
     exploration_updates: int = 0
     total_returns: int = 0
+    total_returns_per_task: int = 0
     consolidation_params_tree: Any = None
     capacity: Any = None
     g_flow: Any = None
@@ -263,7 +264,8 @@ class CustomTrainState(TrainState):
 @chex.dataclass
 class MultiTrainState:
     network_state: CustomTrainState
-    task_state: TrainState
+    # task_state: TrainState
+    task_states_all: dict
     attention_network_state: TrainState
 
 
@@ -288,9 +290,28 @@ def create_agent(rng, config, max_num_actions, observation_space_shape):
     init_x = jnp.zeros((1, *observation_space_shape))
     init_task = jnp.zeros((1, config["SF_DIM"]))
     network_variables = sf_network.init(rng, init_x, init_task, task_id=0, train=False)
-    task_params = {
-        "w": init_meta(rng, config["SF_DIM"], config["NUM_ENVS"] + config["TEST_ENVS"])
-    }
+    # task_params = {
+    #     "w": init_meta(rng, config["SF_DIM"], config["NUM_ENVS"] + config["TEST_ENVS"])
+    # }
+    task_states_all = dict()
+
+    for i in range(config["NUM_TASKS"]):
+        task_params = {
+            "w": init_meta(
+                rng, config["SF_DIM"], config["NUM_ENVS"] + config["TEST_ENVS"]
+            )
+        }
+        tx_task = optax.chain(
+            optax.clip_by_global_norm(config["MAX_GRAD_NORM"]),
+            optax.radam(learning_rate=config["LR_TASK"]),
+        )
+        task_state = TrainState.create(
+            apply_fn=sf_network.apply,
+            params=task_params,
+            tx=tx_task,
+        )
+
+        task_states_all[f"task_{i}"] = task_state
 
     attention_network = SFAttentionNetwork(
         feature_dim=config["FEATURE_DIM"],
@@ -315,10 +336,10 @@ def create_agent(rng, config, max_num_actions, observation_space_shape):
         optax.radam(learning_rate=config["LR"]),
     )
 
-    tx_task = optax.chain(
-        optax.clip_by_global_norm(config["MAX_GRAD_NORM"]),
-        optax.radam(learning_rate=config["LR_TASK"]),
-    )
+    # tx_task = optax.chain(
+    #     optax.clip_by_global_norm(config["MAX_GRAD_NORM"]),
+    #     optax.radam(learning_rate=config["LR_TASK"]),
+    # )
 
     tx_attention = optax.chain(
         optax.clip_by_global_norm(config["MAX_GRAD_NORM"]),
@@ -381,11 +402,11 @@ def create_agent(rng, config, max_num_actions, observation_space_shape):
         consolidation_params_tree=consolidation_params_tree,
     )
 
-    task_state = TrainState.create(
-        apply_fn=sf_network.apply,
-        params=task_params,
-        tx=tx_task,
-    )
+    # task_state = TrainState.create(
+    #     apply_fn=sf_network.apply,
+    #     params=task_params,
+    #     tx=tx_task,
+    # )
 
     attention_network_state = TrainState.create(
         apply_fn=attention_network.apply,
@@ -396,7 +417,7 @@ def create_agent(rng, config, max_num_actions, observation_space_shape):
     return (
         MultiTrainState(
             network_state=sf_network_state,
-            task_state=task_state,
+            task_states_all=task_states_all,
             attention_network_state=attention_network_state,
         ),
         sf_network,
@@ -481,7 +502,7 @@ def make_train(config):
 
         rng, _rng = jax.random.split(rng)
         train_state.network_state = train_state.network_state.replace(
-            exploration_updates=0
+            exploration_updates=0, total_returns_per_task=0
         )
 
         params_set_to_zero = unfreeze(
@@ -516,7 +537,7 @@ def make_train(config):
                         "batch_stats": train_state.network_state.batch_stats,
                     },
                     last_obs,
-                    train_state.task_state.params["w"],
+                    train_state.task_states_all[f"task_{unique_task_id}"].params["w"],
                     train=False,
                     task_id=unique_task_id,
                 )
@@ -617,16 +638,22 @@ def make_train(config):
             )
             expl_state = tuple(expl_state)
 
-            task_params_target = train_state.task_state.params["w"]
+            # task_params_target = train_state.task_state.params["w"]
+            task_params_target = train_state.task_states_all[
+                f"task_{unique_task_id}"
+            ].params["w"]
 
             if config.get("TEST_DURING_TRAINING", False):
                 # remove testing envs
                 transitions = jax.tree_util.tree_map(
                     lambda x: x[:, : -config["TEST_ENVS"]], transitions
                 )
-                task_params_target = train_state.task_state.params["w"][
-                    : -config["TEST_ENVS"], :
-                ]
+                # task_params_target = train_state.task_state.params["w"][
+                #     : -config["TEST_ENVS"], :
+                # ]
+                task_params_target = train_state.task_states_all[
+                     f"task_{unique_task_id}"
+                 ].params["w"][: -config["TEST_ENVS"], :]
 
             train_state.network_state = train_state.network_state.replace(
                 timesteps=train_state.network_state.timesteps
@@ -635,7 +662,9 @@ def make_train(config):
 
             train_state.network_state = train_state.network_state.replace(
                 total_returns=train_state.network_state.total_returns
-                + transitions.reward.sum()
+                + transitions.reward.sum(),
+                total_returns_per_task=train_state.network_state.total_returns_per_task
+                + transitions.reward.sum(),
             )  # update total returns count
 
             (_, _, last_sf) = sf_network.apply(
@@ -749,8 +778,10 @@ def make_train(config):
                                 "batch_stats": train_state.network_state.batch_stats,
                             },
                             minibatch.obs,
-                            train_state.task_state.params["w"][
-                                : -config["TEST_ENVS"], :
+                            train_state.task_states_all[
+                                f"task_{unique_task_id}"
+                            ].params["w"][
+                            : -config["TEST_ENVS"], :
                             ],
                             train=True,
                             mutable=["batch_stats"],
@@ -1126,6 +1157,7 @@ def make_train(config):
                 "extrinsic rewards": transitions.reward.mean(),
                 "consolidation_loss": consolidation_loss.mean(),
                 "unique_task_id": unique_task_id,
+                "total_returns_per_task": train_state.network_state.total_returns_per_task,
             }
 
             # add norm of each beaker params to metrics
