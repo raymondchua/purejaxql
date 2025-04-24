@@ -782,6 +782,11 @@ def make_train(config):
                             obs_concat = jnp.concatenate(
                                 (minibatch.obs, minibatch.next_obs)
                             )
+
+                            mask_concat = jnp.concatenate(
+                                (mask, mask),
+                            )
+
                             (_, basis_features, sf), updates = network.apply(
                                 {
                                     "params": params["sf"],
@@ -1174,6 +1179,12 @@ def make_train(config):
             # add norm of each beaker params to metrics
             for idx, p in enumerate(params_norm):
                 metrics[f"params_norm_{idx}"] = jnp.mean(p)
+
+            print("attn_logits shape: ", attn_logits.shape)
+            print("attention_weights shape: ", attention_weights.shape)
+            print("keys shape: ", keys.shape)
+            print("values shape: ", values.shape)
+            print("mask_output shape: ", mask_output.shape)
 
             for i in range(config["NUM_BEAKERS"]):
                 metrics[f"attn_logits_{i}"] = attn_logits[..., i, :].mean()
