@@ -106,18 +106,19 @@ class SFNetwork(nn.Module):
 
         # SF
         sf = nn.Dense(features=self.sf_dim * self.action_dim)(features_critic_sf)
-        sf_action = jnp.reshape(
-            sf,
-            (
-                -1,
-                self.sf_dim,
-                self.action_dim,
-            ),
-        )  # (batch_size, sf_dim, action_dim)
-
-        q_1 = jnp.einsum("bi, bij -> bj", task, sf_action).reshape(
-            -1, self.action_dim
-        )  # (batch_size, action_dim)
+        # sf_action = jnp.reshape(
+        #     sf,
+        #     (
+        #         -1,
+        #         self.sf_dim,
+        #         self.action_dim,
+        #     ),
+        # )  # (batch_size, sf_dim, action_dim)
+        #
+        # q_1 = jnp.einsum("bi, bij -> bj", task, sf_action).reshape(
+        #     -1, self.action_dim
+        # )  # (batch_size, action_dim)
+        q_1 = nn.Dense(features=self.action_dim)(sf)
 
         return q_1, basis_features
 
