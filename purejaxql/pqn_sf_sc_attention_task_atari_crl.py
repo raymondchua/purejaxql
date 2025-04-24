@@ -579,6 +579,7 @@ def make_train(config):
                     sf_all,
                     train_state.task_state.params["w"],
                     mask_tiled,
+                    task_id=unique_task_id,
                 )
 
                 # different eps for each env
@@ -699,6 +700,7 @@ def make_train(config):
                 last_sf_all,
                 task_params_target,
                 mask_tiled,
+                task_id=unique_task_id,
             )
 
             last_q = jnp.max(last_q, axis=-1)
@@ -815,6 +817,7 @@ def make_train(config):
                             : -config["TEST_ENVS"], :
                             ],
                             mask_tiled,
+                            task_id=unique_task_id,
                         )
 
                         chosen_action_qvals = jnp.take_along_axis(
