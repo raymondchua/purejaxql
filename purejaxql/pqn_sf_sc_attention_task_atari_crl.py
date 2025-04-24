@@ -565,11 +565,20 @@ def make_train(config):
                     :-1
                 ]  # remove the last column of the mask since the first beaker is always updated
                 mask = jnp.insert(mask, 0, 1)
-                mask = mask.astype(jnp.int32)
-                mask = mask.reshape(1, -1, 1, 1)
+                # repeat mask for batch size
+                mask_tiled = jnp.repeat(mask, sf_all.shape[0], axis=0)
 
-                # broadcast the mask to the shape of (batch_size, num_beakers-1, num_actions, sf_dim)
-                mask_tiled = jnp.broadcast_to(mask, (sf_all.shape[0], mask.shape[1], sf_all.shape[2], sf_all.shape[3]))
+                mask_tiled = jnp.expand_dims(mask_tiled, 0)
+                mask_tiled = jnp.tile(mask_tiled, (sf_all.shape[0], 1))
+
+                mask_tiled = jnp.expand_dims(mask_tiled, -1)
+                mask_tiled = jnp.tile(mask_tiled, (1, 1, sf_all.shape[2]))
+
+                mask_tiled = jnp.expand_dims(mask_tiled, -1)
+                mask_tiled = jnp.tile(mask_tiled, (1, 1, 1, sf_all.shape[4]))
+                mask_tiled = mask_tiled.astype(np.int32)
+
+
 
                 # attention network
                 q_vals, _, _, _, _, _, _ = attention_network.apply(
