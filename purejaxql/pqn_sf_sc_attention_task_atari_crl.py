@@ -556,10 +556,10 @@ def make_train(config):
                     last_obs, (num_beakers, *last_obs.shape)
                 )  # [num_beakers, batch, ...]
                 task_tiled = jnp.broadcast_to(
-                    train_state.task_state.params["w"],
+                    train_state.task_states_all[f"task_{unique_task_id}"].params["w"],
                     (
                         num_beakers,
-                        *train_state.task_state.params["w"].shape,
+                        *train_state.task_states_all[f"task_{unique_task_id}"].params["w"].shape,
                     ),
                 )  # [num_beakers, batch, task_dim]
 
@@ -595,7 +595,7 @@ def make_train(config):
                         "params": train_state.attention_network_state.params,
                     },
                     sf_all,
-                    train_state.task_state.params["w"],
+                    train_state.task_states_all[f"task_{unique_task_id}"].params["w"],
                     mask_tiled,
                     task_id=unique_task_id,
                 )
@@ -804,12 +804,12 @@ def make_train(config):
                             minibatch.obs, (num_beakers, *minibatch.obs.shape)
                         )  # [num_beakers, batch, ...]
                         task_tiled = jnp.broadcast_to(
-                            train_state.task_state.params["w"][
+                            train_state.task_states_all[f"task_{unique_task_id}"].params["w"][
                             : -config["TEST_ENVS"], :
                             ],
                             (
                                 num_beakers,
-                                *train_state.task_state.params["w"][
+                                *train_state.task_states_all[f"task_{unique_task_id}"].params["w"][
                                     : -config["TEST_ENVS"], :
                                 ].shape,
                             ),
@@ -841,7 +841,7 @@ def make_train(config):
                                 "params": params["attention"],
                             },
                             sf_all,
-                            train_state.task_state.params["w"][
+                            train_state.task_states_all[f"task_{unique_task_id}"].params["w"][
                             : -config["TEST_ENVS"], :
                             ],
                             mask_tiled,
@@ -992,7 +992,7 @@ def make_train(config):
                     )
 
                     # update task params using reward prediction loss
-                    old_task_params = train_state.task_state.params["w"]
+                    old_task_params = train_state.task_states_all[f"task_{unique_task_id}"].params["w"]
                     basis_features = jax.lax.stop_gradient(basis_features)
                     reward_loss, grads_task = jax.value_and_grad(_reward_loss_fn)(
                         train_state.task_state.params, basis_features, minibatch.reward
@@ -1000,7 +1000,7 @@ def make_train(config):
                     train_state.task_state = train_state.task_state.apply_gradients(
                         grads=grads_task
                     )
-                    new_task_params = train_state.task_state.params["w"]
+                    new_task_params = train_state.task_states_all[f"task_{unique_task_id}"].params["w"]
 
                     task_params_diff = jnp.linalg.norm(
                         new_task_params - old_task_params, ord=2, axis=-1
