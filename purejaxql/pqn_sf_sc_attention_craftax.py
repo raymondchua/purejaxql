@@ -783,10 +783,6 @@ def make_train(config):
                                 (minibatch.obs, minibatch.next_obs)
                             )
 
-                            mask_concat = jnp.concatenate(
-                                (mask, mask),
-                            )
-
                             (_, basis_features, sf), updates = network.apply(
                                 {
                                     "params": params["sf"],
