@@ -1149,6 +1149,7 @@ def make_train(config):
                 "qvals": qvals.mean(),
                 "eps": eps_scheduler(train_state.network_state.exploration_updates),
                 "lr": lr,
+                "lr_task": config["LR_TASK"],
                 "exposure": exposure,
                 "task_id": task_id,
                 "exploration_updates": train_state.network_state.exploration_updates,
