@@ -87,6 +87,8 @@ class SFNetwork(nn.Module):
             x = x / 255.0
         x = CNN(norm_type=self.norm_type)(x, train)
         rep = nn.Dense(self.feature_dim)(x)
+        rep = nn.relu(rep)
+        rep = nn.Dense(self.sf_dim)(rep)
         basis_features = rep / jnp.linalg.norm(rep, ord=2, axis=-1, keepdims=True)
 
         task = jax.lax.stop_gradient(task)
