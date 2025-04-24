@@ -352,11 +352,12 @@ def create_agent(rng, config, max_num_actions, observation_space_shape):
         timescales = adapted_timescales
         g_flow = adapted_g_flow
 
-    g_flow = jnp.array(g_flow)
-    capacity = jnp.array(capacity)
     print(f"timescales: {timescales[:-1]}")
     print(f"g_flow: {g_flow[:-1]}")
     print(f"Capacity: {capacity[:-1]}")
+
+    g_flow = jnp.array(g_flow)
+    capacity = jnp.array(capacity)
 
     consolidation_params_tree = {}
     consolidation_networks = []
