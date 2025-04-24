@@ -742,6 +742,8 @@ def make_train(config):
                                 sf_all, (1, 0, 3, 2)
                             )  # (batch_size, num_beakers, num_actions, sf_dim)
 
+
+
                             mask = mask.reshape(1, -1, 1, 1)
                             mask_tiled = jnp.broadcast_to(
                                 mask,
@@ -752,6 +754,9 @@ def make_train(config):
                                     sf_all.shape[3],
                                 ),
                             )
+
+                            print("sf_all shape:", sf_all.shape)
+                            print("mask shape:", mask.shape)
 
                             # attention network
                             (
