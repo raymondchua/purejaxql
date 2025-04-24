@@ -86,12 +86,12 @@ class SFNetwork(nn.Module):
             # dummy normalize input for global compatibility
             x_dummy = nn.BatchNorm(use_running_average=not train)(x)
             x = x / 255.0
-        # x = CNN(norm_type=self.norm_type)(x, train)
-        # rep = nn.Dense(self.sf_dim)(x)
+        x = CNN(norm_type=self.norm_type)(x, train)
+        rep = nn.Dense(self.sf_dim)(x)
         # # rep = nn.LayerNorm()(rep)
         # # rep = nn.tanh(rep)
         # # rep = nn.Dense(self.sf_dim)(rep)
-        # basis_features = rep / jnp.linalg.norm(rep, ord=2, axis=-1, keepdims=True)
+        basis_features = rep / jnp.linalg.norm(rep, ord=2, axis=-1, keepdims=True)
         #
         # task = jax.lax.stop_gradient(task)
         # task_normalized = task / jnp.linalg.norm(task, ord=2, axis=-1, keepdims=True)
@@ -119,10 +119,8 @@ class SFNetwork(nn.Module):
         #     -1, self.action_dim
         # )  # (batch_size, action_dim)
 
-        x = CNN(norm_type=self.norm_type)(x, train)
-        q_1 = nn.Dense(self.action_dim)(x)
-
-        basis_features = x / jnp.linalg.norm(x, ord=2, axis=-1, keepdims=True)
+        # x = CNN(norm_type=self.norm_type)(x, train)
+        q_1 = nn.Dense(self.action_dim)(rep)
 
         return q_1, basis_features
 
