@@ -678,7 +678,7 @@ def make_train(config):
 
                             (_, basis_features, sf), updates = network.apply(
                                 {
-                                    "params": params,
+                                    "params": params["sf"],
                                     "batch_stats": multi_train_state.network_state.batch_stats,
                                 },
                                 minibatch.obs,
