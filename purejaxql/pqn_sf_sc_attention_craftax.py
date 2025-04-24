@@ -158,6 +158,9 @@ class SFAttentionNetwork(nn.Module):
         keys_masked = keys * mask
         values_masked = values * mask
 
+        print("keys_masked shape:", keys_masked.shape)
+        print("values_masked shape:", values_masked.shape)
+
         attn_logits = jnp.einsum("bqf,bnaf->bqna", query, keys_masked) / jnp.sqrt(self.sf_dim)
 
         # replace zero logits with a large negative number so that they are ignored in the softmax
@@ -1171,6 +1174,9 @@ def make_train(config):
                 "extrinsic rewards": transitions.reward.mean(),
                 "consolidation_loss": consolidation_loss.mean(),
             }
+
+            print("metric keys shape: ", keys.shape)
+            print("metric values shape: ", values.shape)
 
             # add norm of each beaker params to metrics
             for idx, p in enumerate(params_norm):
