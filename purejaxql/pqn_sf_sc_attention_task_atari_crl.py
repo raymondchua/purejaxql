@@ -570,7 +570,7 @@ def make_train(config):
                 # tile the mask for batch size, action dim and sf dim
                 mask = jnp.expand_dims(mask, 0)
                 mask_tiled = jnp.broadcast_to(mask, (
-                last_sf_all.shape[0], mask.shape[1], last_sf_all.shape[2], last_sf_all.shape[3]))
+                sf_all.shape[0], mask.shape[1], sf_all.shape[2], sf_all.shape[3]))
 
                 # attention network
                 q_vals, _, _, _, _, _, _ = attention_network.apply(
