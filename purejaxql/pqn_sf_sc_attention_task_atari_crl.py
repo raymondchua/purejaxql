@@ -1128,6 +1128,20 @@ def make_train(config):
                 "unique_task_id": unique_task_id,
             }
 
+            """
+            Make a mask to mask out the beakers in the consolidation system which has timescales less than the current time
+            step. 
+            """
+            mask_temp = (
+                    jnp.asarray(train_state.network_state.timescales, dtype=np.uint32)
+                    < train_state.network_state.grad_steps
+            )
+            mask_temp = mask_temp[
+                   :-1
+                   ]  # remove the last column of the mask since the first beaker is always updated
+            mask_temp = jnp.insert(mask_temp, 0, 1)
+            mask_temp = mask_temp.astype(jnp.int32)
+
             # add norm of each beaker params to metrics
             for idx, p in enumerate(params_norm):
                 metrics[f"params_norm_{idx}"] = jnp.mean(p)
@@ -1138,6 +1152,7 @@ def make_train(config):
                 metrics[f"keys_{i}"] = keys[..., i, :, :].mean()
                 metrics[f"values_{i}"] = values[..., i, :, :].mean()
                 metrics[f"mask_output_{i}"] = mask_output[..., i, :].mean()
+                metrics[f"mask_{i}"] = mask_temp[i].mean()
 
             metrics.update({k: v.mean() for k, v in infos.items()})
             if config.get("TEST_DURING_TRAINING", False):
