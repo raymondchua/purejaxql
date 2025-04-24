@@ -849,7 +849,7 @@ def make_train(config):
                             )
 
                             print("sf_all shape:", sf_all.shape)
-                            print("mask shape:", mask.shape)
+                            print("mask_tiled shape:", mask_tiled.shape)
 
                             # attention network
                             (
