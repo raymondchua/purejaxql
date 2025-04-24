@@ -623,7 +623,7 @@ def single_run(config):
         )
 
         # assumes not vmpapped seeds
-        params = model_state.params
+        params = model_state.network_state.params
         save_path = os.path.join(
             save_dir,
             f'{alg_name}_{env_name}_seed{config["SEED"]}.safetensors',
