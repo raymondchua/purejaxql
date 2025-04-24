@@ -108,7 +108,6 @@ class SFAttentionNetwork(nn.Module):
             sf_all[:, 1:, :, :]
         )  # shape (batch, num_beakers-1, ...)
         sf_all = jnp.concatenate([sf_first, sf_rest], axis=1)
-        sf_all_masked = sf_all * mask
 
         # Normalize and tile task
         task = jax.lax.stop_gradient(task)
@@ -137,10 +136,10 @@ class SFAttentionNetwork(nn.Module):
             values2_layer = nn.Dense(features=self.sf_dim, name=f"values2_beaker_{i}")
 
             # Add mlp for keys and values so that the attention network can learn to transform the sf
-            keys1 = keys1_layer(sf_all_masked[:, i, :, :])
+            keys1 = keys1_layer(sf_all[:, i, :, :])
             keys1 = nn.relu(keys1)
 
-            values1 = values1_layer(sf_all_masked[:, i, :, :])
+            values1 = values1_layer(sf_all[:, i, :, :])
             values1 = nn.relu(values1)
 
             keys_per_beaker.append(keys2_layer(keys1))  # Apply to each beaker's SF
@@ -156,21 +155,24 @@ class SFAttentionNetwork(nn.Module):
             values_per_beaker, axis=1
         )  # (batch_size, num_beakers, num_actions, sf_dim)
 
-        attn_logits = jnp.einsum("bqf,bnaf->bqna", query, keys) / jnp.sqrt(self.sf_dim)
+        keys_masked = keys * mask
+        values_masked = values * mask
+
+        attn_logits = jnp.einsum("bqf,bnaf->bqna", query, keys_masked) / jnp.sqrt(self.sf_dim)
 
         # replace zero logits with a large negative number so that they are ignored in the softmax
         attn_logits = jnp.where(attn_logits == 0, -1e9, attn_logits)
 
         attention_weights = jax.nn.softmax(attn_logits, axis=2)
 
-        attended_sf = jnp.einsum("bqna,bnaf->bqaf", attention_weights, sf_all_masked)
+        attended_sf = jnp.einsum("bqna,bnaf->bqaf", attention_weights, values_masked)
 
         attended_sf = attended_sf.squeeze(1).swapaxes(1, 2)
 
         # Compute Q-values
         q_1 = jnp.einsum("bi,bij->bj", task, attended_sf)
 
-        return q_1, attended_sf, attn_logits, attention_weights, keys, values
+        return q_1, attended_sf, attn_logits, attention_weights, keys_masked, values_masked
 
 
 @chex.dataclass(frozen=True)
