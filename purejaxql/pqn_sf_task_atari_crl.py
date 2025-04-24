@@ -25,6 +25,7 @@ from purejaxql.utils.atari_wrapper import JaxLogEnvPoolWrapper
 from purejaxql.utils.l2_normalize import l2_normalize
 from purejaxql.utils.task_aware_helpers import TaskModulatedDense, TaskModulatedConv
 
+
 class CNN(nn.Module):
     num_tasks: int
     norm_type: str = "layer_norm"
@@ -75,6 +76,7 @@ class CNN(nn.Module):
         x = normalize(x)
         x = nn.relu(x)
         return x
+
 
 class SFNetwork(nn.Module):
     action_dim: int
@@ -152,10 +154,12 @@ class CustomTrainState(TrainState):
     total_returns: int = 0
     total_returns_per_task: int = 0
 
+
 @chex.dataclass
 class MultiTrainState:
     network_state: CustomTrainState
-    task_state: TrainState
+    # task_state: TrainState
+    task_states_all: dict
 
 
 def init_meta(rng, sf_dim, num_env) -> chex.Array:
@@ -179,17 +183,36 @@ def create_agent(rng, config, max_num_actions, observation_space_shape):
     init_x = jnp.zeros((1, *observation_space_shape))
     init_task = jnp.zeros((1, config["SF_DIM"]))
     network_variables = network.init(rng, init_x, init_task, task_id=0, train=False)
-    task_params = {"w": init_meta(rng, config["SF_DIM"], config["NUM_ENVS"] + config["TEST_ENVS"])}
+    tasks_states_all = dict()
+
+    for i in range(config["NUM_TASKS"]):
+        task_params = {
+            "w": init_meta(
+                rng, config["SF_DIM"], config["NUM_ENVS"] + config["TEST_ENVS"]
+            )
+        }
+        task_params_all_envs[f"task_{i}"] = task_params
+        tx_task = optax.chain(
+            optax.clip_by_global_norm(config["MAX_GRAD_NORM"]),
+            optax.radam(learning_rate=config["LR_TASK"]),
+        )
+        task_state = TrainState.create(
+            apply_fn=network.apply,
+            params=task_params_all_envs[f"task_{i}"],
+            tx=tx_task,
+        )
+
+        tasks_states_all[f"task_{i}"] = task_state
 
     tx = optax.chain(
         optax.clip_by_global_norm(config["MAX_GRAD_NORM"]),
         optax.radam(learning_rate=config["LR"]),
     )
 
-    tx_task = optax.chain(
-        optax.clip_by_global_norm(config["MAX_GRAD_NORM"]),
-        optax.radam(learning_rate=config["LR_TASK"]),
-    )
+    # tx_task = optax.chain(
+    #     optax.clip_by_global_norm(config["MAX_GRAD_NORM"]),
+    #     optax.radam(learning_rate=config["LR_TASK"]),
+    # )
 
     network_state = CustomTrainState.create(
         apply_fn=network.apply,
@@ -198,16 +221,10 @@ def create_agent(rng, config, max_num_actions, observation_space_shape):
         tx=tx,
     )
 
-    task_state = TrainState.create(
-        apply_fn=network.apply,
-        params=task_params,
-        tx=tx_task,
+    return (
+        MultiTrainState(network_state=network_state, task_states_all=task_states_all),
+        network,
     )
-
-    return MultiTrainState(
-        network_state=network_state,
-        task_state=task_state
-    ), network
 
 
 def make_train(config):
@@ -286,7 +303,9 @@ def make_train(config):
         lr = lr_scheduler if config.get("LR_LINEAR_DECAY", False) else config["LR"]
 
         rng, _rng = jax.random.split(rng)
-        train_state.network_state = train_state.network_state.replace(exploration_updates=0, total_returns_per_task=0)
+        train_state.network_state = train_state.network_state.replace(
+            exploration_updates=0, total_returns_per_task=0
+        )
 
         # TRAINING LOOP
         def _update_step(runner_state, unused):
@@ -343,14 +362,20 @@ def make_train(config):
             )
             expl_state = tuple(expl_state)
 
-            task_params_target = train_state.task_state.params["w"]
+            # task_params_target = train_state.task_state.params["w"]
+            task_params_target = train_state.task_states_all[
+                f"task_{unique_task_id}"
+            ].params["w"]
 
             if config.get("TEST_DURING_TRAINING", False):
                 # remove testing envs
                 transitions = jax.tree_util.tree_map(
                     lambda x: x[:, : -config["TEST_ENVS"]], transitions
                 )
-                task_params_target = train_state.task_state.params["w"][: -config["TEST_ENVS"], :]
+                # task_params_target = train_state.task_state.params["w"][: -config["TEST_ENVS"], :]
+                task_params_target = train_state.task_states_all[
+                    f"task_{unique_task_id}"
+                ].params["w"][: -config["TEST_ENVS"], :]
 
             train_state.network_state = train_state.network_state.replace(
                 timesteps=train_state.network_state.timesteps
@@ -358,11 +383,13 @@ def make_train(config):
             )  # update timesteps count
 
             train_state.network_state = train_state.network_state.replace(
-                total_returns=train_state.network_state.total_returns + transitions.reward.sum(),
-                total_returns_per_task=train_state.network_state.total_returns_per_task + transitions.reward.sum()
+                total_returns=train_state.network_state.total_returns
+                + transitions.reward.sum(),
+                total_returns_per_task=train_state.network_state.total_returns_per_task
+                + transitions.reward.sum(),
             )  # update total returns count
 
-            (last_q,_) = network.apply(
+            (last_q, _) = network.apply(
                 {
                     "params": train_state.network_state.params,
                     "batch_stats": train_state.network_state.batch_stats,
@@ -413,9 +440,17 @@ def make_train(config):
 
                     def _loss_fn(params):
                         (q_vals, basis_features), updates = network.apply(
-                            {"params": params, "batch_stats": train_state.network_state.batch_stats},
+                            {
+                                "params": params,
+                                "batch_stats": train_state.network_state.batch_stats,
+                            },
                             minibatch.obs,
-                            train_state.task_state.params["w"][: -config["TEST_ENVS"], :],
+                            # train_state.task_state.params["w"][
+                            #     : -config["TEST_ENVS"], :
+                            # ],
+                            train_state.task_states_all[
+                                f"task_{unique_task_id}"
+                            ].params["w"],
                             train=True,
                             mutable=["batch_stats"],
                             task_id=unique_task_id,
@@ -432,33 +467,60 @@ def make_train(config):
                         return loss, (updates, chosen_action_qvals, basis_features)
 
                     def _reward_loss_fn(task_params, basis_features, reward):
-                        task_params_train = task_params["w"][:-config["TEST_ENVS"], : ]
-                        predicted_reward = jnp.einsum("ij,ij->i", basis_features, task_params_train)
+                        task_params_train = task_params["w"][: -config["TEST_ENVS"], :]
+                        predicted_reward = jnp.einsum(
+                            "ij,ij->i", basis_features, task_params_train
+                        )
                         loss = 0.5 * jnp.square(predicted_reward - reward).mean()
 
                         return loss
 
-                    (loss, (updates, qvals, basis_features)), grads = jax.value_and_grad(
-                        _loss_fn, has_aux=True
-                    )(train_state.network_state.params)
-                    train_state.network_state = train_state.network_state.apply_gradients(grads=grads)
+                    (
+                        loss,
+                        (updates, qvals, basis_features),
+                    ), grads = jax.value_and_grad(_loss_fn, has_aux=True)(
+                        train_state.network_state.params
+                    )
+                    train_state.network_state = (
+                        train_state.network_state.apply_gradients(grads=grads)
+                    )
                     train_state.network_state = train_state.network_state.replace(
                         grad_steps=train_state.network_state.grad_steps + 1,
                         batch_stats=updates["batch_stats"],
                     )
 
                     # update task params using reward prediction loss
-                    old_task_params = train_state.task_state.params["w"]
+                    # old_task_params = train_state.task_state.params["w"]
+                    old_task_params = train_state.task_states_all[
+                        f"task_{unique_task_id}"
+                    ].params["w"]
                     basis_features = jax.lax.stop_gradient(basis_features)
-                    reward_loss, grads_task = jax.value_and_grad(
-                        _reward_loss_fn
-                    )(train_state.task_state.params, basis_features, minibatch.reward)
-                    train_state.task_state = train_state.task_state.apply_gradients(grads=grads_task)
-                    new_task_params = train_state.task_state.params["w"]
+                    reward_loss, grads_task = jax.value_and_grad(_reward_loss_fn)(
+                        train_state.task_states_all[
+                            f"task_{unique_task_id}"
+                        ].params, basis_features, minibatch.reward
+                    )
+                    train_state.task_states_all[
+                        f"task_{unique_task_id}"
+                    ].task_state = train_state.task_states_all[
+                            f"task_{unique_task_id}"
+                        ].apply_gradients(
+                        grads=grads_task
+                    )
+                    new_task_params = train_state.task_states_all[
+                            f"task_{unique_task_id}"
+                        ].params["w"]
 
-                    task_params_diff = jnp.linalg.norm(new_task_params - old_task_params, ord=2, axis=-1)
+                    task_params_diff = jnp.linalg.norm(
+                        new_task_params - old_task_params, ord=2, axis=-1
+                    )
 
-                    return (train_state, rng), (loss, qvals, reward_loss, task_params_diff)
+                    return (train_state, rng), (
+                        loss,
+                        qvals,
+                        reward_loss,
+                        task_params_diff,
+                    )
 
                 def preprocess_transition(x, rng):
                     x = x.reshape(
@@ -479,18 +541,30 @@ def make_train(config):
                 )
 
                 rng, _rng = jax.random.split(rng)
-                (train_state, rng), (loss, qvals, reward_loss, task_params_diff) = jax.lax.scan(
+                (train_state, rng), (
+                    loss,
+                    qvals,
+                    reward_loss,
+                    task_params_diff,
+                ) = jax.lax.scan(
                     _learn_phase, (train_state, rng), (minibatches, targets)
                 )
 
                 return (train_state, rng), (loss, qvals, reward_loss, task_params_diff)
 
             rng, _rng = jax.random.split(rng)
-            (train_state, rng), (loss, qvals, reward_loss, task_params_diff) = jax.lax.scan(
+            (train_state, rng), (
+                loss,
+                qvals,
+                reward_loss,
+                task_params_diff,
+            ) = jax.lax.scan(
                 _learn_epoch, (train_state, rng), None, config["NUM_EPOCHS"]
             )
 
-            train_state.network_state = train_state.network_state.replace(n_updates=train_state.network_state.n_updates + 1)
+            train_state.network_state = train_state.network_state.replace(
+                n_updates=train_state.network_state.n_updates + 1
+            )
             train_state.network_state = train_state.network_state.replace(
                 exploration_updates=train_state.network_state.exploration_updates + 1
             )
@@ -593,7 +667,11 @@ def make_train(config):
             _update_step, runner_state, None, config["NUM_UPDATES"]
         )
 
-        return {"runner_state": runner_state, "metrics": metrics, "train_state": runner_state[0]}
+        return {
+            "runner_state": runner_state,
+            "metrics": metrics,
+            "train_state": runner_state[0],
+        }
 
     return train
 
@@ -636,14 +714,18 @@ def single_run(config):
     num_exposures = config["alg"].get("NUM_EXPOSURES", 1)
 
     # determine the max number of actions
-    max_num_actions = 18 # atari has at most 18 actions
+    max_num_actions = 18  # atari has at most 18 actions
     observation_space_shape = (4, 84, 84)
 
-    config["alg"]["TOTAL_TIMESTEPS_DECAY"] = config["alg"]["TOTAL_TIMESTEPS_DECAY"] * config["NUM_TASKS"]
+    config["alg"]["TOTAL_TIMESTEPS_DECAY"] = (
+        config["alg"]["TOTAL_TIMESTEPS_DECAY"] * config["NUM_TASKS"]
+    )
 
     rng = jax.random.PRNGKey(config["SEED"])
     rng, rng_agent = jax.random.split(rng)
-    agent_train_state, network = create_agent(rng_agent, config, max_num_actions, observation_space_shape)
+    agent_train_state, network = create_agent(
+        rng_agent, config, max_num_actions, observation_space_shape
+    )
 
     for cycle in range(num_exposures):
         print(f"\n=== Cycle {cycle + 1}/{num_exposures} ===")
@@ -657,12 +739,13 @@ def single_run(config):
             else:
                 # outs = jax.jit(make_train(config))(rng, exposure)
                 outs = jax.jit(
-                    lambda rng: make_train(config)(rng, cycle, agent_train_state, network, task_id, unique_task_id)
+                    lambda rng: make_train(config)(
+                        rng, cycle, agent_train_state, network, task_id, unique_task_id
+                    )
                 )(rng)
             print(f"Took {time.time()-start_time} seconds to complete.")
 
             agent_train_state = outs["train_state"]
-
 
             # Debug print statements
             # metrics = outs["metrics"]
@@ -685,7 +768,10 @@ def single_run(config):
                 os.makedirs(save_dir, exist_ok=True)
                 OmegaConf.save(
                     config,
-                    os.path.join(save_dir, f'{alg_name}_exposure{cycle}_task{idx}_seed{config["SEED"]}_config.yaml'),
+                    os.path.join(
+                        save_dir,
+                        f'{alg_name}_exposure{cycle}_task{idx}_seed{config["SEED"]}_config.yaml',
+                    ),
                 )
 
                 # assumes not vmpapped seeds
