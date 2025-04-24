@@ -88,40 +88,34 @@ class SFNetwork(nn.Module):
             x = x / 255.0
         x = CNN(norm_type=self.norm_type)(x, train)
         rep = nn.Dense(self.sf_dim)(x)
-        # # rep = nn.LayerNorm()(rep)
-        # # rep = nn.tanh(rep)
-        # # rep = nn.Dense(self.sf_dim)(rep)
         basis_features = rep / jnp.linalg.norm(rep, ord=2, axis=-1, keepdims=True)
         #
         task = jax.lax.stop_gradient(task)
-        # task_normalized = task / jnp.linalg.norm(task, ord=2, axis=-1, keepdims=True)
-        # rep_task = jnp.concatenate([rep, task_normalized], axis=-1)
-        #
-        # # features for SF
-        # features_critic_sf = nn.Dense(features=self.hidden_dim)(rep)
-        # # features_critic_sf = nn.Dense(features=self.feature_dim)(rep_task)
-        # features_critic_sf = nn.relu(features_critic_sf)
-        # features_critic_sf = nn.Dense(features=self.hidden_dim)(features_critic_sf)
-        # features_critic_sf = nn.relu(features_critic_sf)
-        #
-        # # SF
-        # sf = nn.Dense(features=self.sf_dim * self.action_dim)(features_critic_sf)
-        # sf_action = jnp.reshape(
-        #     sf,
-        #     (
-        #         -1,
-        #         self.sf_dim,
-        #         self.action_dim,
-        #     ),
-        # )  # (batch_size, sf_dim, action_dim)
-        #
-        # q_1 = jnp.einsum("bi, bij -> bj", task, sf_action).reshape(
-        #     -1, self.action_dim
-        # )  # (batch_size, action_dim)
+        task_normalized = task / jnp.linalg.norm(task, ord=2, axis=-1, keepdims=True)
+        rep_task = jnp.concatenate([rep, task_normalized], axis=-1)
+
+        # features for SF
+        features_critic_sf = nn.Dense(features=self.feature_dim)(rep_task)
+        features_critic_sf = nn.relu(features_critic_sf)
+
+        # SF
+        sf = nn.Dense(features=self.sf_dim * self.action_dim)(features_critic_sf)
+        sf_action = jnp.reshape(
+            sf,
+            (
+                -1,
+                self.sf_dim,
+                self.action_dim,
+            ),
+        )  # (batch_size, sf_dim, action_dim)
+
+        q_1 = jnp.einsum("bi, bij -> bj", task, sf_action).reshape(
+            -1, self.action_dim
+        )  # (batch_size, action_dim)
 
         # x = CNN(norm_type=self.norm_type)(x, train)
-        sf = nn.Dense(features=self.sf_dim * self.action_dim)(rep)
-        q_1 = nn.Dense(self.action_dim)(sf)
+        # sf = nn.Dense(features=self.sf_dim * self.action_dim)(rep)
+        # q_1 = nn.Dense(self.action_dim)(sf)
 
         return q_1, basis_features
 
