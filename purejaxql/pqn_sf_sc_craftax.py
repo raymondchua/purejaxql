@@ -71,7 +71,7 @@ class SFNetwork(nn.Module):
         rep_task = jnp.concatenate([rep, task_normalized], axis=-1)
 
         # features for SF
-        features_critic_sf = nn.Dense(features=self.feature_dim)(rep_task)
+        features_critic_sf = nn.Dense(features=self.sf_dim)(rep_task)
         features_critic_sf = nn.relu(features_critic_sf)
 
         # SF

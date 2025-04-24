@@ -74,8 +74,7 @@ class SFNetwork(nn.Module):
     action_dim: int
     norm_type: str = "layer_norm"
     norm_input: bool = False
-    feature_dim: int = 128
-    sf_dim: int = 256
+    sf_dim: int = 16
 
     @nn.compact
     def __call__(self, x: jnp.ndarray, task: jnp.ndarray, train: bool):
@@ -95,7 +94,7 @@ class SFNetwork(nn.Module):
         rep_task = jnp.concatenate([rep, task_normalized], axis=-1)
 
         # features for SF
-        features_critic_sf = nn.Dense(features=self.feature_dim)(rep_task)
+        features_critic_sf = nn.Dense(features=self.sf_dim)(rep_task)
         features_critic_sf = nn.relu(features_critic_sf)
 
         # SF
@@ -154,7 +153,6 @@ def create_agent(rng, config, max_num_actions, observation_space_shape):
         norm_type=config["NORM_TYPE"],
         norm_input=config.get("NORM_INPUT", False),
         sf_dim=config["SF_DIM"],
-        feature_dim=config["FEATURE_DIM"],
     )
 
     init_x = jnp.zeros((1, *observation_space_shape))

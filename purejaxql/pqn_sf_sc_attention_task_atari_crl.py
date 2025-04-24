@@ -86,8 +86,7 @@ class SFNetwork(nn.Module):
     num_tasks: int
     norm_type: str = "layer_norm"
     norm_input: bool = False
-    feature_dim: int = 128
-    sf_dim: int = 256
+    sf_dim: int = 16
 
     @nn.compact
     def __call__(self, x: jnp.ndarray, task: jnp.ndarray, train: bool, task_id: int):
@@ -111,7 +110,7 @@ class SFNetwork(nn.Module):
 
         # features for SF
         features_critic_sf = TaskModulatedDense(
-            features=self.feature_dim,
+            features=self.sf_dim,
             num_tasks=self.num_tasks,
         )(rep_task, task_id)
 

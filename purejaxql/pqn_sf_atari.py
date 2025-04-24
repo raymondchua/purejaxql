@@ -73,7 +73,6 @@ class SFNetwork(nn.Module):
     action_dim: int
     norm_type: str = "layer_norm"
     norm_input: bool = False
-    feature_dim: int = 8
     sf_dim: int = 16
 
     @nn.compact
@@ -111,10 +110,6 @@ class SFNetwork(nn.Module):
         q_1 = jnp.einsum("bi, bij -> bj", task, sf_action).reshape(
             -1, self.action_dim
         )  # (batch_size, action_dim)
-
-        # x = CNN(norm_type=self.norm_type)(x, train)
-        # sf = nn.Dense(features=self.sf_dim * self.action_dim)(rep)
-        # q_1 = nn.Dense(self.action_dim)(sf)
 
         return q_1, basis_features
 
@@ -157,7 +152,6 @@ def create_agent(rng, config, max_num_actions, observation_space_shape):
         norm_type=config["NORM_TYPE"],
         norm_input=config.get("NORM_INPUT", False),
         sf_dim=config["SF_DIM"],
-        feature_dim=config["FEATURE_DIM"],
     )
 
     init_x = jnp.zeros((1, *observation_space_shape))
