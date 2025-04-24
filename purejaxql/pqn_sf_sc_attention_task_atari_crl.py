@@ -1072,9 +1072,7 @@ def make_train(config):
                     ].params["w"]
                     basis_features = jax.lax.stop_gradient(basis_features)
                     reward_loss, grads_task = jax.value_and_grad(_reward_loss_fn)(
-                        train_state.task_states_all[f"task_{unique_task_id}"].params[
-                            "w"
-                        ],
+                        train_state.task_states_all[f"task_{unique_task_id}"].params,
                         basis_features,
                         minibatch.reward,
                     )
