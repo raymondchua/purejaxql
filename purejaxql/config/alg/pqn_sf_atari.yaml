@@ -15,8 +15,8 @@ MAX_GRAD_NORM: 10
 LR_LINEAR_DECAY: False
 GAMMA: 0.99
 LAMBDA: 0.65
-FEATURE_DIM: 128
-SF_DIM: 256
+FEATURE_DIM: 8
+SF_DIM: 16
 FULL_ACTION_SPACE: True # use full action space
 
 # env specific, see https://envpool.readthedocs.io/en/latest/env/atari.html
