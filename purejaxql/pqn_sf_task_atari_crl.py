@@ -191,14 +191,13 @@ def create_agent(rng, config, max_num_actions, observation_space_shape):
                 rng, config["SF_DIM"], config["NUM_ENVS"] + config["TEST_ENVS"]
             )
         }
-        task_params_all_envs[f"task_{i}"] = task_params
         tx_task = optax.chain(
             optax.clip_by_global_norm(config["MAX_GRAD_NORM"]),
             optax.radam(learning_rate=config["LR_TASK"]),
         )
         task_state = TrainState.create(
             apply_fn=network.apply,
-            params=task_params_all_envs[f"task_{i}"],
+            params=task_params,
             tx=tx_task,
         )
 
