@@ -665,16 +665,6 @@ def make_train(config):
                     def _loss_fn(params, params_consolidation, mask):
 
                         if config.get("Q_LAMBDA", False):
-                            # (q_vals, basis_features, _), updates = network.apply(
-                            #     {
-                            #         "params": params,
-                            #         "batch_stats": multi_train_state.network_state.batch_stats,
-                            #     },
-                            #     minibatch.obs,
-                            #     train=True,
-                            #     mutable=["batch_stats"],
-                            #     task=multi_train_state.task_state.params["w"],
-                            # )
 
                             (_, basis_features, sf), updates = network.apply(
                                 {
@@ -746,16 +736,6 @@ def make_train(config):
 
                         else:
                             # if not using q_lambda, re-pass the next_obs through the network to compute target
-                            # (all_q_vals, basis_features, _), updates = network.apply(
-                            #     {
-                            #         "params": params,
-                            #         "batch_stats": multi_train_state.network_state.batch_stats,
-                            #     },
-                            #     jnp.concatenate((minibatch.obs, minibatch.next_obs)),
-                            #     train=True,
-                            #     mutable=["batch_stats"],
-                            #     task=jnp.concatenate((multi_train_state.task_state.params["w"], multi_train_state.task_state.params["w"])),
-                            # )
                             task_concat = jnp.concatenate((multi_train_state.task_state.params["w"], multi_train_state.task_state.params["w"]))
                             obs_concat = jnp.concatenate((minibatch.obs, minibatch.next_obs))
                             (_, basis_features, sf), updates = network.apply(
@@ -841,7 +821,10 @@ def make_train(config):
 
                         loss = 0.5 * jnp.square(chosen_action_qvals - target).mean()
 
-                        return loss, (updates, chosen_action_qvals, basis_features)
+                        return loss, (updates, chosen_action_qvals, basis_features, attn_logits,
+                        attention_weights,
+                        keys,
+                        values,)
 
                     def _reward_loss_fn(task_params, basis_features):
                         if config.get("Q_LAMBDA", False):
@@ -992,7 +975,10 @@ def make_train(config):
                         },
                     )
 
-                    return (multi_train_state, rng), (loss, qvals, reward_loss, task_params_diff, consolidation_loss, params_norm)
+                    return (multi_train_state, rng), (loss, qvals, reward_loss, task_params_diff, consolidation_loss, params_norm, attn_logits,
+                        attention_weights,
+                        keys,
+                        values,)
 
                 def preprocess_transition(x, rng):
                     x = x.reshape(
@@ -1013,14 +999,23 @@ def make_train(config):
                 )
 
                 rng, _rng = jax.random.split(rng)
-                (multi_train_state, rng), (loss, qvals, reward_loss, task_params_diff, consolidation_loss, params_norm) = jax.lax.scan(
+                (multi_train_state, rng), (loss, qvals, reward_loss, task_params_diff, consolidation_loss, params_norm, attn_logits,
+                        attention_weights,
+                        keys,
+                        values,) = jax.lax.scan(
                     _learn_phase, (multi_train_state, rng), (minibatches, targets)
                 )
 
-                return (multi_train_state, rng), (loss, qvals, reward_loss, task_params_diff, consolidation_loss, params_norm)
+                return (multi_train_state, rng), (loss, qvals, reward_loss, task_params_diff, consolidation_loss, params_norm, attn_logits,
+                        attention_weights,
+                        keys,
+                        values,)
 
             rng, _rng = jax.random.split(rng)
-            (multi_train_state, rng), (loss, qvals, reward_loss, task_params_diff, consolidation_loss, params_norm) = jax.lax.scan(
+            (multi_train_state, rng), (loss, qvals, reward_loss, task_params_diff, consolidation_loss, params_norm, attn_logits,
+                        attention_weights,
+                        keys,
+                        values,) = jax.lax.scan(
                 _learn_epoch, (multi_train_state, rng), None, config["NUM_EPOCHS"]
             )
 
