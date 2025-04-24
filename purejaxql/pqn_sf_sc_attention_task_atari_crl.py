@@ -837,6 +837,7 @@ def make_train(config):
                             keys,
                             values,
                             mask_output,
+                            mask_tiled,
                         )
 
                     def _reward_loss_fn(task_params, basis_features, reward):
@@ -942,6 +943,7 @@ def make_train(config):
                             keys,
                             values,
                             mask_output,
+                            mask_tiled,
                         ),
                     ), grads = jax.value_and_grad(_loss_fn, has_aux=True)(
                         combined_params,
@@ -1021,6 +1023,7 @@ def make_train(config):
                         keys,
                         values,
                         mask_output,
+                        mask_tiled,
                     )
 
                 def preprocess_transition(x, rng):
@@ -1054,6 +1057,7 @@ def make_train(config):
                     keys,
                     values,
                     mask_output,
+                    mask_tiled,
                 ) = jax.lax.scan(
                     _learn_phase, (train_state, rng), (minibatches, targets)
                 )
@@ -1070,6 +1074,7 @@ def make_train(config):
                     keys,
                     values,
                     mask_output,
+                    mask_tiled,
                 )
 
             rng, _rng = jax.random.split(rng)
@@ -1085,6 +1090,7 @@ def make_train(config):
                 keys,
                 values,
                 mask_output,
+                mask_tiled,
             ) = jax.lax.scan(
                 _learn_epoch, (train_state, rng), None, config["NUM_EPOCHS"]
             )
@@ -1153,6 +1159,7 @@ def make_train(config):
                 metrics[f"values_{i}"] = values[..., i, :, :].mean()
                 metrics[f"mask_output_{i}"] = mask_output[..., i, :].mean()
                 metrics[f"mask_{i}"] = mask_temp[i].mean()
+                metrics[f"mask_tiled_{i}"] = mask_tiled[..., i, :].mean()
 
             metrics.update({k: v.mean() for k, v in infos.items()})
             if config.get("TEST_DURING_TRAINING", False):
