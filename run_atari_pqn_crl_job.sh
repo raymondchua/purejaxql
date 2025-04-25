@@ -2,7 +2,7 @@
 #SBATCH --account=rrg-tyrell-ab
 #SBATCH --mail-type=BEGIN,END,FAIL,REQUEUE
 #SBATCH --mail-user=raymond.chua@mail.mcgill.ca
-#SBATCH --time=12:00:00
+#SBATCH --time=16:00:00
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=8G
@@ -43,4 +43,4 @@ source /home/chuaraym/pqn_atari_env311/bin/activate
 cd /home/chuaraym/purejaxql/
 
 # Run the experiment
-python purejaxql/pqn_sf_task_atari_crl.py +alg=pqn_sf_task_atari_crl SEED=${SEED} SAVE_PATH=${OUT_DIR}
+python purejaxql/pqn_sf_sc_attention_task_atari_crl.py +alg=pqn_sf_sc_attention_task_atari_crl SEED=${SEED} SAVE_PATH=${OUT_DIR}
