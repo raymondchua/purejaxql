@@ -38,7 +38,6 @@ class SFNetwork(nn.Module):
     action_dim: int
     norm_type: str = "layer_norm"
     norm_input: bool = False
-    feature_dim: int = 128
     sf_dim: int = 256
     hidden_size: int = 512
     num_layers: int = 2 # lesser than Q network since we use additional layers to construct SF
@@ -197,7 +196,6 @@ def make_train(config):
             norm_type=config["NORM_TYPE"],
             norm_input=config.get("NORM_INPUT", False),
             sf_dim=config["SF_DIM"],
-            feature_dim=config["FEATURE_DIM"],
             hidden_size=config["HIDDEN_SIZE"],
             num_layers=config["NUM_LAYERS"],
         )
@@ -260,7 +258,6 @@ def make_train(config):
                     norm_type=config["NORM_TYPE"],
                     norm_input=config.get("NORM_INPUT", False),
                     sf_dim=config["SF_DIM"],
-                    feature_dim=config["FEATURE_DIM"],
                     hidden_size=config["HIDDEN_SIZE"],
                     num_layers=config["NUM_LAYERS"],
                 )
