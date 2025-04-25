@@ -21,9 +21,9 @@ NUM_EXPOSURES: 4 # number of exposures for all games
 FULL_ACTION_SPACE: True # use full action space
 
 # consolidation specific
-FLOW_INIT_INDEX: 9 # meaning the g_1_2 starts from 0.125
+FLOW_INIT_INDEX: 1 # meaning the g_1_2 starts from 0.125
 BEAKER_CAPACITY: 2
-NUM_BEAKERS: 7
+NUM_BEAKERS: 11
 CONSOLIDATE_EARLIER: true # set to true to consolidate earlier using timescales =  2^k/g_1_2 ratio
 
 # env specific, see https://envpool.readthedocs.io/en/latest/env/atari.html
