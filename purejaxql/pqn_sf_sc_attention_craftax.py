@@ -38,7 +38,6 @@ class SFNetwork(nn.Module):
     action_dim: int
     norm_type: str = "layer_norm"
     norm_input: bool = False
-    feature_dim: int = 128
     sf_dim: int = 256
     hidden_size: int = 512
     num_layers: int = (
@@ -73,7 +72,7 @@ class SFNetwork(nn.Module):
         rep_task = jnp.concatenate([rep, task_normalized], axis=-1)
 
         # features for SF
-        features_critic_sf = nn.Dense(features=self.feature_dim)(rep_task)
+        features_critic_sf = nn.Dense(features=self.sf_dim)(rep_task)
         features_critic_sf = nn.relu(features_critic_sf)
 
         # SF
@@ -282,7 +281,6 @@ def make_train(config):
             norm_type=config["NORM_TYPE"],
             norm_input=config.get("NORM_INPUT", False),
             sf_dim=config["SF_DIM"],
-            feature_dim=config["FEATURE_DIM"],
             hidden_size=config["HIDDEN_SIZE"],
             num_layers=config["NUM_LAYERS"],
         )
@@ -381,7 +379,6 @@ def make_train(config):
                     norm_type=config["NORM_TYPE"],
                     norm_input=config.get("NORM_INPUT", False),
                     sf_dim=config["SF_DIM"],
-                    feature_dim=config["FEATURE_DIM"],
                     hidden_size=config["HIDDEN_SIZE"],
                     num_layers=config["NUM_LAYERS"],
                 )
