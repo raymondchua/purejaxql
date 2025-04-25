@@ -1,5 +1,5 @@
 ALG_NAME: "pqn_sf_consolidation_attention_task"
-TOTAL_TIMESTEPS: 1e7 # with 4 frame skip corresponds to 20M frames
+TOTAL_TIMESTEPS: 1e7 # with 4 frame skip corresponds to 40M frames
 TOTAL_TIMESTEPS_DECAY: 1e7 # will be used for decay functions (epsilon and lr)
 NUM_ENVS: 128 # parallel environments
 NUM_STEPS: 32 # steps per environment in each update
