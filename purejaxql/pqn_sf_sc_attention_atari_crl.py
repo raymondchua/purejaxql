@@ -127,6 +127,7 @@ class SFAttentionNetwork(nn.Module):
 
     @nn.compact
     def __call__(self, sf_all, task, mask):
+        batch_size = sf_all.shape[0]
 
         sf_first = sf_all[:, :1, :, :]  # shape (batch, 1, ...)
         sf_rest = jax.lax.stop_gradient(
