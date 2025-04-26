@@ -534,7 +534,7 @@ def single_run(config):
     )
 
     # Get list of environments
-    env_names = "Alien-v5, Atlantis-v5, Boxing-v5, Breakout-v5, Centipede-v5"
+    env_names = "Centipede-v5, Alien-v5, Atlantis-v5, Boxing-v5, Breakout-v5"
 
     if isinstance(env_names, str):
         env_names = [e.strip() for e in env_names.split(",")]
