@@ -194,10 +194,12 @@ class SFAttentionNetwork(nn.Module):
             values_per_beaker, axis=1
         )  # (batch_size, num_beakers, num_actions, sf_dim)
 
+        query = jnp.stack(
+            query_per_beaker, axis=1
+        )
+
         keys_masked = keys * mask
         values_masked = values * mask
-
-        print("query shape: ", query.shape)
 
         attn_logits = jnp.einsum("bqf,bnaf->bqna", query, keys_masked) / jnp.sqrt(self.sf_dim)
 
