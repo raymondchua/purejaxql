@@ -146,9 +146,9 @@ class SFAttentionNetwork(nn.Module):
             task_normalized[:, 0, :]
         )[:, None, :]
 
-        # query = nn.Dense(features=self.sf_dim, name="query", use_bias=False)(
-        #     sf_all[:, 0, :, :]
-        # )
+        query = nn.Dense(features=self.sf_dim, name="query", use_bias=False)(
+            sf_all[:, 0, :, :]
+        )
 
         print("query shape: ", query.shape)
 
@@ -157,37 +157,46 @@ class SFAttentionNetwork(nn.Module):
         keys_per_beaker = []
         values_per_beaker = []
 
-        for i in range(self.num_beakers):
-            keys_layer = nn.Dense(
-                features=self.sf_dim, name=f"keys_beaker_{i}",use_bias=False
-            )
-            values_layer = nn.Dense(
-                features=self.sf_dim, name=f"values_beaker_{i}",use_bias=False
-            )
+        # for i in range(self.num_beakers):
+        #     keys_layer = nn.Dense(
+        #         features=self.sf_dim, name=f"keys_beaker_{i}",use_bias=False
+        #     )
+        #     values_layer = nn.Dense(
+        #         features=self.sf_dim, name=f"values_beaker_{i}",use_bias=False
+        #     )
+        #
+        #     # keys_per_beaker.append(
+        #     #     keys_layer(nn.relu(sf_all[:, i, :, :]))
+        #     # )  # Apply to each beaker's SF
+        #     # values_per_beaker.append(
+        #     #     values_layer(nn.relu(sf_all[:, i, :, :]))
+        #     # )  # Apply to each beaker's SF
+        #
+        #     # query is always the first sf beaker
+        #
+        #     keys_per_beaker.append(
+        #         keys_layer(nn.relu(sf_all[:, i, :, :]))
+        #     )  # Apply to each beaker's SF
+        #     values_per_beaker.append(
+        #         values_layer(nn.relu(sf_all[:, i, :, :]))
+        #     )  # Apply to each beaker's SF
+        #
+        # # Stack the keys and values along the beaker dimension
+        # keys = jnp.stack(
+        #     keys_per_beaker, axis=1
+        # )  # (batch_size, num_beakers, num_actions, sf_dim)
+        # values = jnp.stack(
+        #     values_per_beaker, axis=1
+        # )  # (batch_size, num_beakers, num_actions, sf_dim)
 
-            # keys_per_beaker.append(
-            #     keys_layer(nn.relu(sf_all[:, i, :, :]))
-            # )  # Apply to each beaker's SF
-            # values_per_beaker.append(
-            #     values_layer(nn.relu(sf_all[:, i, :, :]))
-            # )  # Apply to each beaker's SF
+        # Queries from the first beaker
+        queries = SFs[:, 0, :, :]  # (batch_size, num_actions, sf_dim)
+        query = nn.Dense(self.sf_dim*2)(queries)  # (batch_size, num_actions, d_model)
 
-            # query is always the first sf beaker
-
-            keys_per_beaker.append(
-                keys_layer(nn.relu(sf_all[:, i, :, :]))
-            )  # Apply to each beaker's SF
-            values_per_beaker.append(
-                values_layer(nn.relu(sf_all[:, i, :, :]))
-            )  # Apply to each beaker's SF
-
-        # Stack the keys and values along the beaker dimension
-        keys = jnp.stack(
-            keys_per_beaker, axis=1
-        )  # (batch_size, num_beakers, num_actions, sf_dim)
-        values = jnp.stack(
-            values_per_beaker, axis=1
-        )  # (batch_size, num_beakers, num_actions, sf_dim)
+        # Keys and values from all beakers
+        keys_values = SFs.reshape(batch_size, self.num_beakers * self.num_actions, self.sf_dim)
+        keys = nn.Dense(self.sf_dim*2)(keys_values)  # (batch_size, num_beakers * num_actions, d_model)
+        values = nn.Dense(self.sf_dim*2)(keys_values)  # (batch_size, num_beakers * num_actions, d_model)
 
         keys_masked = keys * mask
         values_masked = values * mask
