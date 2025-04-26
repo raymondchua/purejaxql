@@ -155,10 +155,10 @@ class SFAttentionNetwork(nn.Module):
         values_per_beaker = []
         for i in range(self.num_beakers):
             keys_layer = nn.Dense(
-                features=self.sf_dim, name=f"keys_beaker_{i}",
+                features=self.sf_dim, name=f"keys_beaker_{i}",use_bias=False
             )
             values_layer = nn.Dense(
-                features=self.sf_dim, name=f"values_beaker_{i}",
+                features=self.sf_dim, name=f"values_beaker_{i}",use_bias=False
             )
             # keys_per_beaker.append(
             #     keys_layer(nn.relu(sf_all[:, i, :, :]))
@@ -184,6 +184,8 @@ class SFAttentionNetwork(nn.Module):
 
         keys_masked = keys * mask
         values_masked = values * mask
+
+        print("query shape: ", query.shape)
 
         attn_logits = jnp.einsum("bqf,bnaf->bqna", query, keys_masked) / jnp.sqrt(self.sf_dim)
 
