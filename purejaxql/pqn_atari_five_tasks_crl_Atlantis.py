@@ -533,8 +533,9 @@ def single_run(config):
         mode=config["WANDB_MODE"],
     )
 
-    # Get list of environments
+    # Get list of environments. The first task will be the oldest task.
     env_names = "Atlantis-v5, Boxing-v5, Breakout-v5, Centipede-v5, Alien-v5"
+    timesteps = [5000000, 10000000, 10000000, 10000000, 10000000]
 
     if isinstance(env_names, str):
         env_names = [e.strip() for e in env_names.split(",")]
@@ -561,12 +562,8 @@ def single_run(config):
             unique_task_id = task_id % config["alg"]["NUM_TASKS"]
 
             # first task is the primary task, which has longer training time
-            if unique_task_id == 0:
-                config["TOTAL_TIMESTEPS"] = 10000000
-                config["TOTAL_TIMESTEPS_DECAY"] = 10000000
-            else:
-                config["TOTAL_TIMESTEPS"] = 9900000
-                config["TOTAL_TIMESTEPS_DECAY"] = 9900000
+            config["TOTAL_TIMESTEPS"] = timesteps[unique_task_id]
+            config["TOTAL_TIMESTEPS_DECAY"] = timesteps[unique_task_id]
 
             config["ENV_NAME"] = env_name
             if config["NUM_SEEDS"] > 1:
