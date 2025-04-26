@@ -562,11 +562,11 @@ def single_run(config):
 
             # first task is the primary task, which has longer training time
             if unique_task_id == 0:
-                config["TOTAL_TIMESTEPS"] = 5e6
-                config["TOTAL_TIMESTEPS_DECAY"] = 5e6
+                config["TOTAL_TIMESTEPS"] = 5000000
+                config["TOTAL_TIMESTEPS_DECAY"] = 5000000
             else:
-                config["TOTAL_TIMESTEPS"] = 3e6
-                config["TOTAL_TIMESTEPS_DECAY"] = 3e6
+                config["TOTAL_TIMESTEPS"] = 4800000
+                config["TOTAL_TIMESTEPS_DECAY"] = 4800000
 
             config["ENV_NAME"] = env_name
             if config["NUM_SEEDS"] > 1:
