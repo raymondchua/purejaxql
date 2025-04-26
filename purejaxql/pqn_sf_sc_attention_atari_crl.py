@@ -231,7 +231,9 @@ class SFAttentionNetwork(nn.Module):
         print("attention_weights shape:", attention_weights.shape)
 
         # check if attention_weights sum to 1
-        print("sum check for attention: " , jnp.sum(attention_weights, axis=-1))
+        attention_weights_sum = jnp.sum(attention_weights, axis=-1)
+
+        print("attention_weights_sum shape:", attention_weights_sum.shape)
 
         attention_weights_reshaped = attention_weights.reshape(
             batch_size, self.num_actions, self.num_beakers, self.num_actions
