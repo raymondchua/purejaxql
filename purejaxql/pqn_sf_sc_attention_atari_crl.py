@@ -136,9 +136,9 @@ class SFAttentionNetwork(nn.Module):
 
         # Normalize and tile task
         task = jax.lax.stop_gradient(task)
-        task_normalized = task / jnp.linalg.norm(task, ord=2, axis=-1, keepdims=True)
+        # task_normalized = task / jnp.linalg.norm(task, ord=2, axis=-1, keepdims=True)
         task_normalized = jnp.tile(
-            task_normalized[:, None, :], (1, self.num_beakers, 1)
+            task[:, None, :], (1, self.num_beakers, 1)
         )
 
         # Attention mechanism
