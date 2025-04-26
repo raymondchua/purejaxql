@@ -194,7 +194,7 @@ class SFAttentionNetwork(nn.Module):
         values = nn.Dense(self.sf_dim*2)(keys_values)  # (batch_size, num_beakers * num_actions, d_model)
 
         mask = jnp.reshape(mask, (batch_size, self.num_beakers * self.num_actions, -1))
-        mask = jnp.repeat(mask, self.sf_dim * 2, axis=-1)  # (batch_size, num_beakers * num_actions, sf_dim * 2)
+        mask = jnp.repeat(mask, 1, axis=-1)  # (batch_size, num_beakers * num_actions, sf_dim * 2)
 
         keys_masked = keys * mask
         values_masked = values * mask
