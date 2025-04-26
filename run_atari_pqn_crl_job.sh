@@ -2,10 +2,10 @@
 #SBATCH --account=rrg-tyrell-ab
 #SBATCH --mail-type=BEGIN,END,FAIL,REQUEUE
 #SBATCH --mail-user=raymond.chua@mail.mcgill.ca
-#SBATCH --time=4:00:00
+#SBATCH --time=6:00:00
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=4
-#SBATCH --mem=8G
+#SBATCH --mem=16G
 
 # Set SEED from argument
 SEED=$1
