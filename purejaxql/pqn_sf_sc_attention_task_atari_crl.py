@@ -1338,7 +1338,8 @@ def single_run(config):
     if config["alg"]["NUM_TASKS"] == 3:
         env_names = "Pong-v5, Breakout-v5, SpaceInvaders-v5"
     elif config["alg"]["NUM_TASKS"] == 5:
-        env_names = "Alien-v5, Atlantis-v5, Boxing-v5, Breakout-v5, Centipede-v5"
+        # env_names = "Alien-v5, Atlantis-v5, Boxing-v5, Breakout-v5, Centipede-v5"
+        env_names = "Alien-v5, Alien-v5, Alien-v5, Alien-v5, Alien-v5"
 
     elif config["alg"]["NUM_TASKS"] < 3:
         raise NotImplementedError("Less than 3 games not supported yet.")
