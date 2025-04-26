@@ -136,14 +136,18 @@ class SFAttentionNetwork(nn.Module):
 
         # Normalize and tile task
         task = jax.lax.stop_gradient(task)
-        # task_normalized = task / jnp.linalg.norm(task, ord=2, axis=-1, keepdims=True)
+        task_normalized = task / jnp.linalg.norm(task, ord=2, axis=-1, keepdims=True)
         task_normalized = jnp.tile(
-            task[:, None, :], (1, self.num_beakers, 1)
+            task_normalized[:, None, :], (1, self.num_beakers, 1)
         )
 
         # Attention mechanism
+        # query = nn.Dense(features=self.sf_dim, name="query", use_bias=False)(
+        #     task_normalized[:, 0, :]
+        # )[:, None, :]
+
         query = nn.Dense(features=self.sf_dim, name="query", use_bias=False)(
-            task_normalized[:, 0, :]
+            sf_all[:, 0, :, :]
         )[:, None, :]
 
         # Different dense layers for each beaker to compute keys and values
@@ -180,9 +184,6 @@ class SFAttentionNetwork(nn.Module):
 
         keys_masked = keys * mask
         values_masked = values * mask
-
-        query = nn.LayerNorm(name="query_layer_norm")(query)
-        keys_masked = nn.LayerNorm(name="keys_layer_norm")(keys_masked)
 
         attn_logits = jnp.einsum("bqf,bnaf->bqna", query, keys_masked) / jnp.sqrt(self.sf_dim)
 
