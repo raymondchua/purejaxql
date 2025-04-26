@@ -213,6 +213,8 @@ class SFAttentionNetwork(nn.Module):
         # Compute attention weights
         attention_weights = nn.softmax(attn_logits, axis=-1)
 
+        print("attention_weights shape:", attention_weights.shape)
+
         # Compute attention output
         attended_sf = jnp.matmul(attention_weights, values_masked)
 
