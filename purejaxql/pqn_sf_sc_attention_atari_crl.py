@@ -1205,6 +1205,8 @@ def make_train(config):
             attn_logits_reshape_sum = jnp.sum(attn_logits_reshape, axis=-1)
             attention_weights_reshape_sum = jnp.sum(attention_weights_reshape, axis=-1)
 
+            print("attn_logits_reshape_sum shape: ", attn_logits_reshape_sum.shape)
+            print("attention_weights_reshape_sum shape: ", attention_weights_reshape_sum.shape)
 
             for i in range(config["NUM_BEAKERS"]):
                 print("attn logits shape: ", attn_logits.shape)
