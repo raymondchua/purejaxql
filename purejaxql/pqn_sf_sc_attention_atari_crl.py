@@ -202,9 +202,9 @@ class SFAttentionNetwork(nn.Module):
         keys_masked = keys * mask
         values_masked = values * mask
 
-        print(query.shape)
-        print(keys_masked.shape)
-        print(values_masked.shape)
+        print("query shape: ", query.shape)
+        print("keys mask shape: ", keys_masked.shape)
+        print("value mask shape: ", values_masked.shape)
 
         # Compute logits
         attn_logits = jnp.matmul(query, jnp.swapaxes(keys_masked, -2, -1)) / jnp.sqrt(self.sf_dim*self.proj_factor)
@@ -1107,8 +1107,8 @@ def make_train(config):
                 metrics[f"params_norm_{idx}"] = jnp.mean(p)
 
             for i in range(config["NUM_BEAKERS"]):
-                metrics[f"attn_logits_{i}"] = attn_logits[..., i, :].mean()
-                metrics[f"attention_weights_{i}"] = attention_weights[..., i, :].mean()
+                metrics[f"attn_logits_{i}"] = attn_logits[..., :, i].mean()
+                metrics[f"attention_weights_{i}"] = attention_weights[..., :, i].mean()
                 metrics[f"keys_{i}"] = keys[..., i, :, :].mean()
                 metrics[f"values_{i}"] = values[..., i, :, :].mean()
 
