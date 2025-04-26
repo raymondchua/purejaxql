@@ -124,7 +124,7 @@ class SFAttentionNetwork(nn.Module):
     sf_dim: int
     num_actions: int
     num_beakers: int
-    proj_dim: int = 2
+    proj_factor: int = 2
 
     @nn.compact
     def __call__(self, sf_all, task, mask):
@@ -187,18 +187,20 @@ class SFAttentionNetwork(nn.Module):
 
         # Queries from the first beaker
         queries = sf_all[:, 0, :, :]  # (batch_size, num_actions, sf_dim)
-        query = nn.Dense(self.sf_dim*self.proj_dim)(queries)  # (batch_size, num_actions, d_model)
+        query = nn.Dense(self.sf_dim*self.proj_factor)(queries)  # (batch_size, num_actions, d_model)
 
         # Keys and values from all beakers
         keys_values = sf_all.reshape(batch_size, self.num_beakers * self.num_actions, self.sf_dim)
-        keys = nn.Dense(self.sf_dim*self.proj_dim)(keys_values)  # (batch_size, num_beakers * num_actions, d_model)
-        values = nn.Dense(self.sf_dim*self.proj_dim)(keys_values)  # (batch_size, num_beakers * num_actions, d_model)
+        keys = nn.Dense(self.sf_dim*self.proj_factor)(keys_values)  # (batch_size, num_beakers * num_actions, d_model)
+        values = nn.Dense(self.sf_dim*self.proj_factor)(keys_values)  # (batch_size, num_beakers * num_actions, d_model)
 
         mask = jnp.reshape(mask, (batch_size, self.num_beakers * self.num_actions, -1))
-        mask = jnp.repeat(mask, self.proj_dim, axis=-1)  # (batch_size, num_beakers * num_actions, sf_dim * 2)
+        mask = jnp.repeat(mask, self.proj_factor, axis=-1)  # (batch_size, num_beakers * num_actions, sf_dim * 2)
 
         keys_masked = keys * mask
         values_masked = values * mask
+
+        print(query.shape)
 
         attn_logits = jnp.einsum("bqf,bnaf->bqna", query, keys_masked) / jnp.sqrt(self.sf_dim)
 
