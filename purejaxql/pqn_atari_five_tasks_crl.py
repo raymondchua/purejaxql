@@ -22,6 +22,7 @@ import wandb
 import envpool
 
 from purejaxql.utils.atari_wrapper import JaxLogEnvPoolWrapper
+from purejaxql.utils.params_count import count_parameters
 
 
 class CNN(nn.Module):
@@ -548,6 +549,9 @@ def single_run(config):
     rng = jax.random.PRNGKey(config["SEED"])
     rng, rng_agent = jax.random.split(rng)
     train_state, network = create_agent(rng_agent, config, max_num_actions, observation_space_shape)
+
+    params_count = count_parameters(train_state.params)
+    print(f"Number of parameters: {params_count}")
 
     for cycle in range(num_exposures):
         print(f"\n=== Cycle {cycle + 1}/{num_exposures} ===")
