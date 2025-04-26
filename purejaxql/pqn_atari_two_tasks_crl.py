@@ -431,7 +431,7 @@ def make_train(config):
                 "lr": lr,
                 "exposure": exposure,
                 "task_id": task_id,
-                "exploration_updates": train_state.exploration_updates,
+                "exploration_updates": train_state.exploration_updates if exposure == 0 else config["EPS_FINISH"],
                 "total_returns": train_state.total_returns,
                 "extrinsic rewards": transitions.reward.mean(),
                 "unique_task_id": unique_task_id,
