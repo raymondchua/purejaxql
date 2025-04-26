@@ -205,7 +205,7 @@ class SFAttentionNetwork(nn.Module):
         print(values_masked.shape)
 
         # Compute logits
-        logits = jnp.matmul(Q, jnp.swapaxes(keys_masked, -2, -1)) / jnp.sqrt(self.d_model)
+        logits = jnp.matmul(query, jnp.swapaxes(keys_masked, -2, -1)) / jnp.sqrt(self.d_model)
         # logits shape: (batch_size, num_actions, num_beakers * num_actions)
 
         # Compute attention weights
