@@ -162,6 +162,7 @@ class SFAttentionNetwork(nn.Module):
             # values_per_beaker.append(
             #     values_layer(nn.relu(sf_all[:, i, :, :]))
             # )  # Apply to each beaker's SF
+
             keys_per_beaker.append(
                 keys_layer(nn.relu(sf_all[:, 0, :, :]))
             )  # Apply to each beaker's SF
@@ -179,6 +180,9 @@ class SFAttentionNetwork(nn.Module):
 
         keys_masked = keys * mask
         values_masked = values * mask
+
+        query = nn.LayerNorm(name="query_layer_norm")(query)
+        keys_masked = nn.LayerNorm(name="keys_layer_norm")(keys_masked)
 
         attn_logits = jnp.einsum("bqf,bnaf->bqna", query, keys_masked) / jnp.sqrt(self.sf_dim)
 
