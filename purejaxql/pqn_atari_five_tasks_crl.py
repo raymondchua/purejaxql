@@ -561,8 +561,8 @@ def single_run(config):
                 config["TOTAL_TIMESTEPS"] = 5e6
                 config["TOTAL_TIMESTEPS_DECAY"] = 5e6
             else:
-                config["TOTAL_TIMESTEPS"] = 1e6
-                config["TOTAL_TIMESTEPS_DECAY"] = 1e6
+                config["TOTAL_TIMESTEPS"] = 3e6
+                config["TOTAL_TIMESTEPS_DECAY"] = 3e6
 
             config["ENV_NAME"] = env_name
             if config["NUM_SEEDS"] > 1:
