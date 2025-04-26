@@ -233,17 +233,15 @@ class SFAttentionNetwork(nn.Module):
         # check if attention_weights sum to 1
         attention_weights_sum = jnp.sum(attention_weights, axis=-1)
 
-        print("attention_weights_sum shape:", attention_weights_sum.shape)
-
         attention_weights_reshaped = attention_weights.reshape(
             batch_size, self.num_actions, self.num_beakers, self.num_actions
         )
-        attention_weights_per_beaker = attention_weights_reshaped.mean(axis=(0, 1, 3))
+        # attention_weights_per_beaker = attention_weights_reshaped.mean(axis=(0, 1, 3))
 
         attention_logits_reshaped = attn_logits.reshape(
             batch_size, self.num_actions, self.num_beakers, self.num_actions
         )
-        attention_logits_per_beaker = attention_logits_reshaped.mean(axis=(0, 1, 3))
+        # attention_logits_per_beaker = attention_logits_reshaped.mean(axis=(0, 1, 3))
 
         keys_mask_reshaped = keys_masked.reshape(
             batch_size,
@@ -277,8 +275,8 @@ class SFAttentionNetwork(nn.Module):
             attended_sf,
             attention_logits_per_beaker,
             attention_weights_per_beaker,
-            keys_masked_per_beaker,
-            values_masked_per_beaker,
+            keys_masked,
+            values_masked,
         )
 
 
