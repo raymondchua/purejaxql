@@ -460,8 +460,8 @@ def make_train(config):
                         if isinstance(v, np.ndarray):
                             metrics[k] = v.item()
 
-                        # if metrics["update_steps"] % 10 == 0:
-                        #     print(f"{k}: {v}")
+                        if metrics["update_steps"] % 10 == 0:
+                            print(f"{k}: {v}")
                         #     if k == "env_step":
                         #         print(f"{k}: {v}")
                         #     if k == "update_steps":
@@ -562,11 +562,11 @@ def single_run(config):
 
             # first task is the primary task, which has longer training time
             if unique_task_id == 0:
-                config["TOTAL_TIMESTEPS"] = 5000000
-                config["TOTAL_TIMESTEPS_DECAY"] = 5000000
+                config["TOTAL_TIMESTEPS"] = 10000000
+                config["TOTAL_TIMESTEPS_DECAY"] = 10000000
             else:
-                config["TOTAL_TIMESTEPS"] = 4800000
-                config["TOTAL_TIMESTEPS_DECAY"] = 4800000
+                config["TOTAL_TIMESTEPS"] = 8000000
+                config["TOTAL_TIMESTEPS_DECAY"] = 8000000
 
             config["ENV_NAME"] = env_name
             if config["NUM_SEEDS"] > 1:
