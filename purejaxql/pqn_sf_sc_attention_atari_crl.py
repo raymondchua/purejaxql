@@ -1106,7 +1106,7 @@ def make_train(config):
             for idx, p in enumerate(params_norm):
                 metrics[f"params_norm_{idx}"] = jnp.mean(p)
 
-            for i in range(config["NUM_BEAKERS"]):
+            for i in range(config["NUM_BEAKERS"] * max_num_actions):
                 metrics[f"attn_logits_{i}"] = attn_logits[..., :, i].mean()
                 metrics[f"attention_weights_{i}"] = attention_weights[..., :, i].mean()
                 metrics[f"keys_{i}"] = keys[..., i, :, :].mean()
