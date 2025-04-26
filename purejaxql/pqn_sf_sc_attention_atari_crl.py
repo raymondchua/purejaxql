@@ -239,7 +239,6 @@ class SFAttentionNetwork(nn.Module):
 
         keys_mask_reshaped = keys_masked.reshape(
             batch_size,
-            self.num_actions,
             self.num_beakers,
             self.num_actions,
             self.sf_dim,
@@ -248,7 +247,6 @@ class SFAttentionNetwork(nn.Module):
 
         values_mask_reshaped = values_masked.reshape(
             batch_size,
-            self.num_actions,
             self.num_beakers,
             self.num_actions,
             self.sf_dim,
