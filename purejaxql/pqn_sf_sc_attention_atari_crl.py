@@ -164,10 +164,10 @@ class SFAttentionNetwork(nn.Module):
             # )  # Apply to each beaker's SF
 
             keys_per_beaker.append(
-                keys_layer(nn.relu(sf_all[:, 0, :, :]))
+                keys_layer(nn.relu(sf_all[:, i, :, :]))
             )  # Apply to each beaker's SF
             values_per_beaker.append(
-                values_layer(nn.relu(sf_all[:, 0, :, :]))
+                values_layer(nn.relu(sf_all[:, i, :, :]))
             )  # Apply to each beaker's SF
 
         # Stack the keys and values along the beaker dimension
