@@ -273,8 +273,8 @@ class SFAttentionNetwork(nn.Module):
         return (
             q_1,
             attended_sf,
-            attention_logits_per_beaker,
-            attention_weights_per_beaker,
+            attention_logits_reshaped,
+            attention_weights_reshaped,
             keys_masked,
             values_masked,
         )
