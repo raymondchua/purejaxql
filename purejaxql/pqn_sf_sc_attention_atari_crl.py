@@ -139,9 +139,9 @@ class SFAttentionNetwork(nn.Module):
         # Normalize and tile task
         task = jax.lax.stop_gradient(task)
         task_normalized = task / jnp.linalg.norm(task, ord=2, axis=-1, keepdims=True)
-        task_normalized = jnp.tile(
-            task_normalized[:, None, :], (1, self.num_beakers, 1)
-        )
+        # task_normalized = jnp.tile(
+        #     task_normalized[:, None, :], (1, self.num_beakers, 1)
+        # )
 
         # Attention mechanism
         # query = nn.Dense(features=self.sf_dim, name="query", use_bias=False)(
@@ -185,6 +185,8 @@ class SFAttentionNetwork(nn.Module):
         #     values_per_beaker, axis=1
         # )  # (batch_size, num_beakers, num_actions, sf_dim)
 
+        print("task_normalized shape:", task_normalized.shape)
+
         # Queries from the first beaker
         queries = sf_all[:, 0, :, :]  # (batch_size, num_actions, sf_dim)
         query = nn.Dense(self.sf_dim*self.proj_factor)(queries)  # (batch_size, num_actions, d_model)
@@ -205,11 +207,11 @@ class SFAttentionNetwork(nn.Module):
         print(values_masked.shape)
 
         # Compute logits
-        logits = jnp.matmul(query, jnp.swapaxes(keys_masked, -2, -1)) / jnp.sqrt(self.sf_dim*self.proj_factor)
+        attn_logits = jnp.matmul(query, jnp.swapaxes(keys_masked, -2, -1)) / jnp.sqrt(self.sf_dim*self.proj_factor)
         # logits shape: (batch_size, num_actions, num_beakers * num_actions)
 
         # Compute attention weights
-        attn_weights = nn.softmax(logits, axis=-1)
+        attn_weights = nn.softmax(attn_logits, axis=-1)
 
         # Compute attention output
         attended_sf = jnp.matmul(attn_weights, values_masked)
