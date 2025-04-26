@@ -106,6 +106,7 @@ class CustomTrainState(TrainState):
     grad_steps: int = 0
     exploration_updates: int = 0
     total_returns: int = 0
+    total_returns_per_task: int = 0
 
 
 def create_agent(rng, config, max_num_actions, observation_space_shape):
@@ -212,7 +213,7 @@ def make_train(config):
         lr = lr_scheduler if config.get("LR_LINEAR_DECAY", False) else config["LR"]
 
         rng, _rng = jax.random.split(rng)
-        train_state = train_state.replace(exploration_updates=0)
+        train_state = train_state.replace(exploration_updates=0, total_returns_per_task=0)
 
         # TRAINING LOOP
         def _update_step(runner_state, unused):
@@ -293,7 +294,8 @@ def make_train(config):
             )  # update timesteps count
 
             train_state = train_state.replace(
-                total_returns=train_state.total_returns + transitions.reward.sum()
+                total_returns=train_state.total_returns + transitions.reward.sum(),
+                total_returns_per_task=train_state.total_returns_per_task + transitions.reward.sum(),
             )  # update total returns count
 
             last_q = network.apply(
@@ -433,6 +435,7 @@ def make_train(config):
                 "total_returns": train_state.total_returns,
                 "extrinsic rewards": transitions.reward.mean(),
                 "unique_task_id": unique_task_id,
+                "total_returns_per_task": train_state.total_returns_per_task,
             }
 
             metrics.update({k: v.mean() for k, v in infos.items()})
