@@ -142,13 +142,13 @@ class SFAttentionNetwork(nn.Module):
         )
 
         # Attention mechanism
-        # query = nn.Dense(features=self.sf_dim, name="query", use_bias=False)(
-        #     task_normalized[:, 0, :]
-        # )[:, None, :]
-
         query = nn.Dense(features=self.sf_dim, name="query", use_bias=False)(
-            sf_all[:, 0, :, :]
+            task_normalized[:, 0, :]
         )[:, None, :]
+
+        # query = nn.Dense(features=self.sf_dim, name="query", use_bias=False)(
+        #     sf_all[:, 0, :, :]
+        # )[:, None, :]
 
         # Different dense layers for each beaker to compute keys and values
         keys_per_beaker = []
