@@ -43,4 +43,4 @@ source /home/chuaraym/pqn_atari_env311/bin/activate
 cd /home/chuaraym/purejaxql/
 
 # Run the experiment
-python purejaxql/pqn_atari_five_tasks_crl_Atlantis.py +alg=pqn_atari_five_tasks_crl SEED=${SEED} SAVE_PATH=${OUT_DIR} PROJECT="Atari_Multi_Timescale_Five_Games"
+python purejaxql/pqn_atari_five_tasks_crl_Atlantis.py +alg=pqn_atari_five_tasks_crl SEED=${SEED} SAVE_PATH=${OUT_DIR} PROJECT="Atari_Multi_Timescale_Five_Games_Atlantis"
