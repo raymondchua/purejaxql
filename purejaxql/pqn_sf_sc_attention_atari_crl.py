@@ -209,8 +209,8 @@ class SFAttentionNetwork(nn.Module):
             mask, self.proj_factor, axis=-1
         )  # (batch_size, num_beakers * num_actions, sf_dim * 2)
 
-        keys_masked = keys * mask
-        values_masked = values * mask
+        # keys_masked = keys * mask
+        # values_masked = values * mask
 
         print("query shape: ", query.shape)
         print("keys mask shape: ", keys_masked.shape)
