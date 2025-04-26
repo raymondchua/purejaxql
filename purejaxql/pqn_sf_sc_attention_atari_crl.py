@@ -189,15 +189,25 @@ class SFAttentionNetwork(nn.Module):
 
         # Queries from the first beaker
         queries = sf_all[:, 0, :, :]  # (batch_size, num_actions, sf_dim)
-        query = nn.Dense(self.sf_dim*self.proj_factor)(queries)  # (batch_size, num_actions, d_model)
+        query = nn.Dense(self.sf_dim * self.proj_factor)(
+            queries
+        )  # (batch_size, num_actions, d_model)
 
         # Keys and values from all beakers
-        keys_values = sf_all.reshape(batch_size, self.num_beakers * self.num_actions, self.sf_dim)
-        keys = nn.Dense(self.sf_dim*self.proj_factor)(keys_values)  # (batch_size, num_beakers * num_actions, d_model)
-        values = nn.Dense(self.sf_dim*self.proj_factor)(keys_values)  # (batch_size, num_beakers * num_actions, d_model)
+        keys_values = sf_all.reshape(
+            batch_size, self.num_beakers * self.num_actions, self.sf_dim
+        )
+        keys = nn.Dense(self.sf_dim * self.proj_factor)(
+            keys_values
+        )  # (batch_size, num_beakers * num_actions, d_model)
+        values = nn.Dense(self.sf_dim * self.proj_factor)(
+            keys_values
+        )  # (batch_size, num_beakers * num_actions, d_model)
 
         mask = jnp.reshape(mask, (batch_size, self.num_beakers * self.num_actions, -1))
-        mask = jnp.repeat(mask, self.proj_factor, axis=-1)  # (batch_size, num_beakers * num_actions, sf_dim * 2)
+        mask = jnp.repeat(
+            mask, self.proj_factor, axis=-1
+        )  # (batch_size, num_beakers * num_actions, sf_dim * 2)
 
         keys_masked = keys * mask
         values_masked = values * mask
@@ -207,13 +217,43 @@ class SFAttentionNetwork(nn.Module):
         print("value mask shape: ", values_masked.shape)
 
         # Compute logits
-        attn_logits = jnp.matmul(query, jnp.swapaxes(keys_masked, -2, -1)) / jnp.sqrt(self.sf_dim*self.proj_factor)
+        attn_logits = jnp.matmul(query, jnp.swapaxes(keys_masked, -2, -1)) / jnp.sqrt(
+            self.sf_dim * self.proj_factor
+        )
         # logits shape: (batch_size, num_actions, num_beakers * num_actions)
 
         # Compute attention weights
         attention_weights = nn.softmax(attn_logits, axis=-1)
 
         print("attention_weights shape:", attention_weights.shape)
+
+        attention_weights_reshaped = attention_weights.reshape(
+            batch_size, self.num_actions, self.num_beakers, self.num_actions
+        )
+        attention_weights_per_beaker = attention_weights_reshaped.mean(axis=(0, 1, 3))
+
+        attention_logits_reshaped = attn_logits.reshape(
+            batch_size, self.num_actions, self.num_beakers, self.num_actions
+        )
+        attention_logits_per_beaker = attention_logits_reshaped.mean(axis=(0, 1, 3))
+
+        keys_mask_reshaped = keys_masked.reshape(
+            batch_size,
+            self.num_actions,
+            self.num_beakers,
+            self.num_actions,
+            self.sf_dim,
+        )
+        keys_masked_per_beaker = keys_mask_reshaped.mean(axis=(0, 1, 3))
+
+        values_mask_reshaped = values_masked.reshape(
+            batch_size,
+            self.num_actions,
+            self.num_beakers,
+            self.num_actions,
+            self.sf_dim,
+        )
+        values_masked_per_beaker = values_mask_reshaped.mean(axis=(0, 1, 3))
 
         # Compute attention output
         attended_sf = jnp.matmul(attention_weights, values_masked)
@@ -226,7 +266,14 @@ class SFAttentionNetwork(nn.Module):
 
         print("q_1 shape:", q_1.shape)
 
-        return q_1, attended_sf, attn_logits, attention_weights, keys_masked, values_masked
+        return (
+            q_1,
+            attended_sf,
+            attention_logits_per_beaker,
+            attention_weights_per_beaker,
+            keys_masked_per_beaker,
+            values_masked_per_beaker,
+        )
 
 
 @chex.dataclass(frozen=True)
@@ -292,9 +339,7 @@ def create_agent(rng, config, max_num_actions, observation_space_shape):
     init_sf_all = jnp.zeros(
         (1, config["NUM_BEAKERS"], max_num_actions, config["SF_DIM"])
     )
-    init_mask = jnp.zeros(
-        (1, config["NUM_BEAKERS"], max_num_actions, config["SF_DIM"])
-    )
+    init_mask = jnp.zeros((1, config["NUM_BEAKERS"], max_num_actions, config["SF_DIM"]))
     attention_network_variables = attention_network.init(
         rng, init_sf_all, init_task, init_mask
     )
@@ -534,11 +579,16 @@ def make_train(config):
 
                 # Vectorized application of getting sf for each beaker
                 sf_beakers = jax.vmap(apply_single_beaker, in_axes=(0, 0, 0, None))(
-                    params_beakers_stacked, obs_tiled, task_tiled, train_state.network_state.batch_stats
+                    params_beakers_stacked,
+                    obs_tiled,
+                    task_tiled,
+                    train_state.network_state.batch_stats,
                 )
 
                 sf_all = jnp.concatenate([sf[None], sf_beakers], axis=0)
-                sf_all = jnp.transpose(sf_all, (1, 0, 3, 2))  # (batch_size, num_beakers, num_actions, sf_dim)
+                sf_all = jnp.transpose(
+                    sf_all, (1, 0, 3, 2)
+                )  # (batch_size, num_beakers, num_actions, sf_dim)
 
                 """
                 Make a mask to mask out the beakers in the consolidation system which has timescales less than the current time
@@ -556,7 +606,10 @@ def make_train(config):
                 mask = mask.reshape(1, -1, 1, 1)
 
                 # broadcast the mask to the shape of (batch_size, num_beakers-1, num_actions, sf_dim)
-                mask_tiled = jnp.broadcast_to(mask, (sf_all.shape[0], mask.shape[1], sf_all.shape[2], sf_all.shape[3]))
+                mask_tiled = jnp.broadcast_to(
+                    mask,
+                    (sf_all.shape[0], mask.shape[1], sf_all.shape[2], sf_all.shape[3]),
+                )
 
                 # attention network
                 q_vals, _, _, _, _, _ = attention_network.apply(
@@ -655,11 +708,16 @@ def make_train(config):
             )  # [num_beakers, batch, task_dim]
 
             last_sf_beakers = jax.vmap(apply_single_beaker, in_axes=(0, 0, 0, None))(
-                params_beakers_stacked, obs_tiled, task_tiled, train_state.network_state.batch_stats
+                params_beakers_stacked,
+                obs_tiled,
+                task_tiled,
+                train_state.network_state.batch_stats,
             )
 
             last_sf_all = jnp.concatenate([last_sf[None], last_sf_beakers], axis=0)
-            last_sf_all = jnp.transpose(last_sf_all, (1, 0, 3, 2))  # (batch_size, num_beakers, num_actions, sf_dim)
+            last_sf_all = jnp.transpose(
+                last_sf_all, (1, 0, 3, 2)
+            )  # (batch_size, num_beakers, num_actions, sf_dim)
 
             """
             Make a mask to mask out the beakers in the consolidation system which has timescales less than the current time
@@ -675,7 +733,15 @@ def make_train(config):
             mask = jnp.insert(mask, 0, 1)
             mask = mask.astype(jnp.int32)
             mask = mask.reshape(1, -1, 1, 1)
-            mask_tiled = jnp.broadcast_to(mask, (last_sf_all.shape[0], mask.shape[1], last_sf_all.shape[2], last_sf_all.shape[3]))
+            mask_tiled = jnp.broadcast_to(
+                mask,
+                (
+                    last_sf_all.shape[0],
+                    mask.shape[1],
+                    last_sf_all.shape[2],
+                    last_sf_all.shape[3],
+                ),
+            )
 
             # attention network
             last_q, _, _, _, _, _ = attention_network.apply(
@@ -760,7 +826,7 @@ def make_train(config):
                         )  # [num_beakers, batch, ...]
                         task_tiled = jnp.broadcast_to(
                             train_state.task_state.params["w"][
-                            : -config["TEST_ENVS"], :
+                                : -config["TEST_ENVS"], :
                             ],
                             (
                                 num_beakers,
@@ -771,16 +837,30 @@ def make_train(config):
                         )  # [num_beakers, batch, task_dim]
 
                         # Vectorized application
-                        sf_beakers = jax.vmap(apply_single_beaker, in_axes=(0, 0, 0, None))(
-                            params_beakers_stacked, obs_tiled, task_tiled, train_state.network_state.batch_stats
+                        sf_beakers = jax.vmap(
+                            apply_single_beaker, in_axes=(0, 0, 0, None)
+                        )(
+                            params_beakers_stacked,
+                            obs_tiled,
+                            task_tiled,
+                            train_state.network_state.batch_stats,
                         )
 
                         sf_all = jnp.concatenate([sf[None], sf_beakers], axis=0)
-                        sf_all = jnp.transpose(sf_all, (1, 0, 3, 2))  # (batch_size, num_beakers, num_actions, sf_dim)
+                        sf_all = jnp.transpose(
+                            sf_all, (1, 0, 3, 2)
+                        )  # (batch_size, num_beakers, num_actions, sf_dim)
 
                         mask = mask.reshape(1, -1, 1, 1)
-                        mask_tiled = jnp.broadcast_to(mask, (
-                        sf_all.shape[0], mask.shape[1], sf_all.shape[2], sf_all.shape[3]))
+                        mask_tiled = jnp.broadcast_to(
+                            mask,
+                            (
+                                sf_all.shape[0],
+                                mask.shape[1],
+                                sf_all.shape[2],
+                                sf_all.shape[3],
+                            ),
+                        )
 
                         # attention network
                         (
@@ -796,7 +876,7 @@ def make_train(config):
                             },
                             sf_all,
                             train_state.task_state.params["w"][
-                            : -config["TEST_ENVS"], :
+                                : -config["TEST_ENVS"], :
                             ],
                             mask_tiled,
                         )
@@ -896,12 +976,14 @@ def make_train(config):
                     step. 
                     """
                     mask = (
-                            jnp.asarray(train_state.network_state.timescales, dtype=np.uint32)
-                            < train_state.network_state.grad_steps
+                        jnp.asarray(
+                            train_state.network_state.timescales, dtype=np.uint32
+                        )
+                        < train_state.network_state.grad_steps
                     )
                     mask = mask[
-                           :-1
-                           ]  # remove the last column of the mask since the first beaker is always updated
+                        :-1
+                    ]  # remove the last column of the mask since the first beaker is always updated
                     mask = jnp.insert(mask, 0, 1)
                     mask = mask.astype(jnp.int32)
 
@@ -963,7 +1045,9 @@ def make_train(config):
 
                     for i in range(1, config["NUM_BEAKERS"]):
                         all_params.append(
-                            train_state.network_state.consolidation_params_tree[f"network_{i}"]
+                            train_state.network_state.consolidation_params_tree[
+                                f"network_{i}"
+                            ]
                         )
 
                     (
@@ -1106,11 +1190,16 @@ def make_train(config):
             for idx, p in enumerate(params_norm):
                 metrics[f"params_norm_{idx}"] = jnp.mean(p)
 
-            for i in range(config["NUM_BEAKERS"] * max_num_actions):
-                metrics[f"attn_logits_{i}"] = attn_logits[..., :, i].mean()
-                metrics[f"attention_weights_{i}"] = attention_weights[..., :, i].mean()
-                metrics[f"keys_{i}"] = keys[..., i, :, :].mean()
-                metrics[f"values_{i}"] = values[..., i, :, :].mean()
+            for i in range(config["NUM_BEAKERS"]):
+                print("attn logits shape: ", attn_logits.shape)
+                print("attention weights shape: ", attention_weights.shape)
+                print("keys shape: ", keys.shape)
+                print("values shape: ", values.shape)
+
+                metrics[f"attn_logits_{i}"] = attn_logits[..., i].mean()
+                metrics[f"attention_weights_{i}"] = attention_weights[..., i].mean()
+                metrics[f"keys_{i}"] = keys[..., i].mean()
+                metrics[f"values_{i}"] = values[..., i].mean()
 
             metrics.update({k: v.mean() for k, v in infos.items()})
             if config.get("TEST_DURING_TRAINING", False):
