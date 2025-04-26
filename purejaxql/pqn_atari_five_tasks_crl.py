@@ -534,7 +534,7 @@ def single_run(config):
     )
 
     # Get list of environments
-    env_names = "Atlantis-v5, Boxing-v5, Breakout-v5, Centipede-v5, Alien-v5"
+    env_names = "Alien-v5, Atlantis-v5, Boxing-v5, Breakout-v5, Centipede-v5"
 
     if isinstance(env_names, str):
         env_names = [e.strip() for e in env_names.split(",")]
@@ -562,11 +562,11 @@ def single_run(config):
 
             # first task is the primary task, which has longer training time
             if unique_task_id == 0:
-                config["TOTAL_TIMESTEPS"] = 500000
-                config["TOTAL_TIMESTEPS_DECAY"] = 500000
+                config["TOTAL_TIMESTEPS"] = 5e5
+                config["TOTAL_TIMESTEPS_DECAY"] = 5e5
             else:
-                config["TOTAL_TIMESTEPS"] = 450000
-                config["TOTAL_TIMESTEPS_DECAY"] = 450000
+                config["TOTAL_TIMESTEPS"] = 3e5
+                config["TOTAL_TIMESTEPS_DECAY"] = 3e5
 
             config["ENV_NAME"] = env_name
             if config["NUM_SEEDS"] > 1:
