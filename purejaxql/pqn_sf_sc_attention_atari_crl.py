@@ -220,6 +220,8 @@ class SFAttentionNetwork(nn.Module):
         # Compute Q-values
         q_1 = jnp.einsum("bi,bij->bj", task, attended_sf)
 
+        print("q_1 shape:", q_1.shape)
+
         return q_1, attended_sf, attn_logits, attention_weights, keys_masked, values_masked
 
 
