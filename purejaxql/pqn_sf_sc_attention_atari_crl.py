@@ -201,15 +201,18 @@ class SFAttentionNetwork(nn.Module):
         values_masked = values * mask
 
         print(query.shape)
+        print(keys_masked.shape)
+        print(values_masked.shape)
 
-        attn_logits = jnp.einsum("bqf,bnaf->bqna", query, keys_masked) / jnp.sqrt(self.sf_dim)
+        attn_logits = jnp.einsum("bqf,bnf->bqf", query, keys_masked) / jnp.sqrt(self.sf_dim)
 
         # replace zero logits with a large negative number so that they are ignored in the softmax
         attn_logits = jnp.where(attn_logits == 0, -1e9, attn_logits)
 
         attention_weights = jax.nn.softmax(attn_logits, axis=2)
 
-        attended_sf = jnp.einsum("bqna,bnaf->bqaf", attention_weights, values_masked)
+        # attended_sf = jnp.einsum("bqna,bnaf->bqaf", attention_weights, values_masked)
+        attended_sf = jnp.einsum("bqf,bnf->bqf", attention_weights, values_masked)
 
         attended_sf = attended_sf.squeeze(1).swapaxes(1, 2)
 
