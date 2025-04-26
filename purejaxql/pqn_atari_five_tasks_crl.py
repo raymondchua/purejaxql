@@ -64,7 +64,7 @@ class CNN(nn.Module):
         x = normalize(x)
         x = nn.relu(x)
         x = x.reshape((x.shape[0], -1))
-        x = nn.Dense(512, kernel_init=nn.initializers.he_normal())(x)
+        x = nn.Dense(256, kernel_init=nn.initializers.he_normal())(x)
         x = normalize(x)
         x = nn.relu(x)
         return x
@@ -558,11 +558,11 @@ def single_run(config):
 
             # first task is the primary task, which has longer training time
             if unique_task_id == 0:
-                config["TOTAL_TIMESTEPS"] = 5e5
-                config["TOTAL_TIMESTEPS_DECAY"] = 5e5
+                config["TOTAL_TIMESTEPS"] = 500000
+                config["TOTAL_TIMESTEPS_DECAY"] = 500000
             else:
-                config["TOTAL_TIMESTEPS"] = 5e5
-                config["TOTAL_TIMESTEPS_DECAY"] = 5e5
+                config["TOTAL_TIMESTEPS"] = 450000
+                config["TOTAL_TIMESTEPS_DECAY"] = 450000
 
             config["ENV_NAME"] = env_name
             if config["NUM_SEEDS"] > 1:
