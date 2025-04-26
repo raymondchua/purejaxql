@@ -209,11 +209,11 @@ class SFAttentionNetwork(nn.Module):
             mask, self.proj_factor, axis=-1
         )  # (batch_size, num_beakers * num_actions, sf_dim * 2)
 
-        # keys_masked = keys * mask
-        # values_masked = values * mask
+        keys_masked = keys * mask
+        values_masked = values * mask
 
-        keys_masked = keys
-        values_masked = values
+        # keys_masked = keys
+        # values_masked = values
 
         print("query shape: ", query.shape)
         print("keys mask shape: ", keys_masked.shape)
@@ -949,22 +949,22 @@ def make_train(config):
                                 params[i], params[i - 1], scale_prev, loss
                             )
 
-                            # Recall from next beaker, conditionally
-                            def do_recall(p, l):
-                                return update_and_accumulate_tree(
-                                    p, params[i + 1], scale_next, l
-                                )
-
-                            def no_recall(p, l):
-                                return p, l
-
-                            params[i], loss = jax.lax.cond(
-                                mask[i] != 0,
-                                do_recall,
-                                no_recall,
-                                params[i],
-                                loss,
-                            )
+                            # # Recall from next beaker, conditionally
+                            # def do_recall(p, l):
+                            #     return update_and_accumulate_tree(
+                            #         p, params[i + 1], scale_next, l
+                            #     )
+                            #
+                            # def no_recall(p, l):
+                            #     return p, l
+                            #
+                            # params[i], loss = jax.lax.cond(
+                            #     mask[i] != 0,
+                            #     do_recall,
+                            #     no_recall,
+                            #     params[i],
+                            #     loss,
+                            # )
 
                         # compute the norm of the params using jax.tree_util.tree_map and sum the norms with jnp.sum and jnp.linalg.norm
                         params_norm = []
