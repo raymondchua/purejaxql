@@ -124,7 +124,7 @@ class SFAttentionNetwork(nn.Module):
     sf_dim: int
     num_actions: int
     num_beakers: int
-    proj_factor: int = 2
+    proj_factor: int = 1
 
     @nn.compact
     def __call__(self, sf_all, task, mask):
