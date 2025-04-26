@@ -148,7 +148,7 @@ class SFAttentionNetwork(nn.Module):
 
         query = nn.Dense(features=self.sf_dim, name="query", use_bias=False)(
             sf_all[:, 0, :, :]
-        )[:, None, :]
+        )
 
         print("query shape: ", query.shape)
 
