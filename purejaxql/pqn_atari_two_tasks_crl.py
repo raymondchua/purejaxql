@@ -509,6 +509,9 @@ def single_run(config):
 
     config = {**config, **config["alg"]}
 
+    config["alg"]["TOTAL_TIMESTEPS"] = 5e6
+    config["alg"]["TOTAL_TIMESTEPS_DECAY"] = 5e6
+
     alg_name = config.get("ALG_NAME", "pqn")
 
     start_time = time.time()
