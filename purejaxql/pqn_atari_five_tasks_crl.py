@@ -533,7 +533,7 @@ def single_run(config):
     )
 
     # Get list of environments
-    env_names = "Atlantis-v5,Boxing-v5, Breakout-v5, Centipede-v5, Alien-v5"
+    env_names = "Atlantis-v5, Boxing-v5, Breakout-v5, Centipede-v5, Alien-v5"
 
     if isinstance(env_names, str):
         env_names = [e.strip() for e in env_names.split(",")]
@@ -579,7 +579,11 @@ def single_run(config):
             train_state = outs["train_state"]
 
             # Debug print statements
-            # metrics = outs["metrics"]
+            metrics = outs["metrics"]
+
+            for k, v in metrics.items():
+                print(f"\t{k}: {v}")
+
             # env_step = metrics["env_step"]
             # update_steps = metrics["update_steps"]
             # print(f"env_step: {env_step}")
