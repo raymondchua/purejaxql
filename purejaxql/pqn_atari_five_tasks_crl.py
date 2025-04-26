@@ -582,7 +582,7 @@ def single_run(config):
             metrics = outs["metrics"]
 
             for k, v in metrics.items():
-                print(f"\t{k}: {v}")
+                print(f"{k}: {v[-1]}")
 
             # env_step = metrics["env_step"]
             # update_steps = metrics["update_steps"]
