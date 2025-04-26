@@ -184,11 +184,11 @@ class SFAttentionNetwork(nn.Module):
         # )  # (batch_size, num_beakers, num_actions, sf_dim)
 
         # Queries from the first beaker
-        queries = SFs[:, 0, :, :]  # (batch_size, num_actions, sf_dim)
+        queries = sf_all[:, 0, :, :]  # (batch_size, num_actions, sf_dim)
         query = nn.Dense(self.sf_dim*2)(queries)  # (batch_size, num_actions, d_model)
 
         # Keys and values from all beakers
-        keys_values = SFs.reshape(batch_size, self.num_beakers * self.num_actions, self.sf_dim)
+        keys_values = sf_all.reshape(batch_size, self.num_beakers * self.num_actions, self.sf_dim)
         keys = nn.Dense(self.sf_dim*2)(keys_values)  # (batch_size, num_beakers * num_actions, d_model)
         values = nn.Dense(self.sf_dim*2)(keys_values)  # (batch_size, num_beakers * num_actions, d_model)
 
