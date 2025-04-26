@@ -211,10 +211,10 @@ class SFAttentionNetwork(nn.Module):
         # logits shape: (batch_size, num_actions, num_beakers * num_actions)
 
         # Compute attention weights
-        attn_weights = nn.softmax(attn_logits, axis=-1)
+        attention_weights = nn.softmax(attn_logits, axis=-1)
 
         # Compute attention output
-        attended_sf = jnp.matmul(attn_weights, values_masked)
+        attended_sf = jnp.matmul(attention_weights, values_masked)
 
         print("attended_sf shape:", attended_sf.shape)
         print("task shape: ", task.shape)
