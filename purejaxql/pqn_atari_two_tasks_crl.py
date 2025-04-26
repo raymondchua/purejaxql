@@ -509,8 +509,8 @@ def single_run(config):
 
     config = {**config, **config["alg"]}
 
-    config["alg"]["TOTAL_TIMESTEPS"] = 5e6
-    config["alg"]["TOTAL_TIMESTEPS_DECAY"] = 5e6
+    # config["TOTAL_TIMESTEPS"] = 5e6
+    # config["TOTAL_TIMESTEPS_DECAY"] = 5e6
 
     alg_name = config.get("ALG_NAME", "pqn")
 
@@ -541,8 +541,6 @@ def single_run(config):
     max_num_actions = 18 # atari has at most 18 actions
     observation_space_shape = (4, 84, 84)
 
-    config["alg"]["TOTAL_TIMESTEPS_DECAY"] = config["alg"]["TOTAL_TIMESTEPS_DECAY"] * config["NUM_TASKS"]
-
     rng = jax.random.PRNGKey(config["SEED"])
     rng, rng_agent = jax.random.split(rng)
     train_state, network = create_agent(rng_agent, config, max_num_actions, observation_space_shape)
@@ -556,11 +554,11 @@ def single_run(config):
 
             # first task is the primary task, which has longer training time
             if unique_task_id == 0:
-                config["alg"]["TOTAL_TIMESTEPS"] = 5e6
-                config["alg"]["TOTAL_TIMESTEPS_DECAY"] = 5e6
+                config["TOTAL_TIMESTEPS"] = 5e6
+                config["TOTAL_TIMESTEPS_DECAY"] = 5e6
             else:
-                config["alg"]["TOTAL_TIMESTEPS"] = 1e6
-                config["alg"]["TOTAL_TIMESTEPS_DECAY"] = 1e6
+                config["TOTAL_TIMESTEPS"] = 1e6
+                config["TOTAL_TIMESTEPS_DECAY"] = 1e6
 
             config["ENV_NAME"] = env_name
             if config["NUM_SEEDS"] > 1:
