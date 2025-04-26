@@ -156,11 +156,17 @@ class SFAttentionNetwork(nn.Module):
             values_layer = nn.Dense(
                 features=self.sf_dim, name=f"values_beaker_{i}",
             )
+            # keys_per_beaker.append(
+            #     keys_layer(nn.relu(sf_all[:, i, :, :]))
+            # )  # Apply to each beaker's SF
+            # values_per_beaker.append(
+            #     values_layer(nn.relu(sf_all[:, i, :, :]))
+            # )  # Apply to each beaker's SF
             keys_per_beaker.append(
-                keys_layer(nn.relu(sf_all[:, i, :, :]))
+                keys_layer(nn.relu(sf_all[:, 0, :, :]))
             )  # Apply to each beaker's SF
             values_per_beaker.append(
-                values_layer(nn.relu(sf_all[:, i, :, :]))
+                values_layer(nn.relu(sf_all[:, 0, :, :]))
             )  # Apply to each beaker's SF
 
         # Stack the keys and values along the beaker dimension
