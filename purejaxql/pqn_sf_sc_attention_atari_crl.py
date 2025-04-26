@@ -1194,16 +1194,18 @@ def make_train(config):
             for idx, p in enumerate(params_norm):
                 metrics[f"params_norm_{idx}"] = jnp.mean(p)
 
-            for i in range(config["NUM_BEAKERS"]):
+            for i in range(config["NUM_BEAKERS"] * 18):
                 print("attn logits shape: ", attn_logits.shape)
                 print("attention weights shape: ", attention_weights.shape)
                 print("keys shape: ", keys.shape)
                 print("values shape: ", values.shape)
 
+                # metrics[f"attn_logits_{i}"] = attn_logits[..., i].mean()
+                # metrics[f"attention_weights_{i}"] = attention_weights[..., i].mean()
+                # metrics[f"keys_{i}"] = keys[..., i].mean()
+                # metrics[f"values_{i}"] = values[..., i].mean()
                 metrics[f"attn_logits_{i}"] = attn_logits[..., i].mean()
                 metrics[f"attention_weights_{i}"] = attention_weights[..., i].mean()
-                metrics[f"keys_{i}"] = keys[..., i].mean()
-                metrics[f"values_{i}"] = values[..., i].mean()
 
             metrics.update({k: v.mean() for k, v in infos.items()})
             if config.get("TEST_DURING_TRAINING", False):
