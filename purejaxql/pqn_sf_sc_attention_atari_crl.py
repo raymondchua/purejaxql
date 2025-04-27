@@ -145,7 +145,7 @@ class SFAttentionNetwork(nn.Module):
         sf_all_reshaped_left = sf_all_reshaped[:, :-1, :]  # shape (batch, num_beakers-1, num_actions * sf_dim)
         sf_all_reshaped_right = sf_all_reshaped[:, 1:, :] # shape (batch, num_beakers-1, num_actions * sf_dim)
 
-        cos_sim = cosine_similarity(sf_all_reshaped_left, sf_all_reshaped_right)
+        cos_sim = cosine_similarity(sf_all_reshaped_left, sf_all_reshaped_right).mean(axis=0)  # shape (num_beakers-1)
 
         basis_features_first = basis_features_all[:, :1, :]  # shape (batch, 1, ...)
         basis_features_rest = jax.lax.stop_gradient(
