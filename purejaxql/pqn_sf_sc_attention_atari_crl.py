@@ -1117,6 +1117,8 @@ def make_train(config):
                     all_params = []
                     all_params.append(train_state.network_state.params)
 
+                    print("mask shape: ", mask.shape)
+
                     # modify sf_cosine_sim based on the mask, to allow consolidation to overwrite initialization
                     sf_cosine_sim = jnp.where(
                         mask == 0,
