@@ -976,11 +976,11 @@ def make_train(config):
                     ) -> Tuple[List[Params], float]:
                         loss = 0.0
 
-                        # First beaker
-                        scale_first = g_flow[0] / capacity[0]
-                        params[0], loss = update_and_accumulate_tree(
-                            params[0], params[1], scale_first, loss
-                        )
+                        # Updating first beaker from the second beaker
+                        # scale_first = g_flow[0] / capacity[0]
+                        # params[0], loss = update_and_accumulate_tree(
+                        #     params[0], params[1], scale_first, loss
+                        # )
 
                         # Last beaker
                         scale_last = g_flow[-1] / capacity[-1]
@@ -989,6 +989,8 @@ def make_train(config):
                         params[-1], loss = update_and_accumulate_tree(
                             params[-1], params_set_to_zero, scale_last, loss
                         )
+
+                        # Recall from second last beaker
                         params[-1], loss = update_and_accumulate_tree(
                             params[-1], params[-2], scale_second_last, loss
                         )
