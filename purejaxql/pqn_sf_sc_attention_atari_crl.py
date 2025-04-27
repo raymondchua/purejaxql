@@ -242,6 +242,8 @@ class SFAttentionNetwork(nn.Module):
         # Compute attention output
         attended_sf = jnp.matmul(attention_weights, values_masked)
 
+        attended_sf = jnp.einsum("bna,baqf->bnqf", attention_weights, values_masked)
+
         print("attended_sf shape:", attended_sf.shape)
         print("task shape: ", task.shape)
 
