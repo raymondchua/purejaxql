@@ -1242,6 +1242,7 @@ def make_train(config):
                 # "task_params_diff": task_params_diff.mean(),
                 "extrinsic rewards": transitions.reward.mean(),
                 # "consolidation_loss": consolidation_loss.mean(),
+                "lr_task": config["LR_TASK"],
             }
 
             # add norm of each beaker params to metrics
