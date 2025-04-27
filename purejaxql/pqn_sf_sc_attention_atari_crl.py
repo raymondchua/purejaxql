@@ -24,6 +24,7 @@ import envpool
 from purejaxql.utils.atari_wrapper import JaxLogEnvPoolWrapper
 from purejaxql.utils.l2_normalize import l2_normalize
 from purejaxql.utils.consolidation_helpers import update_and_accumulate_tree
+from purejaxql.utils.cosine_similarity import cosine_similarity
 from flax.core import freeze, unfreeze, FrozenDict
 
 Params = FrozenDict
@@ -135,6 +136,16 @@ class SFAttentionNetwork(nn.Module):
         #     sf_all[:, 1:, :, :]
         # )  # shape (batch, num_beakers-1, ...)
         # sf_all = jnp.concatenate([sf_first, sf_rest], axis=1)
+
+        sf_all_reshaped = jnp.reshape(
+            sf_all,
+            (batch_size, self.num_beakers, self.num_actions * self.sf_dim)
+        )
+
+        sf_all_reshaped_left = sf_all_reshaped[:, :-1, :]  # shape (batch, num_beakers-1, num_actions * sf_dim)
+        sf_all_reshaped_right = sf_all_reshaped[:, 1:, :] # shape (batch, num_beakers-1, num_actions * sf_dim)
+
+        cos_sim = cosine_similarity(sf_all_reshaped_left, sf_all_reshaped_right)
 
         basis_features_first = basis_features_all[:, :1, :]  # shape (batch, 1, ...)
         basis_features_rest = jax.lax.stop_gradient(
@@ -267,6 +278,7 @@ class SFAttentionNetwork(nn.Module):
             attention_weights,
             keys_masked,
             values_masked,
+            cos_sim,
         )
 
 
@@ -628,7 +640,7 @@ def make_train(config):
 
 
                 # attention network
-                q_vals, _, _, _, _, _ = attention_network.apply(
+                q_vals, _, _, _, _, _, _ = attention_network.apply(
                     {
                         "params": train_state.attention_network_state.params,
                     },
@@ -780,7 +792,7 @@ def make_train(config):
             )
 
             # attention network
-            last_q, _, _, _, _, _ = attention_network.apply(
+            last_q, _, _, _, _, _, _ = attention_network.apply(
                 {
                     "params": train_state.attention_network_state.params,
                 },
@@ -923,6 +935,7 @@ def make_train(config):
                             attention_weights,
                             keys,
                             values,
+                            sf_cosine_sim,
                         ) = attention_network.apply(
                             {
                                 "params": params["attention"],
@@ -951,6 +964,7 @@ def make_train(config):
                             attention_weights,
                             keys,
                             values,
+                            sf_cosine_sim,
                         )
 
                     def _reward_loss_fn(task_params, basis_features, reward):
@@ -969,6 +983,7 @@ def make_train(config):
                         capacity: chex.Array,
                         num_beakers: int,
                         mask: chex.Array,
+                        sf_cosine_sim: Optional[chex.Array] = None,
                     ) -> Tuple[List[Params], float]:
                         loss = 0.0
 
@@ -979,22 +994,22 @@ def make_train(config):
                         # )
 
                         # Last beaker
-                        scale_last = g_flow[-1] / capacity[-1]
-                        scale_second_last = g_flow[-2] / capacity[-1]
+                        scale_last = (g_flow[-1] / capacity[-1])
+                        scale_second_last = (g_flow[-2] / capacity[-1]) * sf_cosine_sim[-1]
 
                         params[-1], loss = update_and_accumulate_tree(
                             params[-1], params_set_to_zero, scale_last, loss
                         )
 
-                        # Recall from second last beaker
+                        # consolidate from second last beaker
                         params[-1], loss = update_and_accumulate_tree(
                             params[-1], params[-2], scale_second_last, loss
                         )
 
                         # Middle beakers: 1 to num_beakers - 2
                         for i in range(1, num_beakers - 1):
-                            scale_prev = g_flow[i - 1] / capacity[i]
-                            scale_next = g_flow[i] / capacity[i]
+                            scale_prev = (g_flow[i - 1] / capacity[i]) * sf_cosine_sim[i]
+                            scale_next = (g_flow[i] / capacity[i])
 
                             # Consolidate from previous beaker
                             params[i], loss = update_and_accumulate_tree(
@@ -1059,12 +1074,15 @@ def make_train(config):
                             attention_weights,
                             keys,
                             values,
+                            sf_cosine_sim,
                         ),
                     ), grads = jax.value_and_grad(_loss_fn, has_aux=True)(
                         combined_params,
                         train_state.network_state.consolidation_params_tree,
                         mask,
                     )
+
+                    print("sf_cosine_sim:", sf_cosine_sim)
 
                     train_state = train_state.replace(
                         network_state=train_state.network_state.apply_gradients(
@@ -1117,6 +1135,7 @@ def make_train(config):
                         capacity=train_state.network_state.capacity,
                         num_beakers=config["NUM_BEAKERS"],
                         mask=mask,
+                        sf_cosine_sim=sf_cosine_sim
                     )
 
                     # replace train_state params with the new params
