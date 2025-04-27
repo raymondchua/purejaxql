@@ -220,7 +220,7 @@ class SFAttentionNetwork(nn.Module):
         # )  # (batch_size, num_beakers * num_actions, sf_dim * 2)
 
         keys_masked = keys * mask
-        values_masked = values * mask
+        values_masked = values
 
         print("mask: ", mask.shape)
         print("basis_features_all shape: ", basis_features_all.shape)
