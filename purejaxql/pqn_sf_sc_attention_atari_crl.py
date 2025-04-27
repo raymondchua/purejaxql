@@ -608,10 +608,15 @@ def make_train(config):
                 mask = mask.reshape(1, -1, 1, 1)
 
                 # broadcast the mask to the shape of (batch_size, num_beakers-1, num_actions, sf_dim)
+                # mask_tiled = jnp.broadcast_to(
+                #     mask,
+                #     (sf_all.shape[0], mask.shape[1], sf_all.shape[2], sf_all.shape[3]),
+                # )
                 mask_tiled = jnp.broadcast_to(
                     mask,
-                    (sf_all.shape[0], mask.shape[1], sf_all.shape[2], sf_all.shape[3]),
+                    (basis_features_all.shape[0], mask.shape[1], basis_features_all.shape[2]),
                 )
+
 
                 # attention network
                 q_vals, _, _, _, _, _ = attention_network.apply(
@@ -746,13 +751,21 @@ def make_train(config):
             mask = jnp.insert(mask, 0, 1)
             mask = mask.astype(jnp.int32)
             mask = mask.reshape(1, -1, 1, 1)
+            # mask_tiled = jnp.broadcast_to(
+            #     mask,
+            #     (
+            #         last_sf_all.shape[0],
+            #         mask.shape[1],
+            #         last_sf_all.shape[2],
+            #         last_sf_all.shape[3],
+            #     ),
+            # )
             mask_tiled = jnp.broadcast_to(
                 mask,
                 (
-                    last_sf_all.shape[0],
+                    last_basis_features_all.shape[0],
                     mask.shape[1],
-                    last_sf_all.shape[2],
-                    last_sf_all.shape[3],
+                    last_basis_features_all.shape[2],
                 ),
             )
 
@@ -873,13 +886,21 @@ def make_train(config):
                         )
 
                         mask = mask.reshape(1, -1, 1, 1)
+                        # mask_tiled = jnp.broadcast_to(
+                        #     mask,
+                        #     (
+                        #         sf_all.shape[0],
+                        #         mask.shape[1],
+                        #         sf_all.shape[2],
+                        #         sf_all.shape[3],
+                        #     ),
+                        # )
                         mask_tiled = jnp.broadcast_to(
                             mask,
                             (
-                                sf_all.shape[0],
+                                basis_features_all.shape[0],
                                 mask.shape[1],
-                                sf_all.shape[2],
-                                sf_all.shape[3],
+                                basis_features_all.shape[2],
                             ),
                         )
 
