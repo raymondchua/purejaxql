@@ -545,7 +545,7 @@ def make_train(config):
             def _step_env(carry, _):
                 last_obs, env_state, rng = carry
                 rng, rng_a, rng_s = jax.random.split(rng, 3)
-                (q_vals, basis_features, sf) = sf_network.apply(
+                (_, basis_features, sf) = sf_network.apply(
                     {
                         "params": train_state.network_state.params,
                         "batch_stats": train_state.network_state.batch_stats,
@@ -632,15 +632,15 @@ def make_train(config):
 
 
                 # attention network
-                # q_vals, _, _, _, _, _ = attention_network.apply(
-                #     {
-                #         "params": train_state.attention_network_state.params,
-                #     },
-                #     basis_features_all,
-                #     sf_all,
-                #     train_state.task_state.params["w"],
-                #     mask_tiled,
-                # )
+                q_vals, _, _, _, _, _ = attention_network.apply(
+                    {
+                        "params": train_state.attention_network_state.params,
+                    },
+                    basis_features_all,
+                    sf_all,
+                    train_state.task_state.params["w"],
+                    mask_tiled,
+                )
 
                 # different eps for each env
                 _rngs = jax.random.split(rng_a, total_envs)
@@ -698,7 +698,7 @@ def make_train(config):
                 + transitions.reward.sum()
             )  # update total returns count
 
-            (last_q, last_basis_features, last_sf) = sf_network.apply(
+            (_, last_basis_features, last_sf) = sf_network.apply(
                 {
                     "params": train_state.network_state.params,
                     "batch_stats": train_state.network_state.batch_stats,
@@ -784,15 +784,15 @@ def make_train(config):
             )
 
             # attention network
-            # last_q, _, _, _, _, _ = attention_network.apply(
-            #     {
-            #         "params": train_state.attention_network_state.params,
-            #     },
-            #     last_basis_features_all,
-            #     last_sf_all,
-            #     task_params_target,
-            #     mask_tiled,
-            # )
+            last_q, _, _, _, _, _ = attention_network.apply(
+                {
+                    "params": train_state.attention_network_state.params,
+                },
+                last_basis_features_all,
+                last_sf_all,
+                task_params_target,
+                mask_tiled,
+            )
 
             last_q = jnp.max(last_q, axis=-1)
 
@@ -834,7 +834,7 @@ def make_train(config):
                     minibatch, target = minibatch_and_target
 
                     def _loss_fn(params, params_consolidation, mask):
-                        (q_vals, basis_features, sf), updates = sf_network.apply(
+                        (_, basis_features, sf), updates = sf_network.apply(
                             {
                                 "params": params["sf"],
                                 "batch_stats": train_state.network_state.batch_stats,
@@ -918,26 +918,26 @@ def make_train(config):
                                 basis_features_all.shape[2],
                             ),
                         )
-                        #
-                        # # attention network
-                        # (
-                        #     q_vals,
-                        #     attended_sf,
-                        #     attn_logits,
-                        #     attention_weights,
-                        #     keys,
-                        #     values,
-                        # ) = attention_network.apply(
-                        #     {
-                        #         "params": params["attention"],
-                        #     },
-                        #     basis_features_all,
-                        #     sf_all,
-                        #     train_state.task_state.params["w"][
-                        #         : -config["TEST_ENVS"], :
-                        #     ],
-                        #     mask_tiled,
-                        # )
+
+                        # attention network
+                        (
+                            q_vals,
+                            attended_sf,
+                            attn_logits,
+                            attention_weights,
+                            keys,
+                            values,
+                        ) = attention_network.apply(
+                            {
+                                "params": params["attention"],
+                            },
+                            basis_features_all,
+                            sf_all,
+                            train_state.task_state.params["w"][
+                                : -config["TEST_ENVS"], :
+                            ],
+                            mask_tiled,
+                        )
 
                         chosen_action_qvals = jnp.take_along_axis(
                             q_vals,
@@ -951,10 +951,10 @@ def make_train(config):
                             updates,
                             chosen_action_qvals,
                             basis_features,
-                            # attn_logits,
-                            # attention_weights,
-                            # keys,
-                            # values,
+                            attn_logits,
+                            attention_weights,
+                            keys,
+                            values,
                         )
 
                     def _reward_loss_fn(task_params, basis_features, reward):
@@ -1059,10 +1059,10 @@ def make_train(config):
                             updates,
                             qvals,
                             basis_features,
-                            # attn_logits,
-                            # attention_weights,
-                            # keys,
-                            # values,
+                            attn_logits,
+                            attention_weights,
+                            keys,
+                            values,
                         ),
                     ), grads = jax.value_and_grad(_loss_fn, has_aux=True)(
                         combined_params,
@@ -1136,13 +1136,13 @@ def make_train(config):
                         loss,
                         qvals,
                         reward_loss,
-                        # task_params_diff,
-                        # consolidation_loss,
-                        # params_norm,
-                        # attn_logits,
-                        # attention_weights,
-                        # keys,
-                        # values,
+                        task_params_diff,
+                        consolidation_loss,
+                        params_norm,
+                        attn_logits,
+                        attention_weights,
+                        keys,
+                        values,
                     )
 
                 def preprocess_transition(x, rng):
@@ -1168,13 +1168,13 @@ def make_train(config):
                     loss,
                     qvals,
                     reward_loss,
-                    # task_params_diff,
-                    # consolidation_loss,
-                    # params_norm,
-                    # attn_logits,
-                    # attention_weights,
-                    # keys,
-                    # values,
+                    task_params_diff,
+                    consolidation_loss,
+                    params_norm,
+                    attn_logits,
+                    attention_weights,
+                    keys,
+                    values,
                 ) = jax.lax.scan(
                     _learn_phase, (train_state, rng), (minibatches, targets)
                 )
@@ -1183,13 +1183,13 @@ def make_train(config):
                     loss,
                     qvals,
                     reward_loss,
-                    # task_params_diff,
-                    # consolidation_loss,
-                    # params_norm,
-                    # attn_logits,
-                    # attention_weights,
-                    # keys,
-                    # values,
+                    task_params_diff,
+                    consolidation_loss,
+                    params_norm,
+                    attn_logits,
+                    attention_weights,
+                    keys,
+                    values,
                 )
 
             rng, _rng = jax.random.split(rng)
@@ -1197,13 +1197,13 @@ def make_train(config):
                 loss,
                 qvals,
                 reward_loss,
-                # task_params_diff,
-                # consolidation_loss,
-                # params_norm,
-                # attn_logits,
-                # attention_weights,
-                # keys,
-                # values,
+                task_params_diff,
+                consolidation_loss,
+                params_norm,
+                attn_logits,
+                attention_weights,
+                keys,
+                values,
             ) = jax.lax.scan(
                 _learn_epoch, (train_state, rng), None, config["NUM_EPOCHS"]
             )
@@ -1241,27 +1241,27 @@ def make_train(config):
                 "task_id": task_id,
                 "exploration_updates": train_state.network_state.exploration_updates,
                 "total_returns": train_state.network_state.total_returns,
-                # "task_params_diff": task_params_diff.mean(),
+                "task_params_diff": task_params_diff.mean(),
                 "extrinsic rewards": transitions.reward.mean(),
-                # "consolidation_loss": consolidation_loss.mean(),
+                "consolidation_loss": consolidation_loss.mean(),
                 "lr_task": config["LR_TASK"],
             }
 
             # add norm of each beaker params to metrics
-            # for idx, p in enumerate(params_norm):
-            #     metrics[f"params_norm_{idx}"] = jnp.mean(p)
+            for idx, p in enumerate(params_norm):
+                metrics[f"params_norm_{idx}"] = jnp.mean(p)
 
             # print("output attn logits shape: ", attn_logits.shape)
             # print("output attention weights shape: ", attention_weights.shape)
             # print("output keys shape: ", keys.shape)
             # print("output values shape: ", values.shape)
 
-            # for i in range(config["NUM_BEAKERS"]):
-            #     print("keys shape: ", keys.shape)
-            #     print("values shape: ", values.shape)
+            for i in range(config["NUM_BEAKERS"]):
+                print("keys shape: ", keys.shape)
+                print("values shape: ", values.shape)
 
-                # metrics[f"attn_logits_{i}"] = attn_logits[..., i].mean()
-                # metrics[f"attention_weights_{i}"] = attention_weights[..., i].mean()
+                metrics[f"attn_logits_{i}"] = attn_logits[..., i].mean()
+                metrics[f"attention_weights_{i}"] = attention_weights[..., i].mean()
                 # metrics[f"keys_{i}"] = keys[..., i].mean()
                 # metrics[f"values_{i}"] = values[..., i].mean()
 
