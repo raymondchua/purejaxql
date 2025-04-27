@@ -152,9 +152,10 @@ class SFAttentionNetwork(nn.Module):
         # Attention mechanism
 
 
-        # query = nn.Dense(features=self.sf_dim, name="query", use_bias=False)(
-        #     task_normalized[:, 0, :]
-        # )[:, None, :]
+        query = nn.Dense(features=self.sf_dim, name="query", use_bias=False)(
+            task_normalized
+        )[:, None, :]
+        print("query shape:", query.shape)
 
         # Different dense layers for each beaker to compute keys and values
 
@@ -197,10 +198,10 @@ class SFAttentionNetwork(nn.Module):
 
         # Queries from the first beaker
         # queries = sf_all[:, 0, :, :]  # (batch_size, num_actions, sf_dim)
-        queries = basis_features_first  # (batch_size, 1, sf_dim)
-        query = nn.Dense(self.sf_dim * self.proj_factor)(
-            queries
-        )  # (batch_size, num_actions, d_model)
+        # queries = basis_features_first  # (batch_size, 1, sf_dim)
+        # query = nn.Dense(self.sf_dim * self.proj_factor)(
+        #     queries
+        # )  # (batch_size, num_actions, d_model)
 
         # Keys and values from all beakers
         # keys_values = sf_all.reshape(
@@ -222,18 +223,18 @@ class SFAttentionNetwork(nn.Module):
         keys_masked = keys * mask
         values_masked = values
 
-        print("mask: ", mask.shape)
-        print("basis_features_all shape: ", basis_features_all.shape)
+        # print("mask: ", mask.shape)
+        # print("basis_features_all shape: ", basis_features_all.shape)
 
 
-        query = query
+        # query = query
         # keys_masked = basis_features_all * mask
         # values_masked = sf_all
 
 
-        print("query shape: ", query.shape)
-        print("keys mask shape: ", keys_masked.shape)
-        print("value mask shape: ", values_masked.shape)
+        # print("query shape: ", query.shape)
+        # print("keys mask shape: ", keys_masked.shape)
+        # print("value mask shape: ", values_masked.shape)
 
         # Compute logits
         attn_logits = jnp.matmul(query, jnp.swapaxes(keys_masked, -2, -1)) / jnp.sqrt(
@@ -253,13 +254,11 @@ class SFAttentionNetwork(nn.Module):
 
         attended_sf = jnp.einsum("bna,baqf->bnqf", attention_weights, values_masked)
 
-        print("attended_sf shape:", attended_sf.shape)
-        print("task shape: ", task.shape)
+        # print("attended_sf shape:", attended_sf.shape)
+        # print("task shape: ", task.shape)
 
         # Compute Q-values
         q_1 = jnp.einsum("bi,bnji->bj", task, attended_sf)
-
-        print("q_1 shape:", q_1.shape)
 
         return (
             q_1,
