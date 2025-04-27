@@ -127,14 +127,14 @@ class SFAttentionNetwork(nn.Module):
     proj_factor: int = 1
 
     @nn.compact
-    def __call__(self, sf_all, task, mask):
+    def __call__(self, basis_features_all, sf_all, task, mask):
         batch_size = sf_all.shape[0]
 
-        sf_first = sf_all[:, :1, :, :]  # shape (batch, 1, ...)
-        sf_rest = jax.lax.stop_gradient(
-            sf_all[:, 1:, :, :]
-        )  # shape (batch, num_beakers-1, ...)
-        sf_all = jnp.concatenate([sf_first, sf_rest], axis=1)
+        # sf_first = sf_all[:, :1, :, :]  # shape (batch, 1, ...)
+        # sf_rest = jax.lax.stop_gradient(
+        #     sf_all[:, 1:, :, :]
+        # )  # shape (batch, num_beakers-1, ...)
+        # sf_all = jnp.concatenate([sf_first, sf_rest], axis=1)
 
         # Normalize and tile task
         task = jax.lax.stop_gradient(task)
@@ -631,6 +631,7 @@ def make_train(config):
                     {
                         "params": train_state.attention_network_state.params,
                     },
+                    basis_features_all,
                     sf_all,
                     train_state.task_state.params["w"],
                     mask_tiled,
@@ -692,7 +693,7 @@ def make_train(config):
                 + transitions.reward.sum()
             )  # update total returns count
 
-            (_, _, last_sf) = sf_network.apply(
+            (_, last_basis_features, last_sf) = sf_network.apply(
                 {
                     "params": train_state.network_state.params,
                     "batch_stats": train_state.network_state.batch_stats,
@@ -722,7 +723,7 @@ def make_train(config):
                 task_params_target, (num_beakers, *task_params_target.shape)
             )  # [num_beakers, batch, task_dim]
 
-            last_sf_beakers = jax.vmap(apply_single_beaker, in_axes=(0, 0, 0, None))(
+            last_basis_features_beakers, last_sf_beakers = jax.vmap(apply_single_beaker, in_axes=(0, 0, 0, None))(
                 params_beakers_stacked,
                 obs_tiled,
                 task_tiled,
@@ -730,9 +731,19 @@ def make_train(config):
             )
 
             last_sf_all = jnp.concatenate([last_sf[None], last_sf_beakers], axis=0)
+            last_basis_features_all = jnp.concatenate(
+                [last_basis_features[None], last_basis_features_beakers], axis=0
+            )
+
+
             last_sf_all = jnp.transpose(
                 last_sf_all, (1, 0, 3, 2)
             )  # (batch_size, num_beakers, num_actions, sf_dim)
+
+            last_basis_features_all = jnp.transpose(
+                last_basis_features_all, (1, 0, 2)
+            )
+            print("last_sf_all shape:", last_sf_all.shape)
 
             """
             Make a mask to mask out the beakers in the consolidation system which has timescales less than the current time
@@ -763,6 +774,7 @@ def make_train(config):
                 {
                     "params": train_state.attention_network_state.params,
                 },
+                last_basis_features_all,
                 last_sf_all,
                 task_params_target,
                 mask_tiled,
