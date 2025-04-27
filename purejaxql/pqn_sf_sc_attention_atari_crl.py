@@ -545,7 +545,7 @@ def make_train(config):
             def _step_env(carry, _):
                 last_obs, env_state, rng = carry
                 rng, rng_a, rng_s = jax.random.split(rng, 3)
-                (_, basis_features, sf) = sf_network.apply(
+                (q_vals, basis_features, sf) = sf_network.apply(
                     {
                         "params": train_state.network_state.params,
                         "batch_stats": train_state.network_state.batch_stats,
@@ -632,15 +632,15 @@ def make_train(config):
 
 
                 # attention network
-                q_vals, _, _, _, _, _ = attention_network.apply(
-                    {
-                        "params": train_state.attention_network_state.params,
-                    },
-                    basis_features_all,
-                    sf_all,
-                    train_state.task_state.params["w"],
-                    mask_tiled,
-                )
+                # q_vals, _, _, _, _, _ = attention_network.apply(
+                #     {
+                #         "params": train_state.attention_network_state.params,
+                #     },
+                #     basis_features_all,
+                #     sf_all,
+                #     train_state.task_state.params["w"],
+                #     mask_tiled,
+                # )
 
                 # different eps for each env
                 _rngs = jax.random.split(rng_a, total_envs)
@@ -698,7 +698,7 @@ def make_train(config):
                 + transitions.reward.sum()
             )  # update total returns count
 
-            (_, last_basis_features, last_sf) = sf_network.apply(
+            (last_q, last_basis_features, last_sf) = sf_network.apply(
                 {
                     "params": train_state.network_state.params,
                     "batch_stats": train_state.network_state.batch_stats,
@@ -784,15 +784,15 @@ def make_train(config):
             )
 
             # attention network
-            last_q, _, _, _, _, _ = attention_network.apply(
-                {
-                    "params": train_state.attention_network_state.params,
-                },
-                last_basis_features_all,
-                last_sf_all,
-                task_params_target,
-                mask_tiled,
-            )
+            # last_q, _, _, _, _, _ = attention_network.apply(
+            #     {
+            #         "params": train_state.attention_network_state.params,
+            #     },
+            #     last_basis_features_all,
+            #     last_sf_all,
+            #     task_params_target,
+            #     mask_tiled,
+            # )
 
             last_q = jnp.max(last_q, axis=-1)
 
@@ -834,7 +834,7 @@ def make_train(config):
                     minibatch, target = minibatch_and_target
 
                     def _loss_fn(params, params_consolidation, mask):
-                        (_, basis_features, sf), updates = sf_network.apply(
+                        (q_vals, basis_features, sf), updates = sf_network.apply(
                             {
                                 "params": params["sf"],
                                 "batch_stats": train_state.network_state.batch_stats,
@@ -918,26 +918,26 @@ def make_train(config):
                                 basis_features_all.shape[2],
                             ),
                         )
-
-                        # attention network
-                        (
-                            q_vals,
-                            attended_sf,
-                            attn_logits,
-                            attention_weights,
-                            keys,
-                            values,
-                        ) = attention_network.apply(
-                            {
-                                "params": params["attention"],
-                            },
-                            basis_features_all,
-                            sf_all,
-                            train_state.task_state.params["w"][
-                                : -config["TEST_ENVS"], :
-                            ],
-                            mask_tiled,
-                        )
+                        #
+                        # # attention network
+                        # (
+                        #     q_vals,
+                        #     attended_sf,
+                        #     attn_logits,
+                        #     attention_weights,
+                        #     keys,
+                        #     values,
+                        # ) = attention_network.apply(
+                        #     {
+                        #         "params": params["attention"],
+                        #     },
+                        #     basis_features_all,
+                        #     sf_all,
+                        #     train_state.task_state.params["w"][
+                        #         : -config["TEST_ENVS"], :
+                        #     ],
+                        #     mask_tiled,
+                        # )
 
                         chosen_action_qvals = jnp.take_along_axis(
                             q_vals,
