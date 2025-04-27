@@ -605,13 +605,15 @@ def make_train(config):
                 ]  # remove the last column of the mask since the first beaker is always updated
                 mask = jnp.insert(mask, 0, 1)
                 mask = mask.astype(jnp.int32)
-                mask = mask.reshape(1, -1, 1, 1)
+                # mask = mask.reshape(1, -1, 1, 1)
+                mask = mask.reshape(1, -1, 1)
 
                 # broadcast the mask to the shape of (batch_size, num_beakers-1, num_actions, sf_dim)
                 # mask_tiled = jnp.broadcast_to(
                 #     mask,
                 #     (sf_all.shape[0], mask.shape[1], sf_all.shape[2], sf_all.shape[3]),
                 # )
+
                 mask_tiled = jnp.broadcast_to(
                     mask,
                     (basis_features_all.shape[0], mask.shape[1], basis_features_all.shape[1]),
@@ -750,7 +752,8 @@ def make_train(config):
             ]  # remove the last column of the mask since the first beaker is always updated
             mask = jnp.insert(mask, 0, 1)
             mask = mask.astype(jnp.int32)
-            mask = mask.reshape(1, -1, 1, 1)
+            # mask = mask.reshape(1, -1, 1, 1)
+            mask = mask.reshape(1, -1, 1)
             # mask_tiled = jnp.broadcast_to(
             #     mask,
             #     (
@@ -885,7 +888,8 @@ def make_train(config):
                             basis_features_all, (1, 0, 2)
                         )
 
-                        mask = mask.reshape(1, -1, 1, 1)
+                        # mask = mask.reshape(1, -1, 1, 1)
+                        mask = mask.reshape(1, -1, 1)
                         # mask_tiled = jnp.broadcast_to(
                         #     mask,
                         #     (
