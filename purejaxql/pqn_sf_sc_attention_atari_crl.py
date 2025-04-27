@@ -1098,45 +1098,45 @@ def make_train(config):
                     )
 
                     # consolidation update
-                    all_params = []
-                    all_params.append(train_state.network_state.params)
-
-                    for i in range(1, config["NUM_BEAKERS"]):
-                        all_params.append(
-                            train_state.network_state.consolidation_params_tree[
-                                f"network_{i}"
-                            ]
-                        )
-
-                    (
-                        network_params,
-                        consolidation_loss,
-                        params_norm,
-                    ) = _consolidation_update_fn(
-                        params=all_params,
-                        params_set_to_zero=params_set_to_zero,
-                        g_flow=train_state.network_state.g_flow,
-                        capacity=train_state.network_state.capacity,
-                        num_beakers=config["NUM_BEAKERS"],
-                        mask=mask,
-                    )
-
-                    # replace train_state params with the new params
-                    train_state.network_state = train_state.network_state.replace(
-                        params=network_params[0],
-                        consolidation_params_tree={
-                            f"network_{i}": network_params[i]
-                            for i in range(1, config["NUM_BEAKERS"])
-                        },
-                    )
+                    # all_params = []
+                    # all_params.append(train_state.network_state.params)
+                    #
+                    # for i in range(1, config["NUM_BEAKERS"]):
+                    #     all_params.append(
+                    #         train_state.network_state.consolidation_params_tree[
+                    #             f"network_{i}"
+                    #         ]
+                    #     )
+                    #
+                    # (
+                    #     network_params,
+                    #     consolidation_loss,
+                    #     params_norm,
+                    # ) = _consolidation_update_fn(
+                    #     params=all_params,
+                    #     params_set_to_zero=params_set_to_zero,
+                    #     g_flow=train_state.network_state.g_flow,
+                    #     capacity=train_state.network_state.capacity,
+                    #     num_beakers=config["NUM_BEAKERS"],
+                    #     mask=mask,
+                    # )
+                    #
+                    # # replace train_state params with the new params
+                    # train_state.network_state = train_state.network_state.replace(
+                    #     params=network_params[0],
+                    #     consolidation_params_tree={
+                    #         f"network_{i}": network_params[i]
+                    #         for i in range(1, config["NUM_BEAKERS"])
+                    #     },
+                    # )
 
                     return (train_state, rng), (
                         loss,
                         qvals,
                         reward_loss,
-                        task_params_diff,
-                        consolidation_loss,
-                        params_norm,
+                        # task_params_diff,
+                        # consolidation_loss,
+                        # params_norm,
                         # attn_logits,
                         # attention_weights,
                         # keys,
@@ -1166,9 +1166,9 @@ def make_train(config):
                     loss,
                     qvals,
                     reward_loss,
-                    task_params_diff,
-                    consolidation_loss,
-                    params_norm,
+                    # task_params_diff,
+                    # consolidation_loss,
+                    # params_norm,
                     # attn_logits,
                     # attention_weights,
                     # keys,
@@ -1181,9 +1181,9 @@ def make_train(config):
                     loss,
                     qvals,
                     reward_loss,
-                    task_params_diff,
-                    consolidation_loss,
-                    params_norm,
+                    # task_params_diff,
+                    # consolidation_loss,
+                    # params_norm,
                     # attn_logits,
                     # attention_weights,
                     # keys,
@@ -1195,9 +1195,9 @@ def make_train(config):
                 loss,
                 qvals,
                 reward_loss,
-                task_params_diff,
-                consolidation_loss,
-                params_norm,
+                # task_params_diff,
+                # consolidation_loss,
+                # params_norm,
                 # attn_logits,
                 # attention_weights,
                 # keys,
@@ -1239,9 +1239,9 @@ def make_train(config):
                 "task_id": task_id,
                 "exploration_updates": train_state.network_state.exploration_updates,
                 "total_returns": train_state.network_state.total_returns,
-                "task_params_diff": task_params_diff.mean(),
+                # "task_params_diff": task_params_diff.mean(),
                 "extrinsic rewards": transitions.reward.mean(),
-                "consolidation_loss": consolidation_loss.mean(),
+                # "consolidation_loss": consolidation_loss.mean(),
             }
 
             # add norm of each beaker params to metrics
