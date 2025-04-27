@@ -1117,6 +1117,13 @@ def make_train(config):
                     all_params = []
                     all_params.append(train_state.network_state.params)
 
+                    # modify sf_cosine_sim based on the mask, to allow consolidation to overwrite initialization
+                    sf_cosine_sim = jnp.where(
+                        mask == 0,
+                        jnp.ones_like(sf_cosine_sim),
+                        sf_cosine_sim,
+                    )
+
                     for i in range(1, config["NUM_BEAKERS"]):
                         all_params.append(
                             train_state.network_state.consolidation_params_tree[
