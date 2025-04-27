@@ -228,7 +228,7 @@ class SFAttentionNetwork(nn.Module):
 
         query = queries
         keys_masked = basis_features_all * mask
-        values_masked = values
+        values_masked = sf_all
 
 
         print("query shape: ", query.shape)
