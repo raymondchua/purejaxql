@@ -1083,6 +1083,7 @@ def make_train(config):
                     )
 
                     print("sf_cosine_sim:", sf_cosine_sim)
+                    print("sf cosine_sim shape:", sf_cosine_sim.shape)
 
                     train_state = train_state.replace(
                         network_state=train_state.network_state.apply_gradients(
