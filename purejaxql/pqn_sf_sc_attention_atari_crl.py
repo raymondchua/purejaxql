@@ -529,14 +529,14 @@ def make_train(config):
         )
 
         def apply_single_beaker(params, obs, task, batch_stats):
-            _, _, sf = sf_network.apply(
+            _, basis_features, sf = sf_network.apply(
                 {"params": params, "batch_stats": batch_stats},
                 obs,
                 task,
                 train=False,
                 mutable=False,
             )
-            return sf  # shape: (batch, num_actions, sf_dim)
+            return basis_features, sf  # shape: (batch, num_actions, sf_dim)
 
         # TRAINING LOOP
         def _update_step(runner_state, unused):
@@ -582,7 +582,7 @@ def make_train(config):
                 )  # [num_beakers, batch, task_dim]
 
                 # Vectorized application of getting sf for each beaker
-                sf_beakers = jax.vmap(apply_single_beaker, in_axes=(0, 0, 0, None))(
+                basis_features_beakers, sf_beakers = jax.vmap(apply_single_beaker, in_axes=(0, 0, 0, None))(
                     params_beakers_stacked,
                     obs_tiled,
                     task_tiled,
@@ -590,9 +590,20 @@ def make_train(config):
                 )
 
                 sf_all = jnp.concatenate([sf[None], sf_beakers], axis=0)
+                basis_features_all = jnp.concatenate(
+                    [basis_features[None], basis_features_beakers], axis=0
+                )
+
                 sf_all = jnp.transpose(
                     sf_all, (1, 0, 3, 2)
                 )  # (batch_size, num_beakers, num_actions, sf_dim)
+
+                basis_features_all = jnp.transpose(
+                    basis_features_all, (1, 0, 2)
+                )
+
+                print("sf_all shape:", sf_all.shape)
+                print("basis_features_all shape:", basis_features_all.shape)
 
                 """
                 Make a mask to mask out the beakers in the consolidation system which has timescales less than the current time
