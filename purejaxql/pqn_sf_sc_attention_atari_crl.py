@@ -340,12 +340,16 @@ def create_agent(rng, config, max_num_actions, observation_space_shape):
         num_beakers=config["NUM_BEAKERS"],
     )
 
+    init_basis_features_all = jnp.zeros(
+        (1, config["NUM_BEAKERS"], config["SF_DIM"])
+    )
+
     init_sf_all = jnp.zeros(
         (1, config["NUM_BEAKERS"], max_num_actions, config["SF_DIM"])
     )
     init_mask = jnp.zeros((1, config["NUM_BEAKERS"], max_num_actions, config["SF_DIM"]))
     attention_network_variables = attention_network.init(
-        rng, init_sf_all, init_task, init_mask
+        rng, init_basis_features_all, init_sf_all, init_task, init_mask
     )
 
     tx = optax.chain(
