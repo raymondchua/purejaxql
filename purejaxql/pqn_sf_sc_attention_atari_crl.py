@@ -951,10 +951,10 @@ def make_train(config):
                             updates,
                             chosen_action_qvals,
                             basis_features,
-                            attn_logits,
-                            attention_weights,
-                            keys,
-                            values,
+                            # attn_logits,
+                            # attention_weights,
+                            # keys,
+                            # values,
                         )
 
                     def _reward_loss_fn(task_params, basis_features, reward):
@@ -1057,10 +1057,10 @@ def make_train(config):
                             updates,
                             qvals,
                             basis_features,
-                            attn_logits,
-                            attention_weights,
-                            keys,
-                            values,
+                            # attn_logits,
+                            # attention_weights,
+                            # keys,
+                            # values,
                         ),
                     ), grads = jax.value_and_grad(_loss_fn, has_aux=True)(
                         combined_params,
@@ -1137,10 +1137,10 @@ def make_train(config):
                         task_params_diff,
                         consolidation_loss,
                         params_norm,
-                        attn_logits,
-                        attention_weights,
-                        keys,
-                        values,
+                        # attn_logits,
+                        # attention_weights,
+                        # keys,
+                        # values,
                     )
 
                 def preprocess_transition(x, rng):
@@ -1169,10 +1169,10 @@ def make_train(config):
                     task_params_diff,
                     consolidation_loss,
                     params_norm,
-                    attn_logits,
-                    attention_weights,
-                    keys,
-                    values,
+                    # attn_logits,
+                    # attention_weights,
+                    # keys,
+                    # values,
                 ) = jax.lax.scan(
                     _learn_phase, (train_state, rng), (minibatches, targets)
                 )
@@ -1184,10 +1184,10 @@ def make_train(config):
                     task_params_diff,
                     consolidation_loss,
                     params_norm,
-                    attn_logits,
-                    attention_weights,
-                    keys,
-                    values,
+                    # attn_logits,
+                    # attention_weights,
+                    # keys,
+                    # values,
                 )
 
             rng, _rng = jax.random.split(rng)
@@ -1198,10 +1198,10 @@ def make_train(config):
                 task_params_diff,
                 consolidation_loss,
                 params_norm,
-                attn_logits,
-                attention_weights,
-                keys,
-                values,
+                # attn_logits,
+                # attention_weights,
+                # keys,
+                # values,
             ) = jax.lax.scan(
                 _learn_epoch, (train_state, rng), None, config["NUM_EPOCHS"]
             )
@@ -1248,17 +1248,17 @@ def make_train(config):
             for idx, p in enumerate(params_norm):
                 metrics[f"params_norm_{idx}"] = jnp.mean(p)
 
-            print("output attn logits shape: ", attn_logits.shape)
-            print("output attention weights shape: ", attention_weights.shape)
-            print("output keys shape: ", keys.shape)
-            print("output values shape: ", values.shape)
+            # print("output attn logits shape: ", attn_logits.shape)
+            # print("output attention weights shape: ", attention_weights.shape)
+            # print("output keys shape: ", keys.shape)
+            # print("output values shape: ", values.shape)
 
-            for i in range(config["NUM_BEAKERS"]):
+            # for i in range(config["NUM_BEAKERS"]):
             #     print("keys shape: ", keys.shape)
             #     print("values shape: ", values.shape)
 
-                metrics[f"attn_logits_{i}"] = attn_logits[..., i].mean()
-                metrics[f"attention_weights_{i}"] = attention_weights[..., i].mean()
+                # metrics[f"attn_logits_{i}"] = attn_logits[..., i].mean()
+                # metrics[f"attention_weights_{i}"] = attention_weights[..., i].mean()
                 # metrics[f"keys_{i}"] = keys[..., i].mean()
                 # metrics[f"values_{i}"] = values[..., i].mean()
 
