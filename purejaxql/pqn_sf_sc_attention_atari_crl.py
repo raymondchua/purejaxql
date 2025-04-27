@@ -868,7 +868,7 @@ def make_train(config):
                         )  # [num_beakers, batch, task_dim]
 
                         # Vectorized application
-                        basis_features, sf_beakers = jax.vmap(
+                        basis_features_beakers, sf_beakers = jax.vmap(
                             apply_single_beaker, in_axes=(0, 0, 0, None)
                         )(
                             params_beakers_stacked,
