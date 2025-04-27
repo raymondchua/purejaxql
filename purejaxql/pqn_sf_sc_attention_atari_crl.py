@@ -1082,7 +1082,6 @@ def make_train(config):
                         mask,
                     )
 
-                    print("sf_cosine_sim:", sf_cosine_sim)
                     print("sf cosine_sim shape:", sf_cosine_sim.shape)
 
                     train_state = train_state.replace(
@@ -1159,6 +1158,7 @@ def make_train(config):
                         attention_weights,
                         keys,
                         values,
+                        sf_cosine_sim,
                     )
 
                 def preprocess_transition(x, rng):
@@ -1191,6 +1191,7 @@ def make_train(config):
                     attention_weights,
                     keys,
                     values,
+                    sf_cosine_sim,
                 ) = jax.lax.scan(
                     _learn_phase, (train_state, rng), (minibatches, targets)
                 )
@@ -1206,6 +1207,7 @@ def make_train(config):
                     attention_weights,
                     keys,
                     values,
+                    sf_cosine_sim,
                 )
 
             rng, _rng = jax.random.split(rng)
@@ -1220,6 +1222,7 @@ def make_train(config):
                 attention_weights,
                 keys,
                 values,
+                sf_cosine_sim,
             ) = jax.lax.scan(
                 _learn_epoch, (train_state, rng), None, config["NUM_EPOCHS"]
             )
@@ -1272,12 +1275,17 @@ def make_train(config):
             # print("output keys shape: ", keys.shape)
             # print("output values shape: ", values.shape)
 
+            # add 1 to the first index of sf_cosine_sim to match the shape of the beakers
+            # sf_cosine_sim = jnp.insert(sf_cosine_sim, 0, 1)
+
             for i in range(config["NUM_BEAKERS"]):
                 print("keys shape: ", keys.shape)
                 print("values shape: ", values.shape)
 
+
                 metrics[f"attn_logits_{i}"] = attn_logits[..., i].mean()
                 metrics[f"attention_weights_{i}"] = attention_weights[..., i].mean()
+                metrics[f"sf_cosine_sim_{i}"] = sf_cosine_sim[..., i].mean()
                 # metrics[f"keys_{i}"] = keys[..., i].mean()
                 # metrics[f"values_{i}"] = values[..., i].mean()
 
