@@ -1119,6 +1119,9 @@ def make_train(config):
 
                     print("mask shape: ", mask.shape)
 
+                    # to account for the first beaker
+                    sf_cosine_sim = jnp.insert(sf_cosine_sim, 0, 1)
+
                     # modify sf_cosine_sim based on the mask, to allow consolidation to overwrite initialization
                     sf_cosine_sim = jnp.where(
                         mask == 0,
