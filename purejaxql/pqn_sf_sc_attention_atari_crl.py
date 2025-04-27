@@ -223,8 +223,8 @@ class SFAttentionNetwork(nn.Module):
         # values_masked = values * mask
 
         query = queries
-        keys_masked = basis_features_all
-        values_masked = values
+        keys_masked = basis_features_all * mask
+        values_masked = values * mask
 
         print("mask: ", mask.shape)
         print("query shape: ", query.shape)
@@ -618,7 +618,7 @@ def make_train(config):
 
                 mask_tiled = jnp.broadcast_to(
                     mask,
-                    (basis_features_all.shape[0], mask.shape[1], basis_features_all.shape[1]),
+                    (basis_features_all.shape[0], mask.shape[1], basis_features_all.shape[2]),
                 )
 
 
@@ -770,7 +770,7 @@ def make_train(config):
                 (
                     last_basis_features_all.shape[0],
                     mask.shape[1],
-                    last_basis_features_all.shape[1],
+                    last_basis_features_all.shape[2],
                 ),
             )
 
@@ -906,7 +906,7 @@ def make_train(config):
                             (
                                 basis_features_all.shape[0],
                                 mask.shape[1],
-                                basis_features_all.shape[1],
+                                basis_features_all.shape[2],
                             ),
                         )
 
