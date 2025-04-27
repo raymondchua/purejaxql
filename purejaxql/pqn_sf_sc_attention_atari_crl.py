@@ -198,17 +198,17 @@ class SFAttentionNetwork(nn.Module):
         # Queries from the first beaker
         # queries = sf_all[:, 0, :, :]  # (batch_size, num_actions, sf_dim)
         queries = basis_features_first  # (batch_size, 1, sf_dim)
-        query = nn.Dense(self.sf_dim * self.proj_factor)(
-            queries
-        )  # (batch_size, num_actions, d_model)
+        # query = nn.Dense(self.sf_dim * self.proj_factor)(
+        #     queries
+        # )  # (batch_size, num_actions, d_model)
 
         # Keys and values from all beakers
         # keys_values = sf_all.reshape(
         #     batch_size, self.num_beakers * self.num_actions, self.sf_dim
         # )
-        keys = nn.Dense(self.sf_dim * self.proj_factor)(
-            basis_features_all
-        )  # (batch_size, num_beakers, d_model)
+        # keys = nn.Dense(self.sf_dim * self.proj_factor)(
+        #     basis_features_all
+        # )  # (batch_size, num_beakers, d_model)
         values = nn.Dense(self.sf_dim * self.proj_factor)(
             sf_all
         )  # (batch_size, num_beakers, num_actions, d_model)
@@ -221,7 +221,8 @@ class SFAttentionNetwork(nn.Module):
         # keys_masked = keys * mask
         # values_masked = values * mask
 
-        keys_masked = keys
+        query = queries
+        keys_masked = basis_features_all
         values_masked = values
 
         print("query shape: ", query.shape)
