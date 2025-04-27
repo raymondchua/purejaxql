@@ -241,6 +241,8 @@ class SFAttentionNetwork(nn.Module):
         )
         # logits shape: (batch_size, num_actions, num_beakers * num_actions)
 
+        attn_logits = jnp.where(attn_logits == 0, -1e9, attn_logits)
+
         # Compute attention weights
         attention_weights = nn.softmax(attn_logits, axis=-1)
 
