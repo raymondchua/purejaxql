@@ -614,7 +614,7 @@ def make_train(config):
                 # )
                 mask_tiled = jnp.broadcast_to(
                     mask,
-                    (basis_features_all.shape[0], mask.shape[1], basis_features_all.shape[2]),
+                    (basis_features_all.shape[0], mask.shape[1], basis_features_all.shape[1]),
                 )
 
 
@@ -765,7 +765,7 @@ def make_train(config):
                 (
                     last_basis_features_all.shape[0],
                     mask.shape[1],
-                    last_basis_features_all.shape[2],
+                    last_basis_features_all.shape[1],
                 ),
             )
 
@@ -900,7 +900,7 @@ def make_train(config):
                             (
                                 basis_features_all.shape[0],
                                 mask.shape[1],
-                                basis_features_all.shape[2],
+                                basis_features_all.shape[1],
                             ),
                         )
 
