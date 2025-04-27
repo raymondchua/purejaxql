@@ -229,7 +229,7 @@ class SFAttentionNetwork(nn.Module):
         print("value mask shape: ", values_masked.shape)
 
         # Compute logits
-        attn_logits = jnp.matmul(query, keys_masked) / jnp.sqrt(
+        attn_logits = jnp.matmul(query, jnp.swapaxes(keys_masked, -2, -1)) / jnp.sqrt(
             self.sf_dim * self.proj_factor
         )
         # logits shape: (batch_size, num_actions, num_beakers * num_actions)
