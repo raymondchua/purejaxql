@@ -136,6 +136,12 @@ class SFAttentionNetwork(nn.Module):
         # )  # shape (batch, num_beakers-1, ...)
         # sf_all = jnp.concatenate([sf_first, sf_rest], axis=1)
 
+        basis_features_first = basis_features_all[:, :1, :]  # shape (batch, 1, ...)
+        basis_features_rest = jax.lax.stop_gradient(
+            basis_features_all[:, 1:, :]
+        )
+        basis_features_all = jnp.concatenate([basis_features_first, basis_features_rest], axis=1)
+
         # Normalize and tile task
         task = jax.lax.stop_gradient(task)
         task_normalized = task / jnp.linalg.norm(task, ord=2, axis=-1, keepdims=True)
@@ -144,6 +150,8 @@ class SFAttentionNetwork(nn.Module):
         # )
 
         # Attention mechanism
+
+
         # query = nn.Dense(features=self.sf_dim, name="query", use_bias=False)(
         #     task_normalized[:, 0, :]
         # )[:, None, :]
@@ -188,39 +196,40 @@ class SFAttentionNetwork(nn.Module):
         print("task_normalized shape:", task_normalized.shape)
 
         # Queries from the first beaker
-        queries = sf_all[:, 0, :, :]  # (batch_size, num_actions, sf_dim)
+        # queries = sf_all[:, 0, :, :]  # (batch_size, num_actions, sf_dim)
+        queries = basis_features_first  # (batch_size, 1, sf_dim)
         query = nn.Dense(self.sf_dim * self.proj_factor)(
             queries
         )  # (batch_size, num_actions, d_model)
 
         # Keys and values from all beakers
-        keys_values = sf_all.reshape(
-            batch_size, self.num_beakers * self.num_actions, self.sf_dim
-        )
+        # keys_values = sf_all.reshape(
+        #     batch_size, self.num_beakers * self.num_actions, self.sf_dim
+        # )
         keys = nn.Dense(self.sf_dim * self.proj_factor)(
-            keys_values
-        )  # (batch_size, num_beakers * num_actions, d_model)
+            basis_features_all
+        )  # (batch_size, num_beakers, d_model)
         values = nn.Dense(self.sf_dim * self.proj_factor)(
-            keys_values
-        )  # (batch_size, num_beakers * num_actions, d_model)
+            sf_all
+        )  # (batch_size, num_beakers, num_actions, d_model)
 
         mask = jnp.reshape(mask, (batch_size, self.num_beakers * self.num_actions, -1))
         mask = jnp.repeat(
             mask, self.proj_factor, axis=-1
         )  # (batch_size, num_beakers * num_actions, sf_dim * 2)
 
-        keys_masked = keys * mask
-        values_masked = values * mask
+        # keys_masked = keys * mask
+        # values_masked = values * mask
 
-        # keys_masked = keys
-        # values_masked = values
+        keys_masked = keys
+        values_masked = values
 
         print("query shape: ", query.shape)
         print("keys mask shape: ", keys_masked.shape)
         print("value mask shape: ", values_masked.shape)
 
         # Compute logits
-        attn_logits = jnp.matmul(query, jnp.swapaxes(keys_masked, -2, -1)) / jnp.sqrt(
+        attn_logits = jnp.matmul(query, keys_masked) / jnp.sqrt(
             self.sf_dim * self.proj_factor
         )
         # logits shape: (batch_size, num_actions, num_beakers * num_actions)
@@ -229,35 +238,6 @@ class SFAttentionNetwork(nn.Module):
         attention_weights = nn.softmax(attn_logits, axis=-1)
 
         print("attention_weights shape:", attention_weights.shape)
-
-        # check if attention_weights sum to 1
-        attention_weights_sum = jnp.sum(attention_weights, axis=-1)
-
-        attention_weights_reshaped = attention_weights.reshape(
-            batch_size, self.num_actions, self.num_beakers, self.num_actions
-        )
-        # attention_weights_per_beaker = attention_weights_reshaped.mean(axis=(0, 1, 3))
-
-        attention_logits_reshaped = attn_logits.reshape(
-            batch_size, self.num_actions, self.num_beakers, self.num_actions
-        )
-        # attention_logits_per_beaker = attention_logits_reshaped.mean(axis=(0, 1, 3))
-
-        keys_mask_reshaped = keys_masked.reshape(
-            batch_size,
-            self.num_beakers,
-            self.num_actions,
-            self.sf_dim,
-        )
-        keys_masked_per_beaker = keys_mask_reshaped.mean(axis=(0, 1, 3))
-
-        values_mask_reshaped = values_masked.reshape(
-            batch_size,
-            self.num_beakers,
-            self.num_actions,
-            self.sf_dim,
-        )
-        values_masked_per_beaker = values_mask_reshaped.mean(axis=(0, 1, 3))
 
         # Compute attention output
         attended_sf = jnp.matmul(attention_weights, values_masked)
@@ -1229,32 +1209,21 @@ def make_train(config):
             for idx, p in enumerate(params_norm):
                 metrics[f"params_norm_{idx}"] = jnp.mean(p)
 
-            attn_logits_reshape = attn_logits.reshape(
-                -1, config["NUM_BEAKERS"], 18
-            )
+            print("output attn logits shape: ", attn_logits.shape)
+            print("output attention weights shape: ", attention_weights.shape)
+            print("output keys shape: ", keys.shape)
+            print("output values shape: ", values.shape)
 
-            attention_weights_reshape = attention_weights.reshape(
-                -1, config["NUM_BEAKERS"], 18
-            )
-
-            attn_logits_reshape_sum = jnp.sum(attn_logits_reshape, axis=-1)
-            attention_weights_reshape_sum = jnp.sum(attention_weights_reshape, axis=-1)
-
-            print("attn_logits_reshape_sum shape: ", attn_logits_reshape_sum.shape)
-            print("attention_weights_reshape_sum shape: ", attention_weights_reshape_sum.shape)
-
-            for i in range(config["NUM_BEAKERS"]):
-                print("attn logits shape: ", attn_logits.shape)
-                print("attention weights shape: ", attention_weights.shape)
-                print("keys shape: ", keys.shape)
-                print("values shape: ", values.shape)
+            # for i in range(config["NUM_BEAKERS"]):
+            #     print("attn logits shape: ", attn_logits.shape)
+            #     print("attention weights shape: ", attention_weights.shape)
+            #     print("keys shape: ", keys.shape)
+            #     print("values shape: ", values.shape)
 
                 # metrics[f"attn_logits_{i}"] = attn_logits[..., i].mean()
                 # metrics[f"attention_weights_{i}"] = attention_weights[..., i].mean()
                 # metrics[f"keys_{i}"] = keys[..., i].mean()
                 # metrics[f"values_{i}"] = values[..., i].mean()
-                metrics[f"attn_logits_{i}"] = attn_logits_reshape_sum[..., i].mean()
-                metrics[f"attention_weights_{i}"] = attention_weights_reshape_sum[..., i].mean()
 
             metrics.update({k: v.mean() for k, v in infos.items()})
             if config.get("TEST_DURING_TRAINING", False):
