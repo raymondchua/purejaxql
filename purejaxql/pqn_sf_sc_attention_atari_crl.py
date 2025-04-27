@@ -1098,28 +1098,28 @@ def make_train(config):
                     )
 
                     # consolidation update
-                    # all_params = []
-                    # all_params.append(train_state.network_state.params)
-                    #
-                    # for i in range(1, config["NUM_BEAKERS"]):
-                    #     all_params.append(
-                    #         train_state.network_state.consolidation_params_tree[
-                    #             f"network_{i}"
-                    #         ]
-                    #     )
-                    #
-                    # (
-                    #     network_params,
-                    #     consolidation_loss,
-                    #     params_norm,
-                    # ) = _consolidation_update_fn(
-                    #     params=all_params,
-                    #     params_set_to_zero=params_set_to_zero,
-                    #     g_flow=train_state.network_state.g_flow,
-                    #     capacity=train_state.network_state.capacity,
-                    #     num_beakers=config["NUM_BEAKERS"],
-                    #     mask=mask,
-                    # )
+                    all_params = []
+                    all_params.append(train_state.network_state.params)
+
+                    for i in range(1, config["NUM_BEAKERS"]):
+                        all_params.append(
+                            train_state.network_state.consolidation_params_tree[
+                                f"network_{i}"
+                            ]
+                        )
+
+                    (
+                        network_params,
+                        consolidation_loss,
+                        params_norm,
+                    ) = _consolidation_update_fn(
+                        params=all_params,
+                        params_set_to_zero=params_set_to_zero,
+                        g_flow=train_state.network_state.g_flow,
+                        capacity=train_state.network_state.capacity,
+                        num_beakers=config["NUM_BEAKERS"],
+                        mask=mask,
+                    )
                     #
                     # # replace train_state params with the new params
                     # train_state.network_state = train_state.network_state.replace(
