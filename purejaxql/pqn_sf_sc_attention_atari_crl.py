@@ -198,17 +198,17 @@ class SFAttentionNetwork(nn.Module):
         # Queries from the first beaker
         # queries = sf_all[:, 0, :, :]  # (batch_size, num_actions, sf_dim)
         queries = basis_features_first  # (batch_size, 1, sf_dim)
-        # query = nn.Dense(self.sf_dim * self.proj_factor)(
-        #     queries
-        # )  # (batch_size, num_actions, d_model)
+        query = nn.Dense(self.sf_dim * self.proj_factor)(
+            queries
+        )  # (batch_size, num_actions, d_model)
 
         # Keys and values from all beakers
         # keys_values = sf_all.reshape(
         #     batch_size, self.num_beakers * self.num_actions, self.sf_dim
         # )
-        # keys = nn.Dense(self.sf_dim * self.proj_factor)(
-        #     basis_features_all
-        # )  # (batch_size, num_beakers, d_model)
+        keys = nn.Dense(self.sf_dim * self.proj_factor)(
+            basis_features_all
+        )  # (batch_size, num_beakers, d_model)
         values = nn.Dense(self.sf_dim * self.proj_factor)(
             sf_all
         )  # (batch_size, num_beakers, num_actions, d_model)
@@ -219,16 +219,16 @@ class SFAttentionNetwork(nn.Module):
         #     mask, self.proj_factor, axis=-1
         # )  # (batch_size, num_beakers * num_actions, sf_dim * 2)
 
-        # keys_masked = keys * mask
-        # values_masked = values * mask
+        keys_masked = keys * mask
+        values_masked = values * mask
 
         print("mask: ", mask.shape)
         print("basis_features_all shape: ", basis_features_all.shape)
 
 
-        query = queries
-        keys_masked = basis_features_all * mask
-        values_masked = sf_all
+        query = query
+        # keys_masked = basis_features_all * mask
+        # values_masked = sf_all
 
 
         print("query shape: ", query.shape)
@@ -255,9 +255,6 @@ class SFAttentionNetwork(nn.Module):
 
         print("attended_sf shape:", attended_sf.shape)
         print("task shape: ", task.shape)
-
-        # attended_sf = sf_all[:, 0, :, :]
-        # q_1 = jnp.einsum("bi,bji->bj", task, attended_sf)
 
         # Compute Q-values
         q_1 = jnp.einsum("bi,bnji->bj", task, attended_sf)
