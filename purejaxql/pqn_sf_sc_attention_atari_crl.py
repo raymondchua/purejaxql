@@ -214,7 +214,7 @@ class SFAttentionNetwork(nn.Module):
         )  # (batch_size, num_beakers, num_actions, d_model)
 
         # mask = jnp.reshape(mask, (batch_size, self.num_beakers * self.num_actions, -1))
-        mask = jnp.reshape(mask, (batch_size, self.num_beakers, -1))
+        # mask = jnp.reshape(mask, (batch_size, self.num_beakers, -1))
         # mask = jnp.repeat(
         #     mask, self.proj_factor, axis=-1
         # )  # (batch_size, num_beakers * num_actions, sf_dim * 2)
@@ -226,6 +226,7 @@ class SFAttentionNetwork(nn.Module):
         keys_masked = basis_features_all
         values_masked = values
 
+        print("mask: ", mask.shape)
         print("query shape: ", query.shape)
         print("keys mask shape: ", keys_masked.shape)
         print("value mask shape: ", values_masked.shape)
