@@ -1216,14 +1216,12 @@ def make_train(config):
             print("output keys shape: ", keys.shape)
             print("output values shape: ", values.shape)
 
-            # for i in range(config["NUM_BEAKERS"]):
-            #     print("attn logits shape: ", attn_logits.shape)
-            #     print("attention weights shape: ", attention_weights.shape)
+            for i in range(config["NUM_BEAKERS"]):
             #     print("keys shape: ", keys.shape)
             #     print("values shape: ", values.shape)
 
-                # metrics[f"attn_logits_{i}"] = attn_logits[..., i].mean()
-                # metrics[f"attention_weights_{i}"] = attention_weights[..., i].mean()
+                metrics[f"attn_logits_{i}"] = attn_logits[..., i].mean()
+                metrics[f"attention_weights_{i}"] = attention_weights[..., i].mean()
                 # metrics[f"keys_{i}"] = keys[..., i].mean()
                 # metrics[f"values_{i}"] = values[..., i].mean()
 
