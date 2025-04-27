@@ -868,7 +868,7 @@ def make_train(config):
                         )  # [num_beakers, batch, task_dim]
 
                         # Vectorized application
-                        sf_beakers = jax.vmap(
+                        basis_features, sf_beakers = jax.vmap(
                             apply_single_beaker, in_axes=(0, 0, 0, None)
                         )(
                             params_beakers_stacked,
@@ -878,9 +878,16 @@ def make_train(config):
                         )
 
                         sf_all = jnp.concatenate([sf[None], sf_beakers], axis=0)
+                        basis_features_all = jnp.concatenate(
+                            [basis_features[None], basis_features_beakers], axis=0
+                        )
+
                         sf_all = jnp.transpose(
                             sf_all, (1, 0, 3, 2)
                         )  # (batch_size, num_beakers, num_actions, sf_dim)
+                        basis_features_all = jnp.transpose(
+                            basis_features_all, (1, 0, 2)
+                        )
 
                         mask = mask.reshape(1, -1, 1, 1)
                         mask_tiled = jnp.broadcast_to(
@@ -905,6 +912,7 @@ def make_train(config):
                             {
                                 "params": params["attention"],
                             },
+                            basis_features_all,
                             sf_all,
                             train_state.task_state.params["w"][
                                 : -config["TEST_ENVS"], :
