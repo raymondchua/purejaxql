@@ -1120,15 +1120,15 @@ def make_train(config):
                         num_beakers=config["NUM_BEAKERS"],
                         mask=mask,
                     )
-                    #
-                    # # replace train_state params with the new params
-                    # train_state.network_state = train_state.network_state.replace(
-                    #     params=network_params[0],
-                    #     consolidation_params_tree={
-                    #         f"network_{i}": network_params[i]
-                    #         for i in range(1, config["NUM_BEAKERS"])
-                    #     },
-                    # )
+
+                    # replace train_state params with the new params
+                    train_state.network_state = train_state.network_state.replace(
+                        params=network_params[0],
+                        consolidation_params_tree={
+                            f"network_{i}": network_params[i]
+                            for i in range(1, config["NUM_BEAKERS"])
+                        },
+                    )
 
                     return (train_state, rng), (
                         loss,
