@@ -1245,8 +1245,8 @@ def make_train(config):
             }
 
             # add norm of each beaker params to metrics
-            for idx, p in enumerate(params_norm):
-                metrics[f"params_norm_{idx}"] = jnp.mean(p)
+            # for idx, p in enumerate(params_norm):
+            #     metrics[f"params_norm_{idx}"] = jnp.mean(p)
 
             # print("output attn logits shape: ", attn_logits.shape)
             # print("output attention weights shape: ", attention_weights.shape)
