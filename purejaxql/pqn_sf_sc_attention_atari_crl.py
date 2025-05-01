@@ -1105,6 +1105,7 @@ def make_train(config):
                         basis_features_sf_task_sim,
                     )
 
+                    # to account for the first beaker
                     mask = mask.insert(0, 1)
 
                     for i in range(1, config["NUM_BEAKERS"]):
