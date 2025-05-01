@@ -1033,7 +1033,6 @@ def make_train(config):
                     mask = mask[
                         :-1
                     ]  # remove the last column of the mask since the first beaker is always updated
-                    mask = jnp.insert(mask, 0, 1)
                     mask = mask.astype(jnp.int32)
 
                     # combined params so that the gradients are computed for both networks
