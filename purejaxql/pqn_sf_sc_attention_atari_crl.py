@@ -154,6 +154,8 @@ class SFAttentionNetwork(nn.Module):
             task_normalized[:, None, :], (1, self.num_beakers, 1)
         )
 
+        print("task_normalized shape: ", task_normalized.shape)
+
         """
         Compute similarity between the first beaker and the rest of the beakers using rbf similarity with task, basis 
         features and successor features as input.
