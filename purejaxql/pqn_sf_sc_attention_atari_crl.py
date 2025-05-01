@@ -186,7 +186,7 @@ class SFAttentionNetwork(nn.Module):
         basis_features_sf_all_task = jnp.concatenate([basis_features_all, sf_all_reshaped, task_normalized], axis=-1)
         print("basis_features_sf_all_task shape:", basis_features_sf_all_task.shape)
 
-        keys = nn.Dense(self.sf_dim * self.proj_factor)(
+        keys = nn.Dense(self.sf_dim * 3 * self.proj_factor)(
             basis_features_sf_all_task
         )  # (batch_size, num_beakers, d_model)
         values = nn.Dense(self.sf_dim * self.proj_factor)(
