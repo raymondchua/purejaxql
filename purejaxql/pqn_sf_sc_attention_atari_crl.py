@@ -1105,6 +1105,8 @@ def make_train(config):
                         basis_features_sf_task_sim,
                     )
 
+                    mask = mask.insert(0, 1)
+
                     for i in range(1, config["NUM_BEAKERS"]):
                         all_params.append(
                             train_state.network_state.consolidation_params_tree[
