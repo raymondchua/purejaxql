@@ -204,8 +204,10 @@ class SFAttentionNetwork(nn.Module):
         print("mask shape:", mask.shape)
 
         mask_repeat = jnp.repeat(
-            mask, self.sf_dim * 3 * self.proj_factor, axis=-1
+            mask, 3, axis=-1
         )
+
+        print("mask_repeat shape:", mask_repeat.shape)
 
         keys_masked = keys * mask_repeat
         values_masked = values
