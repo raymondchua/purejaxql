@@ -141,13 +141,21 @@ class SFAttentionNetwork(nn.Module):
             sf_all,
             (batch_size, self.num_beakers, self.num_actions * self.sf_dim)
         )
+
+        # Normalize and tile task
+        task = jax.lax.stop_gradient(task)
+        task_normalized = task / jnp.linalg.norm(task, ord=2, axis=-1, keepdims=True)
+        # task_normalized = jnp.tile(
+        #     task_normalized[:, None, :], (1, self.num_beakers, 1)
+        # )
+
         """
         Compute similarity between the first beaker and the rest of the beakers using rbf similarity with task, basis 
         features and successor features as input.
         """
         # concat basis features and sf
-        basis_features_sf = jnp.concatenate([basis_features_all, sf_all_reshaped], axis=1)
-        print("basis_features_sf shape: ", basis_features_sf.shape)
+        basis_features_sf_task = jnp.concatenate([basis_features_all, sf_all_reshaped, task_normalized], axis=-1)
+        print("basis_features_sf_task shape: ", basis_features_sf_task.shape)
 
         sf_all_reshaped_left = sf_all_reshaped[:, :-1, :]  # shape (batch, num_beakers-1, num_actions * sf_dim)
         sf_all_reshaped_right = sf_all_reshaped[:, 1:, :] # shape (batch, num_beakers-1, num_actions * sf_dim)
@@ -160,12 +168,7 @@ class SFAttentionNetwork(nn.Module):
         )
         basis_features_all = jnp.concatenate([basis_features_first, basis_features_rest], axis=1)
 
-        # Normalize and tile task
-        task = jax.lax.stop_gradient(task)
-        task_normalized = task / jnp.linalg.norm(task, ord=2, axis=-1, keepdims=True)
-        # task_normalized = jnp.tile(
-        #     task_normalized[:, None, :], (1, self.num_beakers, 1)
-        # )
+
 
         # Attention mechanism. Using task, sf and basis features as query and keys. The values are the sf only.
         task_basis_feat_sf = jnp.concatenate([task_normalized, basis_features_first, sf_first], axis=-1)
