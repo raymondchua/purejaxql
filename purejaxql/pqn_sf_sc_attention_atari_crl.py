@@ -1094,6 +1094,7 @@ def make_train(config):
                     all_params.append(train_state.network_state.params)
 
                     print("mask shape: ", mask.shape)
+                    print("basis_features_sf_task_sim shape: ", basis_features_sf_task_sim.shape)
 
                     # to account for the first beaker
                     # basis_features_sf_task_sim = jnp.insert(basis_features_sf_task_sim, 0, 1)
