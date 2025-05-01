@@ -24,7 +24,7 @@ import envpool
 from purejaxql.utils.atari_wrapper import JaxLogEnvPoolWrapper
 from purejaxql.utils.l2_normalize import l2_normalize
 from purejaxql.utils.consolidation_helpers import update_and_accumulate_tree
-from purejaxql.utils.cosine_similarity import cosine_similarity
+from purejaxql.utils.similarity import rbf_similarity
 from flax.core import freeze, unfreeze, FrozenDict
 
 Params = FrozenDict
@@ -131,7 +131,7 @@ class SFAttentionNetwork(nn.Module):
     def __call__(self, basis_features_all, sf_all, task, mask):
         batch_size = sf_all.shape[0]
 
-        # sf_first = sf_all[:, :1, :, :]  # shape (batch, 1, ...)
+        sf_first = sf_all[:, :1, :, :]  # shape (batch, 1, ...)
         # sf_rest = jax.lax.stop_gradient(
         #     sf_all[:, 1:, :, :]
         # )  # shape (batch, num_beakers-1, ...)
@@ -141,6 +141,13 @@ class SFAttentionNetwork(nn.Module):
             sf_all,
             (batch_size, self.num_beakers, self.num_actions * self.sf_dim)
         )
+        """
+        Compute similarity between the first beaker and the rest of the beakers using rbf similarity with task, basis 
+        features and successor features as input.
+        """
+        # concat basis features and sf
+        basis_features_sf = jnp.concatenate([basis_features_all, sf_all_reshaped], axis=1)
+        print("basis_features_sf shape: ", basis_features_sf.shape)
 
         sf_all_reshaped_left = sf_all_reshaped[:, :-1, :]  # shape (batch, num_beakers-1, num_actions * sf_dim)
         sf_all_reshaped_right = sf_all_reshaped[:, 1:, :] # shape (batch, num_beakers-1, num_actions * sf_dim)
@@ -160,12 +167,11 @@ class SFAttentionNetwork(nn.Module):
         #     task_normalized[:, None, :], (1, self.num_beakers, 1)
         # )
 
-        # Attention mechanism
+        # Attention mechanism. Using task, sf and basis features as query and keys. The values are the sf only.
+        task_basis_feat_sf = jnp.concatenate([task_normalized, basis_features_first, sf_first], axis=-1)
+        print("task_basis_feat_sf shape:", task_basis_feat_sf.shape)
 
-
-        query = nn.Dense(features=self.sf_dim, name="query", use_bias=False)(
-            task_normalized
-        )[:, None, :]
+        query = nn.Dense(features=self.sf_dim * 3 * self.proj_factor, name="query", use_bias=False)(task_basis_feat_sf)
         print("query shape:", query.shape)
 
         # Different dense layers for each beaker to compute keys and values
@@ -1118,7 +1124,7 @@ def make_train(config):
                     print("mask shape: ", mask.shape)
 
                     # to account for the first beaker
-                    sf_cosine_sim = jnp.insert(sf_cosine_sim, 0, 1)
+                    # sf_cosine_sim = jnp.insert(sf_cosine_sim, 0, 1)
 
                     # modify sf_cosine_sim based on the mask, to allow consolidation to overwrite initialization
                     sf_cosine_sim = jnp.where(
