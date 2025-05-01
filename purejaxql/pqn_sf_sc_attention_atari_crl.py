@@ -973,7 +973,9 @@ def make_train(config):
 
                         # Last beaker
                         scale_last = (g_flow[-1] / capacity[-1])
-                        scale_second_last = (g_flow[-2] / capacity[-1]) * basis_features_sf_task_sim[-1]
+                        scale_second_last = (g_flow[-2] / capacity[-1])
+                        basis_features_sf_task_sim_second_last = jnp.maximum(basis_features_sf_task_sim[-1], scale_second_last)
+                        scale_second_last *= basis_features_sf_task_sim_second_last
 
                         params[-1], loss = update_and_accumulate_tree(
                             params[-1], params_set_to_zero, scale_last, loss
@@ -986,8 +988,12 @@ def make_train(config):
 
                         # Middle beakers: 1 to num_beakers - 2
                         for i in range(1, num_beakers - 1):
-                            scale_prev = (g_flow[i - 1] / capacity[i]) * basis_features_sf_task_sim[i]
-                            scale_next = (g_flow[i] / capacity[i])
+                            scale_prev = (g_flow[i - 1] / capacity[i])
+                            basis_features_sf_task_sim_prev = jnp.maximum(
+                                basis_features_sf_task_sim[i], scale_prev
+                            )
+                            scale_prev *= basis_features_sf_task_sim_prev
+                            # scale_next = (g_flow[i] / capacity[i])
 
                             # Consolidate from previous beaker
                             params[i], loss = update_and_accumulate_tree(
@@ -1094,9 +1100,6 @@ def make_train(config):
                     all_params = []
                     all_params.append(train_state.network_state.params)
 
-                    print("mask shape: ", mask.shape)
-                    print("basis_features_sf_task_sim shape: ", basis_features_sf_task_sim.shape)
-
                     # to account for the first beaker
                     basis_features_sf_task_sim = jnp.insert(basis_features_sf_task_sim, 0, 1)
 
@@ -1106,8 +1109,6 @@ def make_train(config):
                         jnp.ones_like(basis_features_sf_task_sim),
                         basis_features_sf_task_sim,
                     )
-
-
 
                     for i in range(1, config["NUM_BEAKERS"]):
                         all_params.append(
