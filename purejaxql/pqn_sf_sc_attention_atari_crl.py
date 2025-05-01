@@ -160,7 +160,8 @@ class SFAttentionNetwork(nn.Module):
         sf_all_reshaped_left = sf_all_reshaped[:, :-1, :]  # shape (batch, num_beakers-1, num_actions * sf_dim)
         sf_all_reshaped_right = sf_all_reshaped[:, 1:, :] # shape (batch, num_beakers-1, num_actions * sf_dim)
 
-        cos_sim = rbf_similarity(sf_all_reshaped_left, sf_all_reshaped_right).mean(axis=0)  # shape (num_beakers-1)
+        basis_features_sf_task_similarity = rbf_similarity(sf_all_reshaped_left, sf_all_reshaped_right).mean(axis=0)  # shape (num_beakers-1)
+        print("basis_features_sf_task_similarity shape: ", basis_features_sf_task_similarity.shape)
 
         basis_features_first = basis_features_all[:, :1, :]  # shape (batch, 1, ...)
         basis_features_rest = jax.lax.stop_gradient(
@@ -287,7 +288,7 @@ class SFAttentionNetwork(nn.Module):
             attention_weights,
             keys_masked,
             values_masked,
-            cos_sim,
+            basis_features_sf_task_similarity,
         )
 
 
@@ -944,7 +945,7 @@ def make_train(config):
                             attention_weights,
                             keys,
                             values,
-                            sf_cosine_sim,
+                            basis_features_sf_task_sim,
                         ) = attention_network.apply(
                             {
                                 "params": params["attention"],
@@ -973,7 +974,7 @@ def make_train(config):
                             attention_weights,
                             keys,
                             values,
-                            sf_cosine_sim,
+                            basis_features_sf_task_sim,
                         )
 
                     def _reward_loss_fn(task_params, basis_features, reward):
@@ -992,7 +993,7 @@ def make_train(config):
                         capacity: chex.Array,
                         num_beakers: int,
                         mask: chex.Array,
-                        sf_cosine_sim: Optional[chex.Array] = None,
+                        basis_features_sf_task_sim: Optional[chex.Array] = None,
                     ) -> Tuple[List[Params], float]:
                         loss = 0.0
 
@@ -1004,7 +1005,7 @@ def make_train(config):
 
                         # Last beaker
                         scale_last = (g_flow[-1] / capacity[-1])
-                        scale_second_last = (g_flow[-2] / capacity[-1]) * sf_cosine_sim[-1]
+                        scale_second_last = (g_flow[-2] / capacity[-1]) * basis_features_sf_task_sim[-1]
 
                         params[-1], loss = update_and_accumulate_tree(
                             params[-1], params_set_to_zero, scale_last, loss
@@ -1017,7 +1018,7 @@ def make_train(config):
 
                         # Middle beakers: 1 to num_beakers - 2
                         for i in range(1, num_beakers - 1):
-                            scale_prev = (g_flow[i - 1] / capacity[i]) * sf_cosine_sim[i]
+                            scale_prev = (g_flow[i - 1] / capacity[i]) * basis_features_sf_task_sim[i]
                             scale_next = (g_flow[i] / capacity[i])
 
                             # Consolidate from previous beaker
@@ -1083,7 +1084,7 @@ def make_train(config):
                             attention_weights,
                             keys,
                             values,
-                            sf_cosine_sim,
+                            basis_features_sf_task_sim,
                         ),
                     ), grads = jax.value_and_grad(_loss_fn, has_aux=True)(
                         combined_params,
@@ -1127,13 +1128,13 @@ def make_train(config):
                     print("mask shape: ", mask.shape)
 
                     # to account for the first beaker
-                    # sf_cosine_sim = jnp.insert(sf_cosine_sim, 0, 1)
+                    # basis_features_sf_task_sim = jnp.insert(basis_features_sf_task_sim, 0, 1)
 
-                    # modify sf_cosine_sim based on the mask, to allow consolidation to overwrite initialization
-                    sf_cosine_sim = jnp.where(
+                    # modify basis_features_sf_task_sim based on the mask, to allow consolidation to overwrite initialization
+                    basis_features_sf_task_sim = jnp.where(
                         mask == 0,
-                        jnp.ones_like(sf_cosine_sim),
-                        sf_cosine_sim,
+                        jnp.ones_like(basis_features_sf_task_sim),
+                        basis_features_sf_task_sim,
                     )
 
                     for i in range(1, config["NUM_BEAKERS"]):
@@ -1154,7 +1155,7 @@ def make_train(config):
                         capacity=train_state.network_state.capacity,
                         num_beakers=config["NUM_BEAKERS"],
                         mask=mask,
-                        sf_cosine_sim=sf_cosine_sim
+                        basis_features_sf_task_sim=basis_features_sf_task_sim
                     )
 
                     # replace train_state params with the new params
@@ -1177,7 +1178,7 @@ def make_train(config):
                         attention_weights,
                         keys,
                         values,
-                        sf_cosine_sim,
+                        basis_features_sf_task_sim,
                     )
 
                 def preprocess_transition(x, rng):
@@ -1210,7 +1211,7 @@ def make_train(config):
                     attention_weights,
                     keys,
                     values,
-                    sf_cosine_sim,
+                    basis_features_sf_task_sim,
                 ) = jax.lax.scan(
                     _learn_phase, (train_state, rng), (minibatches, targets)
                 )
@@ -1226,7 +1227,7 @@ def make_train(config):
                     attention_weights,
                     keys,
                     values,
-                    sf_cosine_sim,
+                    basis_features_sf_task_sim,
                 )
 
             rng, _rng = jax.random.split(rng)
@@ -1241,7 +1242,7 @@ def make_train(config):
                 attention_weights,
                 keys,
                 values,
-                sf_cosine_sim,
+                basis_features_sf_task_sim,
             ) = jax.lax.scan(
                 _learn_epoch, (train_state, rng), None, config["NUM_EPOCHS"]
             )
@@ -1294,8 +1295,8 @@ def make_train(config):
             # print("output keys shape: ", keys.shape)
             # print("output values shape: ", values.shape)
 
-            # add 1 to the first index of sf_cosine_sim to match the shape of the beakers
-            # sf_cosine_sim = jnp.insert(sf_cosine_sim, 0, 1)
+            # add 1 to the first index of basis_features_sf_task_sim to match the shape of the beakers
+            # basis_features_sf_task_sim = jnp.insert(basis_features_sf_task_sim, 0, 1)
 
             for i in range(config["NUM_BEAKERS"]):
                 print("keys shape: ", keys.shape)
@@ -1304,7 +1305,7 @@ def make_train(config):
 
                 metrics[f"attn_logits_{i}"] = attn_logits[..., i].mean()
                 metrics[f"attention_weights_{i}"] = attention_weights[..., i].mean()
-                metrics[f"sf_cosine_sim_{i}"] = sf_cosine_sim[..., i].mean()
+                metrics[f"basis_features_sf_task_sim_{i}"] = basis_features_sf_task_sim[..., i].mean()
                 # metrics[f"keys_{i}"] = keys[..., i].mean()
                 # metrics[f"values_{i}"] = values[..., i].mean()
 
