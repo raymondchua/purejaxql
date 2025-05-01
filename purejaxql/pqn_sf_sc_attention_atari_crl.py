@@ -175,7 +175,8 @@ class SFAttentionNetwork(nn.Module):
         basis_features_all = jnp.concatenate([basis_features_first, basis_features_rest], axis=1)
 
         # Attention mechanism. Using task, sf and basis features as query and keys. The values are the sf only.
-        basis_features_sf_first_task = jnp.concatenate([basis_features_first, sf_first_reshaped, task_normalized], axis=1)
+
+        basis_features_sf_first_task = jnp.concatenate([basis_features_first, sf_first_reshaped, task_normalized], axis=1) # concat at the beaker dimension
         print("basis_features_sf_first_task shape:", basis_features_sf_first_task.shape)
 
         query = nn.Dense(features=self.sf_dim * 3 * self.proj_factor, name="query", use_bias=False)(task_basis_feat_sf)
