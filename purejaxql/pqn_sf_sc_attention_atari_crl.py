@@ -199,6 +199,10 @@ class SFAttentionNetwork(nn.Module):
         #     mask, self.proj_factor, axis=-1
         # )  # (batch_size, num_beakers * num_actions, sf_dim * 2)
 
+        print("keys shape:", keys.shape)
+        print("values shape:", values.shape)
+        print("mask shape:", mask.shape)
+
         keys_masked = keys * mask
         values_masked = values
 
