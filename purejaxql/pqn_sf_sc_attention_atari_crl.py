@@ -1033,6 +1033,8 @@ def make_train(config):
                     mask = mask[
                         :-1
                     ]  # remove the last column of the mask since the first beaker is always updated
+                    # to account for the first beaker
+                    mask = mask.insert(0, 1)
                     mask = mask.astype(jnp.int32)
 
                     # combined params so that the gradients are computed for both networks
@@ -1096,7 +1098,7 @@ def make_train(config):
                     print("basis_features_sf_task_sim shape: ", basis_features_sf_task_sim.shape)
 
                     # to account for the first beaker
-                    # basis_features_sf_task_sim = jnp.insert(basis_features_sf_task_sim, 0, 1)
+                    basis_features_sf_task_sim = jnp.insert(basis_features_sf_task_sim, 0, 1)
 
                     # modify basis_features_sf_task_sim based on the mask, to allow consolidation to overwrite initialization
                     basis_features_sf_task_sim = jnp.where(
@@ -1105,8 +1107,7 @@ def make_train(config):
                         basis_features_sf_task_sim,
                     )
 
-                    # to account for the first beaker
-                    mask = mask.insert(0, 1)
+
 
                     for i in range(1, config["NUM_BEAKERS"]):
                         all_params.append(
