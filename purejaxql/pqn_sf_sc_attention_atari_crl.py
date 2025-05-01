@@ -142,6 +142,11 @@ class SFAttentionNetwork(nn.Module):
             (batch_size, self.num_beakers, self.num_actions * self.sf_dim)
         )
 
+        sf_first_reshaped = jnp.reshape(
+            sf_first,
+            (batch_size, 1, self.num_actions * self.sf_dim)
+        )  # shape (batch, num_actions * sf_dim)
+
         # Normalize and tile task
         task = jax.lax.stop_gradient(task)
         task_normalized = task / jnp.linalg.norm(task, ord=2, axis=-1, keepdims=True)
