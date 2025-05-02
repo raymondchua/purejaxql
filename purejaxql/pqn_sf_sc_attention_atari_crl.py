@@ -665,7 +665,7 @@ def make_train(config):
                     tasks_all.append(
                         train_state.task_state.consolidation_tasks[f"network_{i}"]
                     )
-                tasks_all = jax.stack(tasks_all)
+                tasks_all = jnp.stack(tasks_all)
 
                 print("tasks_all shape:", tasks_all.shape)
 
@@ -976,7 +976,7 @@ def make_train(config):
                                     f"network_{i}"
                                 ]["w"][: -config["TEST_ENVS"], :]
                             )
-                        tasks_all = jax.stack(tasks_all)
+                        tasks_all = jnp.stack(tasks_all)
 
                         print("tasks_all shape:", tasks_all.shape)
 
