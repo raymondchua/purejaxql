@@ -662,7 +662,7 @@ def make_train(config):
                 # grab all the w in train_state.task_state.params and train_state.task_state.consolidation_tasks
                 tasks_all = [train_state.task_state.params["w"]]
                 print("tasks_all shape:", train_state.task_state.params["w"].shape)
-                for i in range(1, num_beakers):
+                for i in range(1, config["NUM_BEAKERS"]):
                     tasks_all.append(
                         train_state.task_state.consolidation_tasks[f"network_{i}"]
                     )
@@ -823,7 +823,7 @@ def make_train(config):
             )
 
             tasks_all_target = [task_params_target]
-            for i in range(1, num_beakers):
+            for i in range(1, config["NUM_BEAKERS"]):
                 tasks_all_target.append(
                     train_state.task_state.consolidation_tasks[f"network_{i}"]
                 )
@@ -972,7 +972,7 @@ def make_train(config):
                                 : -config["TEST_ENVS"], :
                             ]
                         ]
-                        for i in range(1, num_beakers):
+                        for i in range(1, config["NUM_BEAKERS"]):
                             tasks_all.append(
                                 train_state.task_state.consolidation_tasks[
                                     f"network_{i}"
