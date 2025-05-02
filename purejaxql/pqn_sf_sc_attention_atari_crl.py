@@ -646,9 +646,6 @@ def make_train(config):
                     jnp.asarray(train_state.network_state.timescales, dtype=np.uint32)
                     < train_state.network_state.grad_steps
                 )
-                mask = mask[
-                    :-1
-                ]  # remove the last column of the mask since the first beaker is always updated
                 mask = jnp.insert(mask, 0, 1)
                 mask = mask.astype(jnp.int32)
                 # mask = mask.reshape(1, -1, 1, 1)
@@ -809,9 +806,6 @@ def make_train(config):
                 jnp.asarray(train_state.network_state.timescales, dtype=np.uint32)
                 < train_state.network_state.grad_steps
             )
-            mask = mask[
-                :-1
-            ]  # remove the last column of the mask since the first beaker is always updated
             mask = jnp.insert(mask, 0, 1)
             mask = mask.astype(jnp.int32)
             # mask = mask.reshape(1, -1, 1, 1)
@@ -1125,10 +1119,6 @@ def make_train(config):
                         )
                         < train_state.network_state.grad_steps
                     )
-                    mask = mask[
-                        :-1
-                    ]  # remove the last column of the mask since the first beaker is always updated
-                    # to account for the first beaker
                     mask = jnp.insert(mask, 0, 1)
                     mask = mask.astype(jnp.int32)
 
