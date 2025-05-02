@@ -663,7 +663,7 @@ def make_train(config):
                 tasks_all = [train_state.task_state.params["w"]]
                 for i in range(1, num_beakers):
                     tasks_all.append(
-                        train_state.task_state.consolidation_tasks[f"network_{i}"]["w"]
+                        train_state.task_state.consolidation_tasks[f"network_{i}"]
                     )
                 tasks_all = jax.stack(tasks_all)
 
@@ -823,7 +823,7 @@ def make_train(config):
             tasks_all_target = [task_params_target]
             for i in range(1, num_beakers):
                 tasks_all_target.append(
-                    train_state.task_state.consolidation_tasks[f"network_{i}"]["w"]
+                    train_state.task_state.consolidation_tasks[f"network_{i}"]
                 )
             tasks_all_target = jax.stack(tasks_all_target)
 
