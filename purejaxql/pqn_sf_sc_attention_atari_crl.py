@@ -661,10 +661,12 @@ def make_train(config):
 
                 # grab all the w in train_state.task_state.params and train_state.task_state.consolidation_tasks
                 tasks_all = [train_state.task_state.params["w"]]
+                print("tasks_all shape:", train_state.task_state.params["w"].shape)
                 for i in range(1, num_beakers):
                     tasks_all.append(
                         train_state.task_state.consolidation_tasks[f"network_{i}"]
                     )
+                    print("task shape temp:", tasks_all[-1].shape)
                 tasks_all = jnp.stack(tasks_all)
 
                 print("tasks_all shape:", tasks_all.shape)
