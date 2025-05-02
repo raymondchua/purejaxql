@@ -677,7 +677,7 @@ def make_train(config):
                         train_state.task_state.consolidation_tasks[f"network_{i}"]
                     )
                     print("task shape temp:", tasks_all[-1].shape)
-                tasks_all = jnp.stack(tasks_all, axis=1)
+                tasks_all_arr = jnp.stack(tasks_all, axis=1)
 
                 print("tasks_all shape:", tasks_all.shape)
 
@@ -688,7 +688,7 @@ def make_train(config):
                     },
                     basis_features_all,
                     sf_all,
-                    tasks_all,
+                    tasks_all_arr,
                     mask_tiled,
                 )
 
@@ -844,7 +844,7 @@ def make_train(config):
                         train_state.task_state.consolidation_tasks[f"network_{i}"]
                     )
                 print("temp consolidation_tasks shape: ", train_state.task_state.consolidation_tasks[f"network_{i}"].shape)
-            tasks_all_target = jnp.stack(tasks_all_target, axis=1)
+            tasks_all_target_arr = jnp.stack(tasks_all_target, axis=1)
 
             print("tasks_all_target shape:", tasks_all_target.shape)
 
@@ -855,7 +855,7 @@ def make_train(config):
                 },
                 last_basis_features_all,
                 last_sf_all,
-                tasks_all_target,
+                tasks_all_target_arr,
                 mask_tiled,
             )
 
@@ -995,7 +995,7 @@ def make_train(config):
                                     f"network_{i}"
                                 ][: -config["TEST_ENVS"], :]
                             )
-                        tasks_all = jnp.stack(tasks_all, axis=1)
+                        tasks_all_arr = jnp.stack(tasks_all, axis=1)
 
                         print("tasks_all shape:", tasks_all.shape)
 
@@ -1014,7 +1014,7 @@ def make_train(config):
                             },
                             basis_features_all,
                             sf_all,
-                            tasks_all,
+                            tasks_all_arr,
                             mask_tiled,
                         )
 
@@ -1081,8 +1081,8 @@ def make_train(config):
                                 params[i], params[i - 1], scale_prev, loss, config["DELTA_T_CONSOLIDATION"]
                             )
 
-                            tasks_all[:, i], task_consolidation_loss = update_and_accumulate_task(
-                                tasks_all[:, i], tasks_all[:, i - 1], scale_prev, task_consolidation_loss, config["DELTA_T_CONSOLIDATION"]
+                            tasks_all[i], task_consolidation_loss = update_and_accumulate_task(
+                                tasks_all[i], tasks_all[i - 1], scale_prev, task_consolidation_loss, config["DELTA_T_CONSOLIDATION"]
                             )
 
                             # # Recall from next beaker, conditionally
@@ -1114,8 +1114,8 @@ def make_train(config):
                             params[-1], params_set_to_zero, scale_last, loss, config["DELTA_T_CONSOLIDATION"]
                         )
 
-                        tasks_all[:, -1], task_consolidation_loss = update_and_accumulate_task(
-                            tasks_all[:, -1], task_params_set_to_zero, scale_last, task_consolidation_loss, config["DELTA_T_CONSOLIDATION"]
+                        tasks_all[-1], task_consolidation_loss = update_and_accumulate_task(
+                            tasks_all[-1], task_params_set_to_zero, scale_last, task_consolidation_loss, config["DELTA_T_CONSOLIDATION"]
                         )
 
                         # consolidate from second last beaker
@@ -1123,8 +1123,8 @@ def make_train(config):
                             params[-1], params[-2], scale_second_last, loss, config["DELTA_T_CONSOLIDATION"]
                         )
 
-                        tasks_all[:, -1], task_consolidation_loss = update_and_accumulate_task(
-                            tasks_all[:, -1], tasks_all[:, -2], scale_second_last, task_consolidation_loss, config["DELTA_T_CONSOLIDATION"]
+                        tasks_all[-1], task_consolidation_loss = update_and_accumulate_task(
+                            tasks_all[-1], tasks_all[-2], scale_second_last, task_consolidation_loss, config["DELTA_T_CONSOLIDATION"]
                         )
 
                         # compute the norm of the params using jax.tree_util.tree_map and sum the norms with jnp.sum and jnp.linalg.norm
@@ -1136,10 +1136,10 @@ def make_train(config):
 
                         task_norm = []
                         for i in range(config["NUM_BEAKERS"]):
-                            current_task_norm = optax.global_norm(tasks_all[:, i])
+                            current_task_norm = optax.global_norm(tasks_all[i])
                             task_norm.append(current_task_norm)
 
-                        return params, loss, params_norm, task_consolidation_loss, task_norm
+                        return params, loss, params_norm, tasks_all, task_consolidation_loss, task_norm
 
                     """
                     Make a mask to mask out the beakers in the consolidation system which has timescales less than the current time
@@ -1232,10 +1232,17 @@ def make_train(config):
                             ]
                         )
 
+                    tasks_all_consolidation = [train_state.task_state.params["w"]]
+                    for i in range(1, config["NUM_BEAKERS"]):
+                        tasks_all_consolidation.append(
+                            train_state.task_state.consolidation_tasks[f"network_{i}"]
+                        )
+
                     (
                         network_params,
                         consolidation_loss,
                         params_norm,
+                        tasks_all_consolidation,
                         task_consolidation_loss,
                         task_norm,
                     ) = _consolidation_update_fn(
@@ -1246,7 +1253,7 @@ def make_train(config):
                         num_beakers=config["NUM_BEAKERS"],
                         mask=mask,
                         basis_features_sf_task_sim=basis_features_sf_task_sim,
-                        tasks_all=tasks_all,
+                        tasks_all=tasks_all_consolidation,
                     )
 
                     # replace train_state params with the new params
@@ -1257,6 +1264,16 @@ def make_train(config):
                             for i in range(1, config["NUM_BEAKERS"])
                         },
                     )
+
+                    train_state.task_state = train_state.task_state.replace(
+                        params=tasks_all_consolidation[0],
+                        consolidation_tasks={
+                            f"network_{i}": tasks_all_consolidation[i]
+                            for i in range(1, config["NUM_BEAKERS"])
+                        }
+                    )
+
+
 
                     return (train_state, rng), (
                         loss,
