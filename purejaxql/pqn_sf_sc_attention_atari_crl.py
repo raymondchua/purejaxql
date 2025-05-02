@@ -392,9 +392,9 @@ def create_agent(rng, config, max_num_actions, observation_space_shape):
             init_x = jnp.zeros((1, *observation_space_shape))
             init_task = jnp.zeros((1, config["SF_DIM"]))
             network_variables = network.init(rng, init_x, init_task, train=False)
-            consolidation_params_tree[f"network_{i}"] = network_variables["params"]
+            consolidation_params_tree[f"network_{exp}"] = network_variables["params"]
             consolidation_networks.append(network)
-            consolidation_tasks[f"network_{i}"] = init_meta(
+            consolidation_tasks[f"network_{exo}"] = init_meta(
                 rng, config["SF_DIM"], config["NUM_ENVS"] + config["TEST_ENVS"]
             )
 
