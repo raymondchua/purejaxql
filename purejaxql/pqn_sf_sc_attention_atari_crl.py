@@ -150,11 +150,16 @@ class SFAttentionNetwork(nn.Module):
         # Normalize and tile task
         task = jax.lax.stop_gradient(task)
         task_normalized = task / jnp.linalg.norm(task, ord=2, axis=-1, keepdims=True)
-        task_normalized = jnp.tile(
-            task_normalized[:, None, :], (1, self.num_beakers, 1)
-        )
+        # task_normalized = jnp.tile(
+        #     task_normalized, (1, self.num_beakers, 1)
+        # )
 
         print("task_normalized shape: ", task_normalized.shape)
+        print("sf_first shape: ", sf_first_reshaped.shape)
+
+        print("sf_all_reshaped shape: ", sf_all_reshaped.shape)
+        print("basis_features_all shape: ", basis_features_all.shape)
+
 
         """
         Compute similarity between the first beaker and the rest of the beakers using rbf similarity with task, basis 
