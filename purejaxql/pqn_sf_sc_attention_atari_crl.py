@@ -334,6 +334,7 @@ def create_agent(rng, config, max_num_actions, observation_space_shape):
 
     init_x = jnp.zeros((1, *observation_space_shape))
     init_task = jnp.zeros((1, config["SF_DIM"]))
+    print("init_task shape:", init_task.shape)
     network_variables = sf_network.init(rng, init_x, init_task, train=False)
     task_params = {
         "w": init_meta(rng, config["SF_DIM"], config["NUM_ENVS"] + config["TEST_ENVS"])
