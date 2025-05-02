@@ -679,7 +679,7 @@ def make_train(config):
                     print("task shape temp:", tasks_all[-1].shape)
                 tasks_all_arr = jnp.stack(tasks_all, axis=1)
 
-                print("tasks_all shape:", tasks_all.shape)
+                print("tasks_all_arr shape:", tasks_all_arr.shape)
 
                 # attention network
                 q_vals, _, _, _, _, _, _ = attention_network.apply(
@@ -997,7 +997,7 @@ def make_train(config):
                             )
                         tasks_all_arr = jnp.stack(tasks_all, axis=1)
 
-                        print("tasks_all shape:", tasks_all.shape)
+                        print("tasks_all_arr shape:", tasks_all_arr.shape)
 
                         # attention network
                         (
