@@ -1238,6 +1238,10 @@ def make_train(config):
                             train_state.task_state.consolidation_tasks[f"network_{i}"]
                         )
 
+                    task_params_set_to_zero = jnp.zeros_like(train_state.task_state.params["w"])
+
+                    print("tasks_all_consolidation shape:", tasks_all_consolidation[0].shape)
+
                     (
                         network_params,
                         consolidation_loss,
@@ -1254,6 +1258,7 @@ def make_train(config):
                         mask=mask,
                         basis_features_sf_task_sim=basis_features_sf_task_sim,
                         tasks_all=tasks_all_consolidation,
+                        task_params_set_to_zero=task_params_set_to_zero,
                     )
 
                     # replace train_state params with the new params
