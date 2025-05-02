@@ -1240,8 +1240,6 @@ def make_train(config):
 
                     task_params_set_to_zero = jnp.zeros_like(train_state.task_state.params["w"])
 
-                    print("tasks_all_consolidation shape:", tasks_all_consolidation[0].shape)
-
                     (
                         network_params,
                         consolidation_loss,
