@@ -825,7 +825,7 @@ def make_train(config):
                 tasks_all_target.append(
                     train_state.task_state.consolidation_tasks[f"network_{i}"]
                 )
-            tasks_all_target = jax.stack(tasks_all_target)
+            tasks_all_target = jnp.stack(tasks_all_target)
 
             print("tasks_all_target shape:", tasks_all_target.shape)
 
