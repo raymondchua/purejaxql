@@ -469,7 +469,7 @@ def make_train(config):
     )
 
     all_updates = config["NUM_UPDATES"] * config["NUM_EXPOSURES"] * config["NUM_TASKS"]
-    print(f"NUM_UPDATES: {all_updates}")
+    print(f"NUM_UPDATES: {int(all_updates)}")
 
     config["NUM_UPDATES_DECAY"] = (
         config["TOTAL_TIMESTEPS_DECAY"] // config["NUM_STEPS"] // config["NUM_ENVS"]
