@@ -23,7 +23,7 @@ import envpool
 
 from purejaxql.utils.atari_wrapper import JaxLogEnvPoolWrapper
 from purejaxql.utils.l2_normalize import l2_normalize
-from purejaxql.utils.consolidation_helpers import update_and_accumulate_tree
+from purejaxql.utils.consolidation_helpers import update_and_accumulate_tree, update_and_accumulate_task
 from purejaxql.utils.similarity import rbf_similarity
 from flax.core import freeze, unfreeze, FrozenDict
 
@@ -1035,6 +1035,7 @@ def make_train(config):
                             keys,
                             values,
                             basis_features_sf_task_sim,
+                            tasks_all,
                         )
 
                     def _reward_loss_fn(task_params, basis_features, reward):
@@ -1054,8 +1055,11 @@ def make_train(config):
                         num_beakers: int,
                         mask: chex.Array,
                         basis_features_sf_task_sim: Optional[chex.Array] = None,
+                        tasks_all: Optional[chex.Array] = None,
+                        task_params_set_to_zero: Optional[chex.Array] = None,
                     ) -> Tuple[List[Params], float]:
                         loss = 0.0
+                        task_consolidation_loss = 0.0
 
                         # Updating first beaker from the second beaker
                         # scale_first = g_flow[0] / capacity[0]
@@ -1075,6 +1079,10 @@ def make_train(config):
                             # Consolidate from previous beaker
                             params[i], loss = update_and_accumulate_tree(
                                 params[i], params[i - 1], scale_prev, loss, config["DELTA_T_CONSOLIDATION"]
+                            )
+
+                            tasks_all[:, i], task_consolidation_loss = update_and_accumulate_task(
+                                tasks_all[:, i], tasks_all[:, i - 1], scale_prev, task_consolidation_loss, config["DELTA_T_CONSOLIDATION"]
                             )
 
                             # # Recall from next beaker, conditionally
@@ -1106,9 +1114,17 @@ def make_train(config):
                             params[-1], params_set_to_zero, scale_last, loss, config["DELTA_T_CONSOLIDATION"]
                         )
 
+                        tasks_all[:, -1], task_consolidation_loss = update_and_accumulate_task(
+                            tasks_all[:, -1], task_params_set_to_zero, scale_last, task_consolidation_loss, config["DELTA_T_CONSOLIDATION"]
+                        )
+
                         # consolidate from second last beaker
                         params[-1], loss = update_and_accumulate_tree(
                             params[-1], params[-2], scale_second_last, loss, config["DELTA_T_CONSOLIDATION"]
+                        )
+
+                        tasks_all[:, -1], task_consolidation_loss = update_and_accumulate_task(
+                            tasks_all[:, -1], tasks_all[:, -2], scale_second_last, task_consolidation_loss, config["DELTA_T_CONSOLIDATION"]
                         )
 
                         # compute the norm of the params using jax.tree_util.tree_map and sum the norms with jnp.sum and jnp.linalg.norm
@@ -1118,7 +1134,12 @@ def make_train(config):
 
                             params_norm.append(current_param_norm)
 
-                        return params, loss, params_norm
+                        task_norm = []
+                        for i in range(config["NUM_BEAKERS"]):
+                            current_task_norm = optax.global_norm(tasks_all[:, i])
+                            task_norm.append(current_task_norm)
+
+                        return params, loss, params_norm, task_consolidation_loss, task_norm
 
                     """
                     Make a mask to mask out the beakers in the consolidation system which has timescales less than the current time
@@ -1151,6 +1172,7 @@ def make_train(config):
                             keys,
                             values,
                             basis_features_sf_task_sim,
+                            tasks_all,
                         ),
                     ), grads = jax.value_and_grad(_loss_fn, has_aux=True)(
                         combined_params,
@@ -1214,6 +1236,8 @@ def make_train(config):
                         network_params,
                         consolidation_loss,
                         params_norm,
+                        task_consolidation_loss,
+                        task_norm,
                     ) = _consolidation_update_fn(
                         params=all_params,
                         params_set_to_zero=params_set_to_zero,
@@ -1222,6 +1246,7 @@ def make_train(config):
                         num_beakers=config["NUM_BEAKERS"],
                         mask=mask,
                         basis_features_sf_task_sim=basis_features_sf_task_sim,
+                        tasks_all=tasks_all,
                     )
 
                     # replace train_state params with the new params
@@ -1245,6 +1270,9 @@ def make_train(config):
                         keys,
                         values,
                         basis_features_sf_task_sim,
+                        mask,
+                        task_consolidation_loss,
+                        task_norm,
                     )
 
                 def preprocess_transition(x, rng):
@@ -1278,6 +1306,9 @@ def make_train(config):
                     keys,
                     values,
                     basis_features_sf_task_sim,
+                    mask,
+                    task_consolidation_loss,
+                    task_norm,
                 ) = jax.lax.scan(
                     _learn_phase, (train_state, rng), (minibatches, targets)
                 )
@@ -1294,6 +1325,9 @@ def make_train(config):
                     keys,
                     values,
                     basis_features_sf_task_sim,
+                    mask,
+                    task_consolidation_loss,
+                    task_norm,
                 )
 
             rng, _rng = jax.random.split(rng)
@@ -1309,6 +1343,9 @@ def make_train(config):
                 keys,
                 values,
                 basis_features_sf_task_sim,
+                mask,
+                task_consolidation_loss,
+                task_norm,
             ) = jax.lax.scan(
                 _learn_epoch, (train_state, rng), None, config["NUM_EPOCHS"]
             )
@@ -1349,8 +1386,12 @@ def make_train(config):
                 "task_params_diff": task_params_diff.mean(),
                 "extrinsic rewards": transitions.reward.mean(),
                 "consolidation_loss": consolidation_loss.mean(),
+                "task_consolidation_loss": task_consolidation_loss.mean(),
                 "lr_task": config["LR_TASK"],
             }
+
+            print("task norm shape: ", task_norm.shape)
+            print("mask shape: ", mask.shape)
 
             # add norm of each beaker params to metrics
             for idx, p in enumerate(params_norm):
@@ -1375,6 +1416,9 @@ def make_train(config):
                 ].mean()
                 # metrics[f"keys_{i}"] = keys[..., i].mean()
                 # metrics[f"values_{i}"] = values[..., i].mean()
+                # metrics[f"task_norm_{i}"] = task_norm[i].mean()
+                # metrics[f"mask_{i}"] = mask[i].mean()
+
 
             metrics.update({k: v.mean() for k, v in infos.items()})
             if config.get("TEST_DURING_TRAINING", False):
