@@ -444,7 +444,7 @@ def create_agent(rng, config, max_num_actions, observation_space_shape):
         tx=tx,
         capacity=capacity,
         g_flow=g_flow,
-        timescales=storage_timescales,
+        timescales=recall_timescales,
         consolidation_params_tree=consolidation_params_tree,
     )
 
@@ -646,6 +646,7 @@ def make_train(config):
                     jnp.asarray(train_state.network_state.timescales, dtype=np.uint32)
                     < train_state.network_state.grad_steps
                 )
+                mask = mask[:-1]  # remove the first beaker as the first beaker is the current task
                 mask = jnp.insert(mask, 0, 1)
                 mask = mask.astype(jnp.int32)
                 # mask = mask.reshape(1, -1, 1, 1)
@@ -806,6 +807,7 @@ def make_train(config):
                 jnp.asarray(train_state.network_state.timescales, dtype=np.uint32)
                 < train_state.network_state.grad_steps
             )
+            mask = mask[:-1]  # remove the first beaker as the first beaker is the current task
             mask = jnp.insert(mask, 0, 1)
             mask = mask.astype(jnp.int32)
             # mask = mask.reshape(1, -1, 1, 1)
@@ -1119,6 +1121,7 @@ def make_train(config):
                         )
                         < train_state.network_state.grad_steps
                     )
+                    mask = mask[:-1]  # remove the first beaker as the first beaker is the current task
                     mask = jnp.insert(mask, 0, 1)
                     mask = mask.astype(jnp.int32)
 
