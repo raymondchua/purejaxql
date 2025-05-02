@@ -1269,14 +1269,12 @@ def make_train(config):
                     )
 
                     train_state.task_state = train_state.task_state.replace(
-                        params=tasks_all_consolidation[0],
+                        params={"w" : tasks_all_consolidation[0]},
                         consolidation_tasks={
                             f"network_{i}": tasks_all_consolidation[i]
                             for i in range(1, config["NUM_BEAKERS"])
                         }
                     )
-
-
 
                     return (train_state, rng), (
                         loss,
