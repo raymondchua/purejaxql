@@ -1054,23 +1054,6 @@ def make_train(config):
                         #     params[0], params[1], scale_first, loss
                         # )
 
-                        # Last beaker
-                        scale_last = g_flow[-1] / capacity[-1]
-                        scale_second_last = g_flow[-2] / capacity[-1]
-                        basis_features_sf_task_sim_second_last = jnp.maximum(
-                            basis_features_sf_task_sim[-1], scale_second_last
-                        )
-                        scale_second_last *= basis_features_sf_task_sim_second_last
-
-                        params[-1], loss = update_and_accumulate_tree(
-                            params[-1], params_set_to_zero, scale_last, loss
-                        )
-
-                        # consolidate from second last beaker
-                        params[-1], loss = update_and_accumulate_tree(
-                            params[-1], params[-2], scale_second_last, loss
-                        )
-
                         # Middle beakers: 1 to num_beakers - 2
                         for i in range(1, num_beakers - 1):
                             scale_prev = g_flow[i - 1] / capacity[i]
@@ -1082,7 +1065,7 @@ def make_train(config):
 
                             # Consolidate from previous beaker
                             params[i], loss = update_and_accumulate_tree(
-                                params[i], params[i - 1], scale_prev, loss
+                                params[i], params[i - 1], scale_prev, loss, config["DELTA_T_CONSOLIDATION"]
                             )
 
                             # # Recall from next beaker, conditionally
@@ -1101,6 +1084,23 @@ def make_train(config):
                             #     params[i],
                             #     loss,
                             # )
+
+                        # Last beaker
+                        scale_last = g_flow[-1] / capacity[-1]
+                        scale_second_last = g_flow[-2] / capacity[-1]
+                        basis_features_sf_task_sim_second_last = jnp.maximum(
+                            basis_features_sf_task_sim[-1], scale_second_last
+                        )
+                        scale_second_last *= basis_features_sf_task_sim_second_last
+
+                        params[-1], loss = update_and_accumulate_tree(
+                            params[-1], params_set_to_zero, scale_last, loss, config["DELTA_T_CONSOLIDATION"]
+                        )
+
+                        # consolidate from second last beaker
+                        params[-1], loss = update_and_accumulate_tree(
+                            params[-1], params[-2], scale_second_last, loss, config["DELTA_T_CONSOLIDATION"]
+                        )
 
                         # compute the norm of the params using jax.tree_util.tree_map and sum the norms with jnp.sum and jnp.linalg.norm
                         params_norm = []
