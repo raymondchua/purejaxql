@@ -677,7 +677,7 @@ def make_train(config):
                         train_state.task_state.consolidation_tasks[f"network_{i}"]
                     )
                     print("task shape temp:", tasks_all[-1].shape)
-                tasks_all = jnp.stack(tasks_all)
+                tasks_all = jnp.stack(tasks_all, axis=1)
 
                 print("tasks_all shape:", tasks_all.shape)
 
@@ -837,7 +837,7 @@ def make_train(config):
                 tasks_all_target.append(
                     train_state.task_state.consolidation_tasks[f"network_{i}"]
                 )
-            tasks_all_target = jnp.stack(tasks_all_target)
+            tasks_all_target = jnp.stack(tasks_all_target, axis=1)
 
             print("tasks_all_target shape:", tasks_all_target.shape)
 
@@ -988,7 +988,7 @@ def make_train(config):
                                     f"network_{i}"
                                 ]["w"][: -config["TEST_ENVS"], :]
                             )
-                        tasks_all = jnp.stack(tasks_all)
+                        tasks_all = jnp.stack(tasks_all, axis=1)
 
                         print("tasks_all shape:", tasks_all.shape)
 
