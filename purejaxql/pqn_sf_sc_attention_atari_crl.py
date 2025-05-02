@@ -171,15 +171,15 @@ class SFAttentionNetwork(nn.Module):
         )
         print("basis_features_sf_task shape: ", basis_features_sf_task.shape)
 
-        sf_all_reshaped_left = sf_all_reshaped[
+        basis_features_sf_task_left = basis_features_sf_task[
             :, :-1, :
-        ]  # shape (batch, num_beakers-1, num_actions * sf_dim)
-        sf_all_reshaped_right = sf_all_reshaped[
+        ]  # shape (batch, num_beakers-1, (num_actions * sf_dim) + sf_dim + task_dim)
+        basis_features_sf_task_right = basis_features_sf_task[
             :, 1:, :
-        ]  # shape (batch, num_beakers-1, num_actions * sf_dim)
+        ]  # shape (batch, num_beakers-1, (num_actions * sf_dim) + sf_dim + task_dim)
 
         basis_features_sf_task_similarity = rbf_similarity(
-            sf_all_reshaped_left, sf_all_reshaped_right
+            basis_features_sf_task_left, basis_features_sf_task_right
         ).mean(
             axis=0
         )  # shape (num_beakers-1)
