@@ -654,6 +654,8 @@ def make_train(config):
                 # mask = mask.reshape(1, -1, 1, 1)
                 mask = mask.reshape(1, -1, 1)
 
+                print("mask shape before tiling:", mask.shape)
+
                 # broadcast the mask to the shape of (batch_size, num_beakers-1, num_actions, sf_dim)
                 # mask_tiled = jnp.broadcast_to(
                 #     mask,
