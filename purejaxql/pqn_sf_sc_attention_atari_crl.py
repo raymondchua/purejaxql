@@ -993,7 +993,7 @@ def make_train(config):
                             tasks_all.append(
                                 train_state.task_state.consolidation_tasks[
                                     f"network_{i}"
-                                ]["w"][: -config["TEST_ENVS"], :]
+                                ][: -config["TEST_ENVS"], :]
                             )
                         tasks_all = jnp.stack(tasks_all, axis=1)
 
