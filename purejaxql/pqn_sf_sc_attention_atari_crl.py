@@ -1407,7 +1407,7 @@ def make_train(config):
                 "task_consolidation_loss": task_consolidation_loss.mean(),
                 "lr_task": config["LR_TASK"],
             }
-            task_norm_arr = jnp.stack(task_norm)
+            task_norm_arr = jnp.stack(task_norm, axis=-1)
             print("task norm arr shape: ", task_norm_arr.shape)
             print("mask shape: ", mask.shape)
 
@@ -1432,6 +1432,8 @@ def make_train(config):
                 metrics[f"basis_features_sf_task_sim_{i}"] = basis_features_sf_task_sim[
                     ..., i
                 ].mean()
+                metrics[f"mask_{i}"] = mask[..., i].mean()
+                metrics[f"task_norm_{i}"] = task_norm_arr[..., i].mean()
                 # metrics[f"keys_{i}"] = keys[..., i].mean()
                 # metrics[f"values_{i}"] = values[..., i].mean()
                 # metrics[f"task_norm_{i}"] = task_norm[i].mean()
