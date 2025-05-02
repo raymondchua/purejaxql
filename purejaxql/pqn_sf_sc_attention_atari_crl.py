@@ -369,6 +369,7 @@ def create_agent(rng, config, max_num_actions, observation_space_shape):
     capacity = []
     g_flow = []
     storage_timescales = []  # timescales that are adapted using the ratio 2^k/g_1_2
+    recall_timescales = [] # timescales that are adapted using the ratio 2^k/g_1_2
     consolidation_params_tree = {}
     consolidation_networks = []
     consolidation_tasks = {}
@@ -376,10 +377,10 @@ def create_agent(rng, config, max_num_actions, observation_space_shape):
     for exp in range(config["NUM_BEAKERS"]):
         capacity.append(config["BEAKER_CAPACITY"] ** (exp + config["FLOW_INIT_INDEX"]))
         g_flow.append(2 ** (-config["FLOW_INIT_INDEX"] - exp - 3))
-        storage_timescales.append(int(capacity[exp] / g_flow[0]))
+        storage_timescales.append(int(capacity[exp] / g_flow[exp]))
 
         if exp > 0:
-            recall_timescales.append(int(capacity[exp] / g_flow[exp]))
+            recall_timescales.append(int(capacity[exp] / g_flow[0]))
 
             network = SFNetwork(
                 action_dim=max_num_actions,
