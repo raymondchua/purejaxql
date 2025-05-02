@@ -366,18 +366,24 @@ def create_agent(rng, config, max_num_actions, observation_space_shape):
     )
 
     # Initialize the consolidation parameters
-    capacity = []
-    g_flow = []
+    capacity = [1]
+    g_flow = [2 ** (-config["FLOW_INIT_INDEX"] - 3)]
+    g_delta_t = [g_flow[-1] * config["DELTA_T_CONSOLIDATION"]]
     storage_timescales = []  # timescales that are adapted using the ratio 2^k/g_1_2
     recall_timescales = [] # timescales that are adapted using the ratio 2^k/g_1_2
     consolidation_params_tree = {}
     consolidation_networks = []
     consolidation_tasks = {}
 
-    for exp in range(config["NUM_BEAKERS"]):
+    for exp in range(1, config["NUM_BEAKERS"]):
         capacity.append(config["BEAKER_CAPACITY"] ** (exp + config["FLOW_INIT_INDEX"]))
         g_flow.append(2 ** (-config["FLOW_INIT_INDEX"] - exp - 3))
-        storage_timescales.append(int(capacity[exp] / g_flow[exp]))
+        g_delta_t.append(g_flow[-1] * config["DELTA_T_CONSOLIDATION"])
+
+        # storage timescale should be faster than recall timescale (meaning smaller than recall timescale)
+        # storage timescale  = capacity / g_1_2
+        # recall timescale = capacity / g_k_k+1
+        storage_timescales.append(int(capacity[exp] / g_flow[exp-1] * config["DELTA_T_CONSOLIDATION"]))
         recall_timescales.append(int(capacity[exp] / g_flow[0]))
 
         if exp > 0:
@@ -393,19 +399,27 @@ def create_agent(rng, config, max_num_actions, observation_space_shape):
             network_variables = network.init(rng, init_x, init_task, train=False)
             consolidation_params_tree[f"network_{exp}"] = network_variables["params"]
             consolidation_networks.append(network)
-            consolidation_tasks[f"network_{exo}"] = init_meta(
+            consolidation_tasks[f"network_{exp}"] = init_meta(
                 rng, config["SF_DIM"], config["NUM_ENVS"] + config["TEST_ENVS"]
             )
 
-    storage_timescales = storage_timescales[
-        :-1
-    ]  # ignore the last timescale as it is not used
+    recall_timescales.append(int(config["BEAKER_CAPACITY"] ** (config["NUM_BEAKERS"] + config["FLOW_INIT_INDEX"]) // g_flow[0]))
+
 
     g_flow = jnp.array(g_flow)
     capacity = jnp.array(capacity)
-    print(f"Capacity: {capacity[:-1]}")
+    print(f"Capacity: {capacity}")
     print(f"storage g_flow: {g_flow[:-1]}")
+    print(f"recall g_flow: {g_flow}")
     print(f"storage timescales: {storage_timescales}")
+    print(f"recall timescales: {recall_timescales}")
+    print(f"g_delta_t: {g_delta_t}")
+
+    product = g_flow[0] * config["DELTA_T_CONSOLIDATION"]
+    chex.assert_tree_all(
+        product <= 0.1,
+        "g_1_2 * delta_t should be ≤ 0.1 to ensure stability!"
+    )
 
     sf_network_state = CustomTrainState.create(
         apply_fn=sf_network.apply,
@@ -1460,6 +1474,22 @@ def single_run(config):
             print(f"Took {time.time()-start_time} seconds to complete.")
 
             agent_train_state = outs["train_state"]
+
+            updates_per_task = (
+                    config["TOTAL_TIMESTEPS"] // config["NUM_STEPS"] // config["NUM_ENVS"]
+            )
+
+            total_updates_all_task = updates_per_task * config["NUM_TASKS"] * num_exposures
+
+            chex.assert_tree_all(
+                agent_train_state.network_state.timescales[0] <= updates_per_task,
+                "Storage timescale for the first task should not exceed the number of updates per task"
+            )
+
+            chex.assert_tree_all(
+                agent_train_state.network_state.timescales[-1] > total_updates_all_task,
+                "Storage timescale should be more than the total number of updates"
+            )
 
             # save params
             if config.get("SAVE_PATH", None) is not None:
