@@ -138,14 +138,14 @@ class SFAttentionNetwork(nn.Module):
         # sf_all = jnp.concatenate([sf_first, sf_rest], axis=1)
 
         sf_all_reshaped = jnp.reshape(
-            sf_all,
-            (batch_size, self.num_beakers, self.num_actions * self.sf_dim)
+            sf_all, (batch_size, self.num_beakers, self.num_actions * self.sf_dim)
         )
 
         sf_first_reshaped = jnp.reshape(
-            sf_first,
-            (batch_size, 1, self.num_actions * self.sf_dim)
+            sf_first, (batch_size, 1, self.num_actions * self.sf_dim)
         )  # shape (batch, num_actions * sf_dim)
+
+        print("input task shape: ", task.shape)
 
         # Normalize and tile task
         task = jax.lax.stop_gradient(task)
@@ -161,29 +161,49 @@ class SFAttentionNetwork(nn.Module):
         features and successor features as input.
         """
         # concat basis features and sf
-        basis_features_sf_task = jnp.concatenate([basis_features_all, sf_all_reshaped, task_normalized], axis=-1)
+        basis_features_sf_task = jnp.concatenate(
+            [basis_features_all, sf_all_reshaped, task_normalized], axis=-1
+        )
         print("basis_features_sf_task shape: ", basis_features_sf_task.shape)
 
-        sf_all_reshaped_left = sf_all_reshaped[:, :-1, :]  # shape (batch, num_beakers-1, num_actions * sf_dim)
-        sf_all_reshaped_right = sf_all_reshaped[:, 1:, :] # shape (batch, num_beakers-1, num_actions * sf_dim)
+        sf_all_reshaped_left = sf_all_reshaped[
+            :, :-1, :
+        ]  # shape (batch, num_beakers-1, num_actions * sf_dim)
+        sf_all_reshaped_right = sf_all_reshaped[
+            :, 1:, :
+        ]  # shape (batch, num_beakers-1, num_actions * sf_dim)
 
-        basis_features_sf_task_similarity = rbf_similarity(sf_all_reshaped_left, sf_all_reshaped_right).mean(axis=0)  # shape (num_beakers-1)
-        print("basis_features_sf_task_similarity shape: ", basis_features_sf_task_similarity.shape)
+        basis_features_sf_task_similarity = rbf_similarity(
+            sf_all_reshaped_left, sf_all_reshaped_right
+        ).mean(
+            axis=0
+        )  # shape (num_beakers-1)
+        print(
+            "basis_features_sf_task_similarity shape: ",
+            basis_features_sf_task_similarity.shape,
+        )
 
         basis_features_first = basis_features_all[:, :1, :]  # shape (batch, 1, ...)
-        basis_features_rest = jax.lax.stop_gradient(
-            basis_features_all[:, 1:, :]
+        basis_features_rest = jax.lax.stop_gradient(basis_features_all[:, 1:, :])
+        basis_features_all = jnp.concatenate(
+            [basis_features_first, basis_features_rest], axis=1
         )
-        basis_features_all = jnp.concatenate([basis_features_first, basis_features_rest], axis=1)
 
         # Attention mechanism. Using task, sf and basis features as query and keys. The values are the sf only.
-        basis_features_sf_first_task = jnp.concatenate([basis_features_first, sf_first_reshaped, task_normalized[:, :1, :]], axis=-1)
+        basis_features_sf_first_task = jnp.concatenate(
+            [basis_features_first, sf_first_reshaped, task_normalized[:, :1, :]],
+            axis=-1,
+        )
         print("basis_features_sf_first_task shape:", basis_features_sf_first_task.shape)
 
-        query = nn.Dense(features=self.sf_dim * 3 * self.proj_factor, name="query", use_bias=False)(basis_features_sf_first_task)
+        query = nn.Dense(
+            features=self.sf_dim * 3 * self.proj_factor, name="query", use_bias=False
+        )(basis_features_sf_first_task)
         print("query shape:", query.shape)
 
-        basis_features_sf_all_task = jnp.concatenate([basis_features_all, sf_all_reshaped, task_normalized], axis=-1)
+        basis_features_sf_all_task = jnp.concatenate(
+            [basis_features_all, sf_all_reshaped, task_normalized], axis=-1
+        )
         print("basis_features_sf_all_task shape:", basis_features_sf_all_task.shape)
 
         keys = nn.Dense(self.sf_dim * 3 * self.proj_factor)(
@@ -203,9 +223,7 @@ class SFAttentionNetwork(nn.Module):
         print("values shape:", values.shape)
         print("mask shape:", mask.shape)
 
-        mask_repeat = jnp.repeat(
-            mask, 3, axis=-1
-        )
+        mask_repeat = jnp.repeat(mask, 3, axis=-1)
 
         print("mask_repeat shape:", mask_repeat.shape)
 
@@ -215,11 +233,9 @@ class SFAttentionNetwork(nn.Module):
         # print("mask: ", mask.shape)
         # print("basis_features_all shape: ", basis_features_all.shape)
 
-
         # query = query
         # keys_masked = basis_features_all * mask
         # values_masked = sf_all
-
 
         # print("query shape: ", query.shape)
         # print("keys mask shape: ", keys_masked.shape)
@@ -284,10 +300,14 @@ class CustomTrainState(TrainState):
     consolidation_networks: Any = None
 
 
+class CustomTaskState(TrainState):
+    consolidation_tasks: Any = None
+
+
 @chex.dataclass
 class MultiTrainState:
     network_state: CustomTrainState
-    task_state: TrainState
+    task_state: CustomTaskState
     attention_network_state: TrainState
 
 
@@ -320,9 +340,7 @@ def create_agent(rng, config, max_num_actions, observation_space_shape):
         num_beakers=config["NUM_BEAKERS"],
     )
 
-    init_basis_features_all = jnp.zeros(
-        (1, config["NUM_BEAKERS"], config["SF_DIM"])
-    )
+    init_basis_features_all = jnp.zeros((1, config["NUM_BEAKERS"], config["SF_DIM"]))
 
     init_sf_all = jnp.zeros(
         (1, config["NUM_BEAKERS"], max_num_actions, config["SF_DIM"])
@@ -350,44 +368,44 @@ def create_agent(rng, config, max_num_actions, observation_space_shape):
     # Initialize the consolidation parameters
     capacity = []
     g_flow = []
-    timescales = []
-    adapted_timescales = []  # timescales that are adapted using the ratio 2^k/g_1_2
-    adapted_g_flow = []  # g_flow that are adapted using the ratio 2^(-k-3)
+    storage_timescales = []  # timescales that are adapted using the ratio 2^k/g_1_2
+    consolidation_params_tree = {}
+    consolidation_networks = []
+    consolidation_tasks = {}
 
     for exp in range(config["NUM_BEAKERS"]):
         capacity.append(config["BEAKER_CAPACITY"] ** (exp + config["FLOW_INIT_INDEX"]))
         g_flow.append(2 ** (-config["FLOW_INIT_INDEX"] - exp - 3))
-        timescales.append(int(capacity[exp] / g_flow[exp]))
+        storage_timescales.append(int(capacity[exp] / g_flow[0]))
 
-        adapted_timescales.append(int(capacity[exp] / g_flow[0]))
-        adapted_g_flow.append(2 ** (-1 - exp - 3))
+        if exp > 0:
+            recall_timescales.append(int(capacity[exp] / g_flow[exp]))
 
-    if config["CONSOLIDATE_EARLIER"]:
-        timescales = adapted_timescales
-        g_flow = adapted_g_flow
+            network = SFNetwork(
+                action_dim=max_num_actions,
+                norm_type=config["NORM_TYPE"],
+                norm_input=config.get("NORM_INPUT", False),
+                sf_dim=config["SF_DIM"],
+            )
+
+            init_x = jnp.zeros((1, *observation_space_shape))
+            init_task = jnp.zeros((1, config["SF_DIM"]))
+            network_variables = network.init(rng, init_x, init_task, train=False)
+            consolidation_params_tree[f"network_{i}"] = network_variables["params"]
+            consolidation_networks.append(network)
+            consolidation_tasks[f"network_{i}"] = init_meta(
+                rng, config["SF_DIM"], config["NUM_ENVS"] + config["TEST_ENVS"]
+            )
+
+    storage_timescales = storage_timescales[
+        :-1
+    ]  # ignore the last timescale as it is not used
 
     g_flow = jnp.array(g_flow)
     capacity = jnp.array(capacity)
-    print(f"timescales: {timescales[:-1]}")
-    print(f"g_flow: {g_flow[:-1]}")
     print(f"Capacity: {capacity[:-1]}")
-
-    consolidation_params_tree = {}
-    consolidation_networks = []
-
-    for i in range(1, config["NUM_BEAKERS"]):
-        network = SFNetwork(
-            action_dim=max_num_actions,
-            norm_type=config["NORM_TYPE"],
-            norm_input=config.get("NORM_INPUT", False),
-            sf_dim=config["SF_DIM"],
-        )
-
-        init_x = jnp.zeros((1, *observation_space_shape))
-        init_task = jnp.zeros((1, config["SF_DIM"]))
-        network_variables = network.init(rng, init_x, init_task, train=False)
-        consolidation_params_tree[f"network_{i}"] = network_variables["params"]
-        consolidation_networks.append(network)
+    print(f"storage g_flow: {g_flow[:-1]}")
+    print(f"storage timescales: {storage_timescales}")
 
     sf_network_state = CustomTrainState.create(
         apply_fn=sf_network.apply,
@@ -396,14 +414,15 @@ def create_agent(rng, config, max_num_actions, observation_space_shape):
         tx=tx,
         capacity=capacity,
         g_flow=g_flow,
-        timescales=timescales,
+        timescales=storage_timescales,
         consolidation_params_tree=consolidation_params_tree,
     )
 
-    task_state = TrainState.create(
+    task_state = CustomTaskState.create(
         apply_fn=sf_network.apply,
         params=task_params,
         tx=tx_task,
+        consolidation_tasks=consolidation_tasks,
     )
 
     attention_network_state = TrainState.create(
@@ -566,7 +585,9 @@ def make_train(config):
                 )  # [num_beakers, batch, task_dim]
 
                 # Vectorized application of getting sf for each beaker
-                basis_features_beakers, sf_beakers = jax.vmap(apply_single_beaker, in_axes=(0, 0, 0, None))(
+                basis_features_beakers, sf_beakers = jax.vmap(
+                    apply_single_beaker, in_axes=(0, 0, 0, None)
+                )(
                     params_beakers_stacked,
                     obs_tiled,
                     task_tiled,
@@ -582,16 +603,14 @@ def make_train(config):
                     sf_all, (1, 0, 3, 2)
                 )  # (batch_size, num_beakers, num_actions, sf_dim)
 
-                basis_features_all = jnp.transpose(
-                    basis_features_all, (1, 0, 2)
-                )
+                basis_features_all = jnp.transpose(basis_features_all, (1, 0, 2))
 
                 print("sf_all shape:", sf_all.shape)
                 print("basis_features_all shape:", basis_features_all.shape)
 
                 """
-                Make a mask to mask out the beakers in the consolidation system which has timescales less than the current time
-                step. 
+                Make a mask to mask out the beakers in the consolidation system which has timescales less than the current 
+                gradstep. 
                 """
                 mask = (
                     jnp.asarray(train_state.network_state.timescales, dtype=np.uint32)
@@ -613,9 +632,20 @@ def make_train(config):
 
                 mask_tiled = jnp.broadcast_to(
                     mask,
-                    (basis_features_all.shape[0], mask.shape[1], basis_features_all.shape[2]),
+                    (
+                        basis_features_all.shape[0],
+                        mask.shape[1],
+                        basis_features_all.shape[2],
+                    ),
                 )
 
+                # grab all the w in train_state.task_state.params and train_state.task_state.consolidation_tasks
+                tasks_all = [train_state.task_state.params["w"]]
+                for i in range(1, num_beakers):
+                    tasks_all.append(train_state.task_state.consolidation_tasks[f"network_{i}"]["w"])
+                tasks_all = jax.stack(tasks_all)
+
+                print("tasks_all shape:", tasks_all.shape)
 
                 # attention network
                 q_vals, _, _, _, _, _, _ = attention_network.apply(
@@ -624,7 +654,7 @@ def make_train(config):
                     },
                     basis_features_all,
                     sf_all,
-                    train_state.task_state.params["w"],
+                    tasks_all,
                     mask_tiled,
                 )
 
@@ -714,7 +744,9 @@ def make_train(config):
                 task_params_target, (num_beakers, *task_params_target.shape)
             )  # [num_beakers, batch, task_dim]
 
-            last_basis_features_beakers, last_sf_beakers = jax.vmap(apply_single_beaker, in_axes=(0, 0, 0, None))(
+            last_basis_features_beakers, last_sf_beakers = jax.vmap(
+                apply_single_beaker, in_axes=(0, 0, 0, None)
+            )(
                 params_beakers_stacked,
                 obs_tiled,
                 task_tiled,
@@ -726,14 +758,11 @@ def make_train(config):
                 [last_basis_features[None], last_basis_features_beakers], axis=0
             )
 
-
             last_sf_all = jnp.transpose(
                 last_sf_all, (1, 0, 3, 2)
             )  # (batch_size, num_beakers, num_actions, sf_dim)
 
-            last_basis_features_all = jnp.transpose(
-                last_basis_features_all, (1, 0, 2)
-            )
+            last_basis_features_all = jnp.transpose(last_basis_features_all, (1, 0, 2))
             print("last_sf_all shape:", last_sf_all.shape)
 
             """
@@ -769,6 +798,13 @@ def make_train(config):
                 ),
             )
 
+            tasks_all_target = [task_params_target]
+            for i in range(1, num_beakers):
+                tasks_all_target.append(train_state.task_state.consolidation_tasks[f"network_{i}"]["w"])
+            tasks_all_target = jax.stack(tasks_all_target)
+
+            print("tasks_all_target shape:", tasks_all_target.shape)
+
             # attention network
             last_q, _, _, _, _, _, _ = attention_network.apply(
                 {
@@ -776,7 +812,7 @@ def make_train(config):
                 },
                 last_basis_features_all,
                 last_sf_all,
-                task_params_target,
+                tasks_all_target,
                 mask_tiled,
             )
 
@@ -905,6 +941,17 @@ def make_train(config):
                             ),
                         )
 
+                        tasks_all = [train_state.task_state.params["w"][
+                                : -config["TEST_ENVS"], :
+                            ]]
+                        for i in range(1, num_beakers):
+                            tasks_all.append(train_state.task_state.consolidation_tasks[f"network_{i}"]["w"][
+                                : -config["TEST_ENVS"], :
+                            ])
+                        tasks_all = jax.stack(tasks_all)
+
+                        print("tasks_all shape:", tasks_all.shape)
+
                         # attention network
                         (
                             q_vals,
@@ -920,9 +967,7 @@ def make_train(config):
                             },
                             basis_features_all,
                             sf_all,
-                            train_state.task_state.params["w"][
-                                : -config["TEST_ENVS"], :
-                            ],
+                            tasks_all,
                             mask_tiled,
                         )
 
@@ -972,9 +1017,11 @@ def make_train(config):
                         # )
 
                         # Last beaker
-                        scale_last = (g_flow[-1] / capacity[-1])
-                        scale_second_last = (g_flow[-2] / capacity[-1])
-                        basis_features_sf_task_sim_second_last = jnp.maximum(basis_features_sf_task_sim[-1], scale_second_last)
+                        scale_last = g_flow[-1] / capacity[-1]
+                        scale_second_last = g_flow[-2] / capacity[-1]
+                        basis_features_sf_task_sim_second_last = jnp.maximum(
+                            basis_features_sf_task_sim[-1], scale_second_last
+                        )
                         scale_second_last *= basis_features_sf_task_sim_second_last
 
                         params[-1], loss = update_and_accumulate_tree(
@@ -988,7 +1035,7 @@ def make_train(config):
 
                         # Middle beakers: 1 to num_beakers - 2
                         for i in range(1, num_beakers - 1):
-                            scale_prev = (g_flow[i - 1] / capacity[i])
+                            scale_prev = g_flow[i - 1] / capacity[i]
                             basis_features_sf_task_sim_prev = jnp.maximum(
                                 basis_features_sf_task_sim[i], scale_prev
                             )
@@ -1101,7 +1148,9 @@ def make_train(config):
                     all_params.append(train_state.network_state.params)
 
                     # to account for the first beaker
-                    basis_features_sf_task_sim = jnp.insert(basis_features_sf_task_sim, 0, 1)
+                    basis_features_sf_task_sim = jnp.insert(
+                        basis_features_sf_task_sim, 0, 1
+                    )
 
                     # modify basis_features_sf_task_sim based on the mask, to allow consolidation to overwrite initialization
                     basis_features_sf_task_sim = jnp.where(
@@ -1128,7 +1177,7 @@ def make_train(config):
                         capacity=train_state.network_state.capacity,
                         num_beakers=config["NUM_BEAKERS"],
                         mask=mask,
-                        basis_features_sf_task_sim=basis_features_sf_task_sim
+                        basis_features_sf_task_sim=basis_features_sf_task_sim,
                     )
 
                     # replace train_state params with the new params
@@ -1275,10 +1324,11 @@ def make_train(config):
                 print("keys shape: ", keys.shape)
                 print("values shape: ", values.shape)
 
-
                 metrics[f"attn_logits_{i}"] = attn_logits[..., i].mean()
                 metrics[f"attention_weights_{i}"] = attention_weights[..., i].mean()
-                metrics[f"basis_features_sf_task_sim_{i}"] = basis_features_sf_task_sim[..., i].mean()
+                metrics[f"basis_features_sf_task_sim_{i}"] = basis_features_sf_task_sim[
+                    ..., i
+                ].mean()
                 # metrics[f"keys_{i}"] = keys[..., i].mean()
                 # metrics[f"values_{i}"] = values[..., i].mean()
 
