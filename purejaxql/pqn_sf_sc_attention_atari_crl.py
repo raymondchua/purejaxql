@@ -378,10 +378,9 @@ def create_agent(rng, config, max_num_actions, observation_space_shape):
         capacity.append(config["BEAKER_CAPACITY"] ** (exp + config["FLOW_INIT_INDEX"]))
         g_flow.append(2 ** (-config["FLOW_INIT_INDEX"] - exp - 3))
         storage_timescales.append(int(capacity[exp] / g_flow[exp]))
+        recall_timescales.append(int(capacity[exp] / g_flow[0]))
 
         if exp > 0:
-            recall_timescales.append(int(capacity[exp] / g_flow[0]))
-
             network = SFNetwork(
                 action_dim=max_num_actions,
                 norm_type=config["NORM_TYPE"],
