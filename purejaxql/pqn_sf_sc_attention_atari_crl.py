@@ -1407,8 +1407,8 @@ def make_train(config):
                 "task_consolidation_loss": task_consolidation_loss.mean(),
                 "lr_task": config["LR_TASK"],
             }
-
-            print("task norm shape: ", task_norm.shape)
+            task_norm_arr = jnp.stack(task_norm)
+            print("task norm arr shape: ", task_norm_arr.shape)
             print("mask shape: ", mask.shape)
 
             # add norm of each beaker params to metrics
