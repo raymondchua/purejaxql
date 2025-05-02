@@ -370,7 +370,7 @@ def create_agent(rng, config, max_num_actions, observation_space_shape):
     g_flow = [2 ** (-config["FLOW_INIT_INDEX"] - 3)]
     g_delta_t = [g_flow[-1] * config["DELTA_T_CONSOLIDATION"]]
     storage_timescales = []  # timescales that are adapted using the ratio 2^k/g_1_2
-    recall_timescales = [] # timescales that are adapted using the ratio 2^k/g_1_2
+    recall_timescales = []  # timescales that are adapted using the ratio 2^k/g_1_2
     consolidation_params_tree = {}
     consolidation_networks = []
     consolidation_tasks = {}
@@ -383,7 +383,9 @@ def create_agent(rng, config, max_num_actions, observation_space_shape):
         # storage timescale should be faster than recall timescale (meaning smaller than recall timescale)
         # storage timescale  = capacity / g_1_2
         # recall timescale = capacity / g_k_k+1
-        storage_timescales.append(int(capacity[exp] / g_flow[exp-1] * config["DELTA_T_CONSOLIDATION"]))
+        storage_timescales.append(
+            int(capacity[exp] / g_flow[exp - 1] * config["DELTA_T_CONSOLIDATION"])
+        )
         recall_timescales.append(int(capacity[exp] / g_flow[0]))
 
         if exp > 0:
@@ -403,8 +405,13 @@ def create_agent(rng, config, max_num_actions, observation_space_shape):
                 rng, config["SF_DIM"], config["NUM_ENVS"] + config["TEST_ENVS"]
             )
 
-    recall_timescales.append(int(config["BEAKER_CAPACITY"] ** (config["NUM_BEAKERS"] + config["FLOW_INIT_INDEX"]) // g_flow[0]))
-
+    recall_timescales.append(
+        int(
+            config["BEAKER_CAPACITY"]
+            ** (config["NUM_BEAKERS"] + config["FLOW_INIT_INDEX"])
+            // g_flow[0]
+        )
+    )
 
     g_flow = jnp.array(g_flow)
     capacity = jnp.array(capacity)
@@ -416,10 +423,9 @@ def create_agent(rng, config, max_num_actions, observation_space_shape):
     print(f"g_delta_t: {g_delta_t}")
 
     product = g_flow[0] * config["DELTA_T_CONSOLIDATION"]
-    chex.assert_tree_all(
-        product <= 0.1,
-        "g_1_2 * delta_t should be ≤ 0.1 to ensure stability!"
-    )
+    assert (
+        product <= 0.1
+    ), "g_1_2 * delta_t should be less than or equal to 0.1 to ensure stability of the system!!!"
 
     sf_network_state = CustomTrainState.create(
         apply_fn=sf_network.apply,
@@ -656,7 +662,9 @@ def make_train(config):
                 # grab all the w in train_state.task_state.params and train_state.task_state.consolidation_tasks
                 tasks_all = [train_state.task_state.params["w"]]
                 for i in range(1, num_beakers):
-                    tasks_all.append(train_state.task_state.consolidation_tasks[f"network_{i}"]["w"])
+                    tasks_all.append(
+                        train_state.task_state.consolidation_tasks[f"network_{i}"]["w"]
+                    )
                 tasks_all = jax.stack(tasks_all)
 
                 print("tasks_all shape:", tasks_all.shape)
@@ -814,7 +822,9 @@ def make_train(config):
 
             tasks_all_target = [task_params_target]
             for i in range(1, num_beakers):
-                tasks_all_target.append(train_state.task_state.consolidation_tasks[f"network_{i}"]["w"])
+                tasks_all_target.append(
+                    train_state.task_state.consolidation_tasks[f"network_{i}"]["w"]
+                )
             tasks_all_target = jax.stack(tasks_all_target)
 
             print("tasks_all_target shape:", tasks_all_target.shape)
@@ -955,13 +965,17 @@ def make_train(config):
                             ),
                         )
 
-                        tasks_all = [train_state.task_state.params["w"][
+                        tasks_all = [
+                            train_state.task_state.params["w"][
                                 : -config["TEST_ENVS"], :
-                            ]]
+                            ]
+                        ]
                         for i in range(1, num_beakers):
-                            tasks_all.append(train_state.task_state.consolidation_tasks[f"network_{i}"]["w"][
-                                : -config["TEST_ENVS"], :
-                            ])
+                            tasks_all.append(
+                                train_state.task_state.consolidation_tasks[
+                                    f"network_{i}"
+                                ]["w"][: -config["TEST_ENVS"], :]
+                            )
                         tasks_all = jax.stack(tasks_all)
 
                         print("tasks_all shape:", tasks_all.shape)
@@ -1476,20 +1490,20 @@ def single_run(config):
             agent_train_state = outs["train_state"]
 
             updates_per_task = (
-                    config["TOTAL_TIMESTEPS"] // config["NUM_STEPS"] // config["NUM_ENVS"]
+                config["TOTAL_TIMESTEPS"] // config["NUM_STEPS"] // config["NUM_ENVS"]
             )
 
-            total_updates_all_task = updates_per_task * config["NUM_TASKS"] * num_exposures
-
-            chex.assert_tree_all(
-                agent_train_state.network_state.timescales[0] <= updates_per_task,
-                "Storage timescale for the first task should not exceed the number of updates per task"
+            total_updates_all_task = (
+                updates_per_task * config["NUM_TASKS"] * num_exposures
             )
 
-            chex.assert_tree_all(
-                agent_train_state.network_state.timescales[-1] > total_updates_all_task,
-                "Storage timescale should be more than the total number of updates"
-            )
+            assert (
+                agent_train_state.network_state.timescales[0] <= updates_per_task
+            ), "Storage timescale for the first task should not exceed the number of updates per task"
+
+            assert (
+                agent_train_state.network_state.timescales[-1] > total_updates_all_task
+            ), "Storage timescale should be more than the total number of updates"
 
             # save params
             if config.get("SAVE_PATH", None) is not None:
