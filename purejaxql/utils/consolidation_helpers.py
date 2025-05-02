@@ -5,9 +5,9 @@ from flax.core import FrozenDict
 
 Params = FrozenDict
 
-def update_and_accumulate_tree(p1: Params, p2: Params, scale: float, loss: float, max_norm: float = 10.0) -> [Params, float]:
+def update_and_accumulate_tree(p1: Params, p2: Params, scale: float, loss: float, max_norm: float = 10.0, delta_t_consolidation: int = 1, mask: int = 1) -> [Params, float]:
     def update_fn(a, b):
-        delta = scale * (b - a)
+        delta = scale * (b - a) * delta_t_consolidation * mask
         # return a + delta, jnp.sum(jnp.square(delta))
         norm = jnp.linalg.norm(delta)
         # Clip the norm if it's too large
