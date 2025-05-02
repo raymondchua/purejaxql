@@ -833,9 +833,16 @@ def make_train(config):
             tasks_all_target = [task_params_target]
             print("task_params_target shape: ", task_params_target.shape)
             for i in range(1, config["NUM_BEAKERS"]):
-                tasks_all_target.append(
-                    train_state.task_state.consolidation_tasks[f"network_{i}"]
-                )
+                if config.get("TEST_DURING_TRAINING", False):
+                    tasks_all_target.append(
+                        train_state.task_state.consolidation_tasks[f"network_{i}"][
+                            : -config["TEST_ENVS"], :
+                        ]
+                    )
+                else:
+                    tasks_all_target.append(
+                        train_state.task_state.consolidation_tasks[f"network_{i}"]
+                    )
                 print("temp consolidation_tasks shape: ", train_state.task_state.consolidation_tasks[f"network_{i}"].shape)
             tasks_all_target = jnp.stack(tasks_all_target, axis=1)
 
