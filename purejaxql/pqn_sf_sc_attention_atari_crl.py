@@ -846,7 +846,7 @@ def make_train(config):
                 print("temp consolidation_tasks shape: ", train_state.task_state.consolidation_tasks[f"network_{i}"].shape)
             tasks_all_target_arr = jnp.stack(tasks_all_target, axis=1)
 
-            print("tasks_all_target shape:", tasks_all_target.shape)
+            print("tasks_all_target_arr shape:", tasks_all_target_arr.shape)
 
             # attention network
             last_q, _, _, _, _, _, _ = attention_network.apply(
