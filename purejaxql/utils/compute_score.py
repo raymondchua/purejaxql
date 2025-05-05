@@ -5,6 +5,8 @@ Source: Craftax-Foraging project
 """
 
 def compute_score(state, done):
+    done_repeat = jnp.repeat(done, state.achievements.shape[0], axis=0)
+    print("done_repeat shape: ", done_repeat.shape)
     achievements = state.env_state.achievements * done * 100.0
     info = {}
     # Geometric mean with an offset of 1%
