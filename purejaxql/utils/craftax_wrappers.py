@@ -213,13 +213,11 @@ class AddScoreEnvWrapper(GymnaxWrapper):
         return self._env.reset(key, params)
 
     @partial(jax.jit, static_argnums=(0, 4))
-    def step(self, rng, state, action, params=None):
-
-        rng, _rng = jax.random.split(rng)
-        obs_st, state_st, reward, done, info = self._env.step(
-            _rng, state, action, params
+    def step(self,  key: chex.PRNGKey, state, action, params=None):
+        obs, env_state, reward, done, info = self._env.step(
+            key, state.env_state, action, params
         )
 
         info = compute_score(state, done)
 
-        return obs, state, reward, done, info
+        return obs_st, state_st, reward, done, info
