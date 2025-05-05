@@ -12,8 +12,9 @@ def create_log_dict(info, config):
     to_log = {
         "episode_return": info["returned_episode_returns"],
         "episode_length": info["returned_episode_lengths"],
-        "num_melee_mobs": info["num_melee_mobs"],
-        "num_ranged_mobs": info["num_ranged_mobs"],
+        # commented out unused keys
+        # "num_melee_mobs": info["num_melee_mobs"],
+        # "num_ranged_mobs": info["num_ranged_mobs"],
         #'hidden_state': info['hidden_state'],
     }
 
