@@ -408,6 +408,8 @@ def make_train(config):
                     k: v for k, v in metrics.items() if "achievement" not in k.lower()
                 }
 
+
+
             # report on wandb if required
             if config["WANDB_MODE"] != "disabled":
 
@@ -428,6 +430,10 @@ def make_train(config):
 
                         # for k, v in metrics.items():
                         #     print(f"{k}: {v}")
+
+                        to_log = create_log_dict(metrics, config)
+                        metrics.update({k: v for k, v in to_log.items()})
+                        batch_log(metrics["update_steps"], metrics, config)
 
                 jax.debug.callback(callback, metrics, original_rng)
 
