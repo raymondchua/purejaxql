@@ -91,17 +91,18 @@ def batch_log(update_step, log, config):
 
         log_times.append(time.time())
 
-        if config["DEBUG"]:
-            if len(log_times) == 1:
-                print("Started logging")
-            elif len(log_times) > 1:
-                dt = log_times[-1] - log_times[-2]
-                steps_between_updates = (
-                    config["NUM_ENV_STEPS"] * config["NUM_ENVS"] * config["NUM_REPEATS"]
-                )
-                sps = steps_between_updates / dt
-                agg_logs["sps"] = sps
-
+        # NOT USED
+        # if config["DEBUG"]:
+        #     if len(log_times) == 1:
+        #         print("Started logging")
+        #     elif len(log_times) > 1:
+        #         dt = log_times[-1] - log_times[-2]
+        #         steps_between_updates = (
+        #             config["NUM_ENV_STEPS"] * config["NUM_ENVS"] * config["NUM_REPEATS"]
+        #         )
+        #         sps = steps_between_updates / dt
+        #         agg_logs["sps"] = sps
+        #
 
 
         wandb.log(agg_logs)
