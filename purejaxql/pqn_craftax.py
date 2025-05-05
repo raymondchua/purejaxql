@@ -30,7 +30,7 @@ from purejaxql.utils.craftax_wrappers import (
 )
 from purejaxql.utils.batch_renorm import BatchRenorm
 from jax.scipy.special import logsumexp
-from purejaxql.utils.batch_logging import batch_log
+from purejaxql.utils.batch_logging import batch_log, create_log_dict
 
 
 class QNetwork(nn.Module):
@@ -435,7 +435,7 @@ def make_train(config):
                         metrics.update({k: v for k, v in to_log.items()})
                         batch_log(metrics["update_steps"], metrics, config)
 
-                        for k, v in to_log.items():
+                        for k, v in metrics.items():
                             print(f"{k}: {v}")
 
                 jax.debug.callback(callback, metrics, original_rng)
