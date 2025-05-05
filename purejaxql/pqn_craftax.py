@@ -19,6 +19,7 @@ import hydra
 from omegaconf import OmegaConf
 from safetensors.flax import load_file, save_file
 
+
 import wandb
 
 from craftax.craftax_env import make_craftax_env_from_name
@@ -29,6 +30,7 @@ from purejaxql.utils.craftax_wrappers import (
 )
 from purejaxql.utils.batch_renorm import BatchRenorm
 from jax.scipy.special import logsumexp
+from purejaxql.utils.batch_logging import batch_log
 
 
 class QNetwork(nn.Module):
@@ -421,7 +423,8 @@ def make_train(config):
                                     for k, v in metrics.items()
                                 }
                             )
-                        wandb.log(metrics, step=metrics["update_steps"])
+                        # wandb.log(metrics, step=metrics["update_steps"])
+
 
                         # for k, v in metrics.items():
                         #     print(f"{k}: {v}")
