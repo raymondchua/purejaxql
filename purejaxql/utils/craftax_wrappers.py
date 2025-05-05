@@ -214,7 +214,7 @@ class AddScoreEnvWrapper(GymnaxWrapper):
 
     @partial(jax.jit, static_argnums=(0, 4))
     def step(self,  key: chex.PRNGKey, state, action, params=None):
-        obs, state_st, reward, done, info = self._env.step(
+        obs_st, state_st, reward, done, info = self._env.step(
             key, state, action, params
         )
 
