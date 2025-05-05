@@ -6,7 +6,8 @@ Source: Craftax-Foraging project
 
 def compute_score(state, done):
     # repeat done for each achievement
-    done_repeat = jnp.repeat(done, state.env_state.achievements.shape[1], axis=0)
+    done_repeat = jnp.reshape(done, (1,))
+    done_repeat = jnp.repeat(done_repeat, state.env_state.achievements.shape[1], axis=0)
     print("done_repeat shape: ", done_repeat.shape)
     achievements = state.env_state.achievements * done * 100.0
     info = {}
