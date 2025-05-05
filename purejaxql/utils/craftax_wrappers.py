@@ -5,6 +5,7 @@ import numpy as np
 from flax import struct
 from functools import partial
 from typing import Optional, Tuple, Union, Any
+from purejaxql.utils.compute_score import compute_score
 
 
 class GymnaxWrapper(object):
@@ -197,4 +198,28 @@ class LogWrapper(GymnaxWrapper):
         info["returned_episode_lengths"] = state.returned_episode_lengths
         info["timestep"] = state.timestep
         info["returned_episode"] = done
+
+        return obs, state, reward, done, info
+
+
+class AddScoreEnvWrapper(GymnaxWrapper):
+    """Provides compute score functionality."""
+
+    def __init__(self, env):
+        super().__init__(env)
+
+    @partial(jax.jit, static_argnums=(0, 2))
+    def reset(self, key, params=None):
+        return self._env.reset(key, params)
+
+    @partial(jax.jit, static_argnums=(0, 4))
+    def step(self, rng, state, action, params=None):
+
+        rng, _rng = jax.random.split(rng)
+        obs_st, state_st, reward, done, info = self._env.step(
+            _rng, state, action, params
+        )
+
+        info = compute_score(state, done)
+
         return obs, state, reward, done, info
