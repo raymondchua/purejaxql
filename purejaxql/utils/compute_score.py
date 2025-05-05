@@ -5,8 +5,7 @@ Source: Craftax-Foraging project
 """
 
 def compute_score(state, done):
-    for k,v in state.items():
-        print(f"{k}: {v}")
+    print("achievements: ", state.achievements)
     achievements = state.achievements * done * 100.0
     info = {}
     # Geometric mean with an offset of 1%
