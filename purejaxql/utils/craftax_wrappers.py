@@ -218,6 +218,6 @@ class AddScoreEnvWrapper(GymnaxWrapper):
             key, state, action, params
         )
 
-        info = compute_score(state, done)
+        info["score"] = compute_score(state, done)
 
         return obs_st, state_st, reward, done, info
