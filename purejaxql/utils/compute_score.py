@@ -1,3 +1,9 @@
+import jax.numpy as jnp
+
+"""
+Source: Craftax-Foraging project
+"""
+
 def compute_score(state, done):
     achievements = state.achievements * done * 100.0
     info = {}
