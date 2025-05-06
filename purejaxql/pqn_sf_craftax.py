@@ -89,15 +89,6 @@ class SFNetwork(nn.Module):
             ),
         )  # (batch_size, sf_dim, action_dim)
 
-        # repeat task for each action
-        task_repeat_action = jnp.repeat(
-            task[:, np.newaxis, :],
-            self.action_dim,
-            axis=1,
-        )
-
-        print("task_repeat_action shape: ", task_repeat_action)
-
         q_1 = jnp.einsum("bi, bij -> bj", task, sf_action).reshape(
             -1, self.action_dim
         )  # (batch_size, action_dim)
