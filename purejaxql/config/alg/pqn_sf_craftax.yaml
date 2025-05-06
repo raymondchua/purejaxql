@@ -30,6 +30,9 @@ USE_OPTIMISTIC_RESETS: True
 OPTIMISTIC_RESET_RATIO: 16
 LOG_ACHIEVEMENTS: True
 
+# added to test Craftax-Foraging
+NUM_REPEATS: 1
+
 # evaluation
 WANDB_LOG_INTERVAL: 100 # not log each interval since would be too much with this config
 TEST_DURING_TRAINING: False
