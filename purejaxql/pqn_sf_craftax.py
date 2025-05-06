@@ -26,9 +26,11 @@ from purejaxql.utils.craftax_wrappers import (
     LogWrapper,
     OptimisticResetVecEnvWrapper,
     BatchEnvWrapper,
+    AddScoreEnvWrapper,
 )
 from purejaxql.utils.batch_renorm import BatchRenorm
 from jax.scipy.special import logsumexp
+from purejaxql.utils.batch_logging import batch_log, create_log_dict
 
 class SFNetwork(nn.Module):
     action_dim: int
@@ -142,6 +144,7 @@ def make_train(config):
         env = BatchEnvWrapper(log_env, num_envs=config["NUM_ENVS"])
         test_env = BatchEnvWrapper(log_env, num_envs=config["TEST_NUM_ENVS"])
 
+    env = AddScoreEnvWrapper(env)
     # epsilon-greedy exploration
     def eps_greedy_exploration(rng, q_vals, eps):
         rng_a, rng_e = jax.random.split(
@@ -499,7 +502,11 @@ def make_train(config):
                                     for k, v in metrics.items()
                                 }
                             )
-                        wandb.log(metrics, step=metrics["update_steps"])
+                        # wandb.log(metrics, step=metrics["update_steps"])
+
+                        to_log = create_log_dict(metrics, config)
+                        metrics.update({k: v for k, v in to_log.items()})
+                        batch_log(metrics["update_steps"], metrics, config)
 
                         for k, v in metrics.items():
                             print(f"{k}: {v}")
