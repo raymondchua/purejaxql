@@ -79,6 +79,7 @@ class SFNetwork(nn.Module):
 
         # SF
         sf = nn.Dense(features=self.sf_dim * self.action_dim)(features_critic_sf)
+        sf = normalize(sf)
 
         sf_action = jnp.reshape(
             sf,
