@@ -461,7 +461,7 @@ def make_train(config):
                 "td_loss": loss.mean(),
                 "qvals": qvals.mean(),
                 "eps": eps_scheduler(multi_train_state.network_state.n_updates),
-                "lr": lr_scheduler(multi_train_state.network_state.n_updates),
+                "lr": lr_scheduler(multi_train_state.network_state.n_updates) if config.get("LR_LINEAR_DECAY", False) else config["LR"],
                 "reward_loss": reward_loss.mean(),
                 "task_params_diff": task_params_diff.mean(),
                 "extrinsic_rewards": transitions.reward.mean(),
