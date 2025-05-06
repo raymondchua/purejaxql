@@ -342,16 +342,28 @@ def make_train(config):
 
                     def _loss_fn(params):
                         if config.get("Q_LAMBDA", False):
-                            (q_vals, basis_features), updates = network.apply(
+                            # (q_vals, basis_features), updates = network.apply(
+                            #     {
+                            #         "params": params,
+                            #         "batch_stats": multi_train_state.network_state.batch_stats,
+                            #     },
+                            #     minibatch.obs,
+                            #     train=True,
+                            #     mutable=["batch_stats"],
+                            #     task=multi_train_state.task_state.params["w"],
+                            # )
+                            (all_q_vals, basis_features), updates = network.apply(
                                 {
                                     "params": params,
                                     "batch_stats": multi_train_state.network_state.batch_stats,
                                 },
-                                minibatch.obs,
+                                jnp.concatenate((minibatch.obs, minibatch.next_obs)),
                                 train=True,
                                 mutable=["batch_stats"],
-                                task=multi_train_state.task_state.params["w"],
+                                task=jnp.concatenate((multi_train_state.task_state.params["w"],
+                                                      multi_train_state.task_state.params["w"])),
                             )
+                            q_vals, q_next = jnp.split(all_q_vals, 2)
                         else:
                             # if not using q_lambda, re-pass the next_obs through the network to compute target
                             (all_q_vals, basis_features), updates = network.apply(
@@ -377,6 +389,10 @@ def make_train(config):
                             print("q lambda target shape", target.shape)
                             print("basis features shape", basis_features.shape)
 
+                        # prepare basis features for reward prediction
+                        basis_features = jnp.split(basis_features, 2)
+                        basis_features_next_obs = jax.lax.stop_gradient(basis_features[1])
+
                         chosen_action_qvals = jnp.take_along_axis(
                             q_vals,
                             jnp.expand_dims(minibatch.action, axis=-1),
@@ -385,20 +401,16 @@ def make_train(config):
 
                         loss = 0.5 * jnp.square(chosen_action_qvals - target).mean()
 
-                        return loss, (updates, chosen_action_qvals, basis_features)
+                        return loss, (updates, chosen_action_qvals, basis_features_next_obs)
 
-                    def _reward_loss_fn(task_params, basis_features):
-                        if config.get("Q_LAMBDA", False):
-                            reward = minibatch.reward
-                        else:
-                            reward = jnp.concatenate((minibatch.reward, minibatch.reward))
-                            task_params = jnp.concatenate((task_params["w"], task_params["w"]))
-                        predicted_reward = jnp.einsum("ij,ij->i", basis_features, task_params)
+                    def _reward_loss_fn(task_params, basis_features_next_obs):
+                        reward = minibatch.reward
+                        predicted_reward = jnp.einsum("ij,ij->i", basis_features_next_obs, task_params)
                         loss = 0.5 * jnp.square(predicted_reward - reward).mean()
 
                         return loss
 
-                    (loss, (updates, qvals, basis_features)), grads = jax.value_and_grad(
+                    (loss, (updates, qvals, basis_features_next_obs)), grads = jax.value_and_grad(
                         _loss_fn, has_aux=True
                     )(multi_train_state.network_state.params)
                     multi_train_state.network_state = multi_train_state.network_state.apply_gradients(grads=grads)
@@ -409,10 +421,9 @@ def make_train(config):
 
                     # update task params using reward prediction loss
                     old_task_params = multi_train_state.task_state.params["w"]
-                    basis_features = jax.lax.stop_gradient(basis_features)
                     reward_loss, grads_task = jax.value_and_grad(
                         _reward_loss_fn
-                    )(multi_train_state.task_state.params, basis_features)
+                    )(multi_train_state.task_state.params, basis_features_next_obs)
                     multi_train_state.task_state = multi_train_state.task_state.apply_gradients(grads=grads_task)
                     new_task_params = multi_train_state.task_state.params["w"]
 
