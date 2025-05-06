@@ -32,11 +32,11 @@ from jax.scipy.special import logsumexp
 
 class SFNetwork(nn.Module):
     action_dim: int
-    norm_type: str = "layer_norm"
+    norm_type: str = "batch_norm"
     norm_input: bool = False
     sf_dim: int = 256
     hidden_size: int = 512
-    num_layers: int = 2 # lesser than Q network since we use additional layers to construct SF
+    num_layers: int = 3 # lesser than Q network since we use additional layers to construct SF
 
     @nn.compact
     def __call__(self, x: jnp.ndarray, task: jnp.ndarray, train: bool):
