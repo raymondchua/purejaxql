@@ -341,11 +341,9 @@ def make_train(config):
                     minibatch, target = minibatch_and_target
 
                     def _loss_fn(params):
-
-                        print("minibatch shape", minibatch.obs.shape)
-                        # print("target shape", target.shape)
-
                         if config.get("Q_LAMBDA", False):
+                            print("minibatch shape", minibatch.obs.shape)
+                            print("target shape", target.shape)
                             (q_vals, basis_features), updates = network.apply(
                                 {
                                     "params": params,
@@ -376,6 +374,8 @@ def make_train(config):
                                     + (1 - minibatch.done) * config["GAMMA"] * q_next
                             )
 
+                            print("concat obs shape: ", jnp.concatenate((minibatch.obs, minibatch.next_obs)).shape)
+                            print("concat task shape: ", jnp.concatenate((multi_train_state.task_state.params["w"], multi_train_state.task_state.params["w"])).shape)
                             print("q lambda target shape", target.shape)
 
                         chosen_action_qvals = jnp.take_along_axis(
