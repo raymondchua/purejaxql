@@ -340,6 +340,9 @@ def make_train(config):
                     multi_train_state, rng = carry
                     minibatch, target = minibatch_and_target
 
+                    print("minibatch in learn phase shape", minibatch.obs.shape)
+                    print("target in learn phase shape", target.shape)
+
                     def _loss_fn(params):
                         if config.get("Q_LAMBDA", False):
                             print("minibatch shape", minibatch.obs.shape)
