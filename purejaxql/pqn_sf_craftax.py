@@ -340,6 +340,8 @@ def make_train(config):
                     multi_train_state, rng = carry
                     minibatch, target = minibatch_and_target
 
+                    print("target shape", target.shape)
+
                     def _loss_fn(params):
 
                         if config.get("Q_LAMBDA", False):
