@@ -340,13 +340,8 @@ def make_train(config):
                     multi_train_state, rng = carry
                     minibatch, target = minibatch_and_target
 
-                    print("minibatch in learn phase shape", minibatch.obs.shape)
-                    print("target in learn phase shape", target.shape)
-
                     def _loss_fn(params):
                         if config.get("Q_LAMBDA", False):
-                            print("minibatch shape", minibatch.obs.shape)
-                            print("target shape", target.shape)
                             (q_vals, basis_features), updates = network.apply(
                                 {
                                     "params": params,
@@ -380,6 +375,7 @@ def make_train(config):
                             print("concat obs shape: ", jnp.concatenate((minibatch.obs, minibatch.next_obs)).shape)
                             print("concat task shape: ", jnp.concatenate((multi_train_state.task_state.params["w"], multi_train_state.task_state.params["w"])).shape)
                             print("q lambda target shape", target.shape)
+                            print("basis features shape", basis_features.shape)
 
                         chosen_action_qvals = jnp.take_along_axis(
                             q_vals,
@@ -442,8 +438,6 @@ def make_train(config):
                 )
 
                 targets = jnp.reshape(targets, (config["NUM_MINIBATCHES"], config["NUM_ENVS"], -1))
-                print("minibatches before learn shape", minibatches.obs.shape)
-                print("targets before learn phase: ", targets.shape)
 
                 rng, _rng = jax.random.split(rng)
                 (multi_train_state, rng), (loss, qvals, reward_loss, task_params_diff) = jax.lax.scan(
