@@ -436,6 +436,8 @@ def make_train(config):
                     lambda x: preprocess_transition(x, _rng), lambda_targets
                 )
 
+                print("targets before learn phase: ", targets.shape)
+
                 rng, _rng = jax.random.split(rng)
                 (multi_train_state, rng), (loss, qvals, reward_loss, task_params_diff) = jax.lax.scan(
                     _learn_phase, (multi_train_state, rng), (minibatches, targets)
