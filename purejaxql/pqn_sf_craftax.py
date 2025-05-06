@@ -341,42 +341,21 @@ def make_train(config):
                     minibatch, target = minibatch_and_target
 
                     def _loss_fn(params):
-                        if config.get("Q_LAMBDA", False):
-                            # (q_vals, basis_features), updates = network.apply(
-                            #     {
-                            #         "params": params,
-                            #         "batch_stats": multi_train_state.network_state.batch_stats,
-                            #     },
-                            #     minibatch.obs,
-                            #     train=True,
-                            #     mutable=["batch_stats"],
-                            #     task=multi_train_state.task_state.params["w"],
-                            # )
-                            (all_q_vals, basis_features), updates = network.apply(
-                                {
-                                    "params": params,
-                                    "batch_stats": multi_train_state.network_state.batch_stats,
-                                },
-                                jnp.concatenate((minibatch.obs, minibatch.next_obs)),
-                                train=True,
-                                mutable=["batch_stats"],
-                                task=jnp.concatenate((multi_train_state.task_state.params["w"],
-                                                      multi_train_state.task_state.params["w"])),
-                            )
-                            q_vals, q_next = jnp.split(all_q_vals, 2)
-                        else:
-                            # if not using q_lambda, re-pass the next_obs through the network to compute target
-                            (all_q_vals, basis_features), updates = network.apply(
-                                {
-                                    "params": params,
-                                    "batch_stats": multi_train_state.network_state.batch_stats,
-                                },
-                                jnp.concatenate((minibatch.obs, minibatch.next_obs)),
-                                train=True,
-                                mutable=["batch_stats"],
-                                task=jnp.concatenate((multi_train_state.task_state.params["w"], multi_train_state.task_state.params["w"])),
-                            )
-                            q_vals, q_next = jnp.split(all_q_vals, 2)
+                        (all_q_vals, basis_features), updates = network.apply(
+                            {
+                                "params": params,
+                                "batch_stats": multi_train_state.network_state.batch_stats,
+                            },
+                            jnp.concatenate((minibatch.obs, minibatch.next_obs)),
+                            train=True,
+                            mutable=["batch_stats"],
+                            task=jnp.concatenate((multi_train_state.task_state.params["w"],
+                                                  multi_train_state.task_state.params["w"])),
+                        )
+
+                        q_vals, q_next = jnp.split(all_q_vals, 2)
+
+                        if not config.get("Q_LAMBDA", False):
                             q_next = jax.lax.stop_gradient(q_next)
                             q_next = jnp.max(q_next, axis=-1)  # (batch_size,)
                             target = (
