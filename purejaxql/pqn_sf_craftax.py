@@ -62,7 +62,8 @@ class SFNetwork(nn.Module):
 
         rep = nn.Dense(self.sf_dim)(x)
         rep = normalize(rep)
-        rep = nn.tanh(rep)
+        # rep = nn.tanh(rep)
+        rep = nn.relu(rep)
         basis_features = rep / jnp.linalg.norm(rep, ord=2, axis=-1, keepdims=True)
 
         task = jax.lax.stop_gradient(task)
@@ -82,6 +83,7 @@ class SFNetwork(nn.Module):
         # SF
         sf = nn.Dense(features=self.sf_dim * self.action_dim)(features_critic_sf)
         sf = normalize(sf)
+        sf = nn.relu(sf)
 
         sf_action = jnp.reshape(
             sf,
