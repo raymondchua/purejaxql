@@ -64,7 +64,9 @@ class SFNetwork(nn.Module):
         rep = normalize(rep)
         # rep = nn.tanh(rep)
         rep = nn.relu(rep)
-        basis_features = rep / jnp.linalg.norm(rep, ord=2, axis=-1, keepdims=True)
+        # basis_features = rep / jnp.linalg.norm(rep, ord=2, axis=-1, keepdims=True)
+        basis_features = rep
+
 
         task = jax.lax.stop_gradient(task)
         task_normalized = task / jnp.linalg.norm(task, ord=2, axis=-1, keepdims=True)
