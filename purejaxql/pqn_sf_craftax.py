@@ -403,12 +403,12 @@ def make_train(config):
 
                         return loss, (updates, chosen_action_qvals, basis_features_next_obs)
 
-                    # def _reward_loss_fn(task_params, basis_features_next_obs):
-                    #     reward = minibatch.reward
-                    #     predicted_reward = jnp.einsum("ij,ij->i", basis_features_next_obs, task_params["w"])
-                    #     loss = 0.5 * jnp.square(predicted_reward - reward).mean()
-                    #
-                    #     return loss
+                    def _reward_loss_fn(task_params, basis_features_next_obs):
+                        reward = minibatch.reward
+                        predicted_reward = jnp.einsum("ij,ij->i", basis_features_next_obs, task_params["w"])
+                        loss = 0.5 * jnp.square(predicted_reward - reward).mean()
+
+                        return loss
 
                     (loss, (updates, qvals, basis_features_next_obs)), grads = jax.value_and_grad(
                         _loss_fn, has_aux=True
@@ -420,35 +420,15 @@ def make_train(config):
                     )
 
                     # update task params using reward prediction loss
-                    # old_task_params = multi_train_state.task_state.params["w"]
-                    # reward_loss, grads_task = jax.value_and_grad(
-                    #     _reward_loss_fn
-                    # )(multi_train_state.task_state.params, basis_features_next_obs)
-                    # multi_train_state.task_state = multi_train_state.task_state.apply_gradients(grads=grads_task)
-                    # new_task_params = multi_train_state.task_state.params["w"]
-
-                    # task_params_diff = jnp.linalg.norm(new_task_params - old_task_params, ord=2, axis=-1)
-                    # return (multi_train_state, rng), (loss, qvals, reward_loss, basis_features_next_obs)
-                    return (multi_train_state, rng), (loss, qvals, basis_features_next_obs)
-
-                def _learn_task_phase(carry, basis_features_next_obs):
-                    multi_train_state, rng = carry
-
-                    def _reward_loss_fn(task_params, basis_features_next_obs):
-                        reward = minibatch.reward
-                        predicted_reward = jnp.einsum("ij,ij->i", basis_features_next_obs, task_params["w"])
-                        loss = 0.5 * jnp.square(predicted_reward - reward).mean()
-
-                        return loss
-
                     old_task_params = multi_train_state.task_state.params["w"]
                     reward_loss, grads_task = jax.value_and_grad(
                         _reward_loss_fn
                     )(multi_train_state.task_state.params, basis_features_next_obs)
                     multi_train_state.task_state = multi_train_state.task_state.apply_gradients(grads=grads_task)
                     new_task_params = multi_train_state.task_state.params["w"]
+
                     task_params_diff = jnp.linalg.norm(new_task_params - old_task_params, ord=2, axis=-1)
-                    return (multi_train_state, rng), (reward_loss, task_params_diff)
+                    return (multi_train_state, rng), (loss, qvals, reward_loss, task_params_diff)
 
                 def preprocess_transition(x, rng):
                     x = x.reshape(
@@ -471,23 +451,11 @@ def make_train(config):
                 targets = jnp.reshape(targets, (config["NUM_MINIBATCHES"], config["NUM_ENVS"], -1))
 
                 rng, _rng = jax.random.split(rng)
-                (multi_train_state, rng), (loss, qvals, basis_features_next_obs) = jax.lax.scan(
+                (multi_train_state, rng), (loss, qvals) = jax.lax.scan(
                     _learn_phase, (multi_train_state, rng), (minibatches, targets)
                 )
 
-                if multi_train_state.network_state.n_updates % 1000 == 0:
-                    (multi_train_state, rng), (reward_loss, task_params_diff) = jax.lax.scan(
-                        _learn_task_phase, (multi_train_state, rng), (basis_features_next_obs)
-                    )
-                    multi_train_state.network_state = multi_train_state.network_state.replace(
-                        reward_loss=reward_loss,
-                        task_params_diff=task_params_diff
-                    )
-                else:
-                    reward_loss = multi_train_state.network_state.reward_loss
-                    task_params_diff = multi_train_state.network_state.task_params_diff
-
-                return (multi_train_state, rng), (loss, qvals, reward_loss, task_params_diff)
+                return (multi_train_state, rng), (loss, qvals)
 
             rng, _rng = jax.random.split(rng)
             (multi_train_state, rng), (loss, qvals, reward_loss, task_params_diff) = jax.lax.scan(
