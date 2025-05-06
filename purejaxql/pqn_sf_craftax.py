@@ -95,8 +95,7 @@ class SFNetwork(nn.Module):
             sf = nn.relu(sf)
             sf_all.append(sf)
 
-        sf_action = jnp.stack(sf_all, axis=2)  # (batch_size, action_dim, sf_dim)
-        print("sf_action shape", sf_action.shape)
+        sf_action = jnp.stack(sf_all, axis=2)  # (batch_size, sf_dim, action_dim)
 
         # sf_action = jnp.reshape(
         #     sf,
