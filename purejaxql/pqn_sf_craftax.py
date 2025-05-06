@@ -456,7 +456,7 @@ def make_train(config):
                 "lr": lr_scheduler(multi_train_state.network_state.n_updates),
                 "reward_loss": reward_loss.mean(),
                 "task_params_diff": task_params_diff.mean(),
-                "extrinsic rewards": transitions.reward.mean(),
+                "extrinsic_rewards": transitions.reward.mean(),
                 "entropy": entropy.mean() if config.get("SOFT_ENTROPY", False) else 0,
                 "max_probs": jnp.max(probs, axis=-1).mean() if config.get("SOFT_ENTROPY", False) else 0,
             }
