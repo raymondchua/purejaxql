@@ -387,11 +387,13 @@ def make_train(config):
                             print("concat obs shape: ", jnp.concatenate((minibatch.obs, minibatch.next_obs)).shape)
                             print("concat task shape: ", jnp.concatenate((multi_train_state.task_state.params["w"], multi_train_state.task_state.params["w"])).shape)
                             print("q lambda target shape", target.shape)
-                            print("basis features shape", basis_features.shape)
+
 
                         # prepare basis features for reward prediction
                         basis_features = jnp.split(basis_features, 2)
                         basis_features_next_obs = jax.lax.stop_gradient(basis_features[1])
+
+                        print("basis features next obs shape", basis_features_next_obs.shape)
 
                         chosen_action_qvals = jnp.take_along_axis(
                             q_vals,
@@ -405,7 +407,7 @@ def make_train(config):
 
                     def _reward_loss_fn(task_params, basis_features_next_obs):
                         reward = minibatch.reward
-                        predicted_reward = jnp.einsum("ij,ij->i", basis_features_next_obs, task_params)
+                        predicted_reward = jnp.einsum("ij,ij->i", basis_features_next_obs, task_params["w"])
                         loss = 0.5 * jnp.square(predicted_reward - reward).mean()
 
                         return loss
