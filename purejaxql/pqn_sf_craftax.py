@@ -436,6 +436,7 @@ def make_train(config):
                     lambda x: preprocess_transition(x, _rng), lambda_targets
                 )
 
+                targets = jnp.reshape(targets, (config["NUM_MINIBATCHES"], config["NUM_ENVS"], -1))
                 print("minibatches before learn shape", minibatches.obs.shape)
                 print("targets before learn phase: ", targets.shape)
 
