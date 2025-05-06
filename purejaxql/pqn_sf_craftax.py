@@ -475,7 +475,7 @@ def make_train(config):
                     _learn_phase, (multi_train_state, rng), (minibatches, targets)
                 )
 
-                if multi_train_state.network_state.n_updates % 10 == 0:
+                if multi_train_state.network_state.n_updates % 1000 == 0:
                     (multi_train_state, rng), (reward_loss, task_params_diff) = jax.lax.scan(
                         _learn_task_phase, (multi_train_state, rng), (basis_features_next_obs)
                     )
