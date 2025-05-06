@@ -343,7 +343,7 @@ def make_train(config):
                     def _loss_fn(params):
 
                         print("minibatch shape", minibatch.obs.shape)
-                        print("target shape", target.shape)
+                        # print("target shape", target.shape)
 
                         if config.get("Q_LAMBDA", False):
                             (q_vals, basis_features), updates = network.apply(
@@ -375,6 +375,8 @@ def make_train(config):
                                     minibatch.reward
                                     + (1 - minibatch.done) * config["GAMMA"] * q_next
                             )
+
+                            print("q lambda target shape", target.shape)
 
                         chosen_action_qvals = jnp.take_along_axis(
                             q_vals,
