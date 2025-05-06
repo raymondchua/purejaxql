@@ -61,6 +61,7 @@ class SFNetwork(nn.Module):
             x = nn.relu(x)
 
         rep = nn.Dense(self.sf_dim)(x)
+        rep = normalize(rep)
         rep = nn.tanh(rep)
         basis_features = rep / jnp.linalg.norm(rep, ord=2, axis=-1, keepdims=True)
 
