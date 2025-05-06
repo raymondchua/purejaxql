@@ -77,10 +77,10 @@ class SFNetwork(nn.Module):
         features_critic_sf = normalize(features_critic_sf)
         features_critic_sf = nn.relu(features_critic_sf)
 
-        for l in range(self.num_layers):
-            features_critic_sf = nn.Dense(self.hidden_size)(features_critic_sf)
-            features_critic_sf = normalize(features_critic_sf)
-            features_critic_sf = nn.relu(features_critic_sf)
+        # for l in range(self.num_layers):
+        #     features_critic_sf = nn.Dense(self.hidden_size)(features_critic_sf)
+        #     features_critic_sf = normalize(features_critic_sf)
+        #     features_critic_sf = nn.relu(features_critic_sf)
 
         # SF
         sf = nn.Dense(features=self.sf_dim * self.action_dim)(features_critic_sf)
