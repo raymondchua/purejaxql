@@ -451,11 +451,11 @@ def make_train(config):
                 targets = jnp.reshape(targets, (config["NUM_MINIBATCHES"], config["NUM_ENVS"], -1))
 
                 rng, _rng = jax.random.split(rng)
-                (multi_train_state, rng), (loss, qvals) = jax.lax.scan(
+                (multi_train_state, rng), (loss, qvals, reward_loss, task_params_diff) = jax.lax.scan(
                     _learn_phase, (multi_train_state, rng), (minibatches, targets)
                 )
 
-                return (multi_train_state, rng), (loss, qvals)
+                return (multi_train_state, rng), (loss, qvals, reward_loss, task_params_diff)
 
             rng, _rng = jax.random.split(rng)
             (multi_train_state, rng), (loss, qvals, reward_loss, task_params_diff) = jax.lax.scan(
