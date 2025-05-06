@@ -340,9 +340,10 @@ def make_train(config):
                     multi_train_state, rng = carry
                     minibatch, target = minibatch_and_target
 
-                    print("target shape", target.shape)
-
                     def _loss_fn(params):
+
+                        print("minibatch shape", minibatch.obs.shape)
+                        print("target shape", target.shape)
 
                         if config.get("Q_LAMBDA", False):
                             (q_vals, basis_features), updates = network.apply(
