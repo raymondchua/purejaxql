@@ -24,7 +24,6 @@ from purejaxql.utils.craftax_wrappers import (
     LogWrapper,
     OptimisticResetVecEnvWrapper,
     BatchEnvWrapper,
-    AddScoreEnvWrapper,
 )
 from purejaxql.utils.batch_renorm import BatchRenorm
 from jax.scipy.special import logsumexp
@@ -160,15 +159,17 @@ def make_train(config):
             log_env,
             num_envs=config["NUM_ENVS"],
             reset_ratio=min(config["OPTIMISTIC_RESET_RATIO"], config["NUM_ENVS"]),
+            compute_score=config["COMPUTE_SCORE"],
         )
         test_env = OptimisticResetVecEnvWrapper(
             log_env,
             num_envs=config["TEST_NUM_ENVS"],
             reset_ratio=min(config["OPTIMISTIC_RESET_RATIO"], config["TEST_NUM_ENVS"]),
+            compute_score=config["COMPUTE_SCORE"],
         )
     else:
-        env = BatchEnvWrapper(log_env, num_envs=config["NUM_ENVS"])
-        test_env = BatchEnvWrapper(log_env, num_envs=config["TEST_NUM_ENVS"])
+        env = BatchEnvWrapper(log_env, num_envs=config["NUM_ENVS"], compute_score=config["COMPUTE_SCORE"])
+        test_env = BatchEnvWrapper(log_env, num_envs=config["TEST_NUM_ENVS"], compute_score=config["COMPUTE_SCORE"])
 
     # epsilon-greedy exploration
     def eps_greedy_exploration(rng, q_vals, eps):

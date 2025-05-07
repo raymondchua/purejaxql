@@ -30,6 +30,7 @@ LOG_ACHIEVEMENTS: True
 
 # added to test Craftax-Foraging
 NUM_REPEATS: 1
+COMPUTE_SCORE: True
 
 # evaluation
 TEST_DURING_TRAINING: False 
