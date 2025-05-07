@@ -47,9 +47,6 @@ class BatchEnvWrapper(GymnaxWrapper):
         if compute_score:
             info["score"] = compute_score(state, done)
 
-        print("done shape: ", done.shape)
-        print("info score shape: ", info["score"].shape)
-
         return obs, state, reward, done, info
 
 
@@ -155,6 +152,9 @@ class OptimisticResetVecEnvWrapper(GymnaxWrapper):
 
         if compute_score:
             info["score"] = compute_score(state, done)
+
+        print("done shape: ", done.shape)
+        print("info score shape: ", info["score"].shape)
 
         return obs, state, reward, done, info
 
