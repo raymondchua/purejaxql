@@ -1,4 +1,4 @@
-ALG_NAME: "pqn_rnn"
+ALG_NAME: "pqn_rnn_craftax"
 TOTAL_TIMESTEPS: 1e9
 TOTAL_TIMESTEPS_DECAY: 1e9 # will be used for decay functions, in case you want to test for less timesteps and keep decays same
 NUM_ENVS: 1024 # parallel environments
@@ -26,7 +26,10 @@ LAMBDA: 0.5
 ENV_NAME: "Craftax-Symbolic-v1"
 USE_OPTIMISTIC_RESETS: True
 OPTIMISTIC_RESET_RATIO: 16
-LOG_ACHIEVEMENTS: False
+LOG_ACHIEVEMENTS: True
+
+# added to test Craftax-Foraging
+NUM_REPEATS: 1
 
 # evaluation
 TEST_DURING_TRAINING: False 

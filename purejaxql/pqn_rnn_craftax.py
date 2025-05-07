@@ -14,6 +14,7 @@ import chex
 import optax
 import flax.linen as nn
 from flax.training.train_state import TrainState
+from gymnax.wrappers.purerl import FlattenObservationWrapper, LogWrapper
 import hydra
 from omegaconf import OmegaConf
 import wandb
@@ -23,8 +24,11 @@ from purejaxql.utils.craftax_wrappers import (
     LogWrapper,
     OptimisticResetVecEnvWrapper,
     BatchEnvWrapper,
+    AddScoreEnvWrapper,
 )
 from purejaxql.utils.batch_renorm import BatchRenorm
+from jax.scipy.special import logsumexp
+from purejaxql.utils.batch_logging import batch_log, create_log_dict
 
 
 class ScannedRNN(nn.Module):
@@ -166,6 +170,8 @@ def make_train(config):
         env = BatchEnvWrapper(log_env, num_envs=config["NUM_ENVS"])
         test_env = BatchEnvWrapper(log_env, num_envs=config["TEST_NUM_ENVS"])
 
+    env = AddScoreEnvWrapper(env)
+
     # epsilon-greedy exploration
     def eps_greedy_exploration(rng, q_vals, eps):
         rng_a, rng_e = jax.random.split(
@@ -191,7 +197,7 @@ def make_train(config):
             config["EPS_FINISH"],
             (config["EPS_DECAY"]) * config["NUM_UPDATES_DECAY"],
         )
-        
+
         lr_scheduler = optax.linear_schedule(
             init_value=config["LR"],
             end_value=1e-20,
@@ -444,6 +450,9 @@ def make_train(config):
                 "grad_steps": train_state.grad_steps,
                 "td_loss": loss.mean(),
                 "qvals": qvals.mean(),
+                "eps": eps_scheduler(train_state.n_updates),
+                "lr": lr_scheduler(train_state.n_updates),
+                "extrinsic rewards": transitions.reward.mean(),
             }
             done_infos = jax.tree_util.tree_map(
                 lambda x: (x * infos["returned_episode"]).sum()
@@ -481,7 +490,14 @@ def make_train(config):
                                 for k, v in metrics.items()
                             }
                         )
-                    wandb.log(metrics, step=metrics["update_steps"])
+                    # wandb.log(metrics, step=metrics["update_steps"])
+
+                    to_log = create_log_dict(metrics, config)
+                    metrics.update({k: v for k, v in to_log.items()})
+                    batch_log(metrics["update_steps"], metrics, config)
+
+                    for k, v in metrics.items():
+                        print(f"{k}: {v}")
 
                 jax.debug.callback(callback, metrics, original_rng)
 
@@ -664,7 +680,6 @@ def single_run(config):
 
     if config.get("SAVE_PATH", None) is not None:
         from purejaxql.utils.save_load import save_params
-
         model_state = outs["runner_state"][0]
         save_dir = os.path.join(config["SAVE_PATH"], env_name)
         os.makedirs(save_dir, exist_ok=True)
