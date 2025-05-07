@@ -170,8 +170,6 @@ def make_train(config):
         env = BatchEnvWrapper(log_env, num_envs=config["NUM_ENVS"])
         test_env = BatchEnvWrapper(log_env, num_envs=config["TEST_NUM_ENVS"])
 
-    # env = AddScoreEnvWrapper(env, config["NUM_ENVS"])
-
     # epsilon-greedy exploration
     def eps_greedy_exploration(rng, q_vals, eps):
         rng_a, rng_e = jax.random.split(

@@ -22,7 +22,7 @@ class GymnaxWrapper(object):
 class BatchEnvWrapper(GymnaxWrapper):
     """Batches reset and step functions"""
 
-    def __init__(self, env, num_envs: int):
+    def __init__(self, env, num_envs: int, compute_score=False):
         super().__init__(env)
 
         self.num_envs = num_envs
@@ -42,6 +42,10 @@ class BatchEnvWrapper(GymnaxWrapper):
         rng, _rng = jax.random.split(rng)
         rngs = jax.random.split(_rng, self.num_envs)
         obs, state, reward, done, info = self.step_fn(rngs, state, action, params)
+
+        # Compute score if needed
+        if compute_score:
+            info["score"] = compute_score(state, done)
 
         return obs, state, reward, done, info
 
@@ -89,7 +93,7 @@ class OptimisticResetVecEnvWrapper(GymnaxWrapper):
     chance of duplicate resets.
     """
 
-    def __init__(self, env, num_envs: int, reset_ratio: int):
+    def __init__(self, env, num_envs: int, reset_ratio: int, compute_score=False):
         super().__init__(env)
 
         self.num_envs = num_envs
@@ -146,6 +150,9 @@ class OptimisticResetVecEnvWrapper(GymnaxWrapper):
 
         state, obs = jax.vmap(auto_reset)(done, state_re, state_st, obs_re, obs_st)
 
+        if compute_score:
+            info["score"] = compute_score(state, done)
+
         return obs, state, reward, done, info
 
 
@@ -200,40 +207,3 @@ class LogWrapper(GymnaxWrapper):
         info["returned_episode"] = done
 
         return obs, state, reward, done, info
-
-
-class AddScoreEnvWrapper(GymnaxWrapper):
-    """Provides compute score functionality."""
-
-    def __init__(self, env):
-        super().__init__(env)
-
-        # self.num_envs = num_envs
-        #
-        # self.reset_fn = jax.vmap(self._env.reset, in_axes=(0, None))
-        # self.step_fn = jax.vmap(self._env.step, in_axes=(0, 0, 0, None))
-
-    @partial(jax.jit, static_argnums=(0, 2))
-    def reset(self, key, params=None):
-        return self._env.reset(key, params)
-    # def reset(self, rng, params=None):
-    #     rng, _rng = jax.random.split(rng)
-    #     rngs = jax.random.split(_rng, self.num_envs)
-    #     obs, env_state = self.reset_fn(rngs, params)
-    #     return obs, env_state
-
-    @partial(jax.jit, static_argnums=(0, 4))
-    def step(self, key: chex.PRNGKey, state, action, params=None):
-        obs_st, state_st, reward, done, info = self._env.step(
-            key, state, action, params
-        )
-        info["score"] = compute_score(state, done)
-        return obs_st, state_st, reward, done, info
-    # def step(self, rng, state, action, params=None):
-    #     rng, _rng = jax.random.split(rng)
-    #     rngs = jax.random.split(_rng, self.num_envs)
-    #     obs, state, reward, done, info = self.step_fn(rngs, state, action, params)
-    #
-    #     info["score"] = compute_score(state, done)
-    #
-    #     return obs, state, reward, done, info
