@@ -119,8 +119,6 @@ class CustomTrainState(TrainState):
     timesteps: int = 0
     n_updates: int = 0
     grad_steps: int = 0
-    reward_loss: float = 0.0
-    task_params_diff: float = 0.0
 
 @chex.dataclass
 class MultiTrainState:
@@ -162,6 +160,7 @@ def make_train(config):
         test_env = BatchEnvWrapper(log_env, num_envs=config["TEST_NUM_ENVS"])
 
     env = AddScoreEnvWrapper(env)
+
     # epsilon-greedy exploration
     def eps_greedy_exploration(rng, q_vals, eps):
         rng_a, rng_e = jax.random.split(
@@ -604,6 +603,7 @@ def make_train(config):
 
 
 def single_run(config):
+
     config = {**config, **config["alg"]}
 
     alg_name = config.get("ALG_NAME", "pqn")
