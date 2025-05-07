@@ -205,19 +205,27 @@ class LogWrapper(GymnaxWrapper):
 class AddScoreEnvWrapper(GymnaxWrapper):
     """Provides compute score functionality."""
 
-    def __init__(self, env):
+    def __init__(self, env, num_envs: int):
         super().__init__(env)
 
+        self.num_envs = num_envs
+
+        self.reset_fn = jax.vmap(self._env.reset, in_axes=(0, None))
+        self.step_fn = jax.vmap(self._env.step, in_axes=(0, 0, 0, None))
+
     @partial(jax.jit, static_argnums=(0, 2))
-    def reset(self, key, params=None):
-        return self._env.reset(key, params)
+    def reset(self, rng, params=None):
+        rng, _rng = jax.random.split(rng)
+        rngs = jax.random.split(_rng, self.num_envs)
+        obs, env_state = self.reset_fn(rngs, params)
+        return obs, env_state
 
     @partial(jax.jit, static_argnums=(0, 4))
-    def step(self,  key: chex.PRNGKey, state, action, params=None):
-        obs_st, state_st, reward, done, info = self._env.step(
-            key, state, action, params
-        )
+    def step(self, rng, state, action, params=None):
+        rng, _rng = jax.random.split(rng)
+        rngs = jax.random.split(_rng, self.num_envs)
+        obs, state, reward, done, info = self.step_fn(rngs, state, action, params)
 
         info["score"] = compute_score(state, done)
 
-        return obs_st, state_st, reward, done, info
+        return obs, state, reward, done, info
