@@ -170,7 +170,7 @@ def make_train(config):
         env = BatchEnvWrapper(log_env, num_envs=config["NUM_ENVS"])
         test_env = BatchEnvWrapper(log_env, num_envs=config["TEST_NUM_ENVS"])
 
-    env = AddScoreEnvWrapper(env)
+    # env = AddScoreEnvWrapper(env)
 
     # epsilon-greedy exploration
     def eps_greedy_exploration(rng, q_vals, eps):
