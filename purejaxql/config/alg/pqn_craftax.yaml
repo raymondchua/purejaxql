@@ -22,7 +22,6 @@ LAMBDA: 0
 SOFT_ENTROPY: False
 ENTROPY_COEF: 1  # entropy coefficient
 
-
 # env specific
 ENV_NAME: "Craftax-Symbolic-v1"
 USE_OPTIMISTIC_RESETS: True
@@ -34,7 +33,7 @@ NUM_REPEATS: 1
 
 # evaluation
 WANDB_LOG_INTERVAL: 100 # not log each interval since would be too much with this config
-TEST_DURING_TRAINING: False 
+TEST_DURING_TRAINING: False
 TEST_INTERVAL: 0.01 # in terms of total updates
 TEST_NUM_ENVS: 512
 TEST_NUM_STEPS: 10000
