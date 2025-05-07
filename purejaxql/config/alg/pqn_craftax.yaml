@@ -30,6 +30,7 @@ LOG_ACHIEVEMENTS: True
 
 # added to test Craftax-Foraging
 NUM_REPEATS: 1
+COMPUTE_SCORE: True
 
 # evaluation
 WANDB_LOG_INTERVAL: 100 # not log each interval since would be too much with this config
