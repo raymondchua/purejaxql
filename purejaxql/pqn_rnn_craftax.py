@@ -490,14 +490,14 @@ def make_train(config):
                                 for k, v in metrics.items()
                             }
                         )
-                    # wandb.log(metrics, step=metrics["update_steps"])
+                    wandb.log(metrics, step=metrics["update_steps"])
 
-                    to_log = create_log_dict(metrics, config)
-                    metrics.update({k: v for k, v in to_log.items()})
-                    batch_log(metrics["update_steps"], metrics, config)
-
-                    for k, v in metrics.items():
-                        print(f"{k}: {v}")
+                    # to_log = create_log_dict(metrics, config)
+                    # metrics.update({k: v for k, v in to_log.items()})
+                    # batch_log(metrics["update_steps"], metrics, config)
+                    #
+                    # for k, v in metrics.items():
+                    #     print(f"{k}: {v}")
 
                 jax.debug.callback(callback, metrics, original_rng)
 
