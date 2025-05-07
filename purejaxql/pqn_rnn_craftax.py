@@ -509,7 +509,7 @@ def make_train(config):
                 rng,
             )
 
-            return runner_state, None
+            return runner_state, metrics
 
         def get_test_metrics(train_state, rng):
 
