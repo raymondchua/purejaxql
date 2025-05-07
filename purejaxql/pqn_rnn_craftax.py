@@ -458,8 +458,8 @@ def make_train(config):
             print("return episode sum shape", infos["returned_episode"].sum(keepdims=True).shape)
 
             done_infos = jax.tree_util.tree_map(
-                lambda x: (x * infos["returned_episode"]).sum(keepdims=True)
-                / infos["returned_episode"].sum(keepdims=True),
+                lambda x: (x.reshape(-1, 1) * infos["returned_episode"]).sum()
+                / infos["returned_episode"].sum(),
                 infos,
             )
             metrics.update(done_infos)
