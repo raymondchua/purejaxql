@@ -454,9 +454,6 @@ def make_train(config):
                 "extrinsic rewards": transitions.reward.mean(),
             }
 
-            print("return episode shape", infos["returned_episode"].shape)
-            print("return episode sum shape", infos["returned_episode"].sum(keepdims=True).shape)
-
             done_infos = jax.tree_util.tree_map(
                 lambda x: (x * infos["returned_episode"]).sum()
                 / infos["returned_episode"].sum(),
@@ -499,8 +496,8 @@ def make_train(config):
                     metrics.update({k: v for k, v in to_log.items()})
                     batch_log(metrics["update_steps"], metrics, config)
 
-                    for k, v in metrics.items():
-                        print(f"{k}: {v}")
+                    # for k, v in metrics.items():
+                    #     print(f"{k}: {v}")
 
                 jax.debug.callback(callback, metrics, original_rng)
 
