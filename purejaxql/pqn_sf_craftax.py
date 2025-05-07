@@ -26,7 +26,6 @@ from purejaxql.utils.craftax_wrappers import (
     LogWrapper,
     OptimisticResetVecEnvWrapper,
     BatchEnvWrapper,
-    AddScoreEnvWrapper,
 )
 from purejaxql.utils.batch_renorm import BatchRenorm
 from jax.scipy.special import logsumexp
