@@ -10,4 +10,4 @@ def compute_score(state, done):
     done_repeat = jnp.repeat(done_repeat, state.env_state.achievements.shape[1], axis=0)
     achievements = state.env_state.achievements * jnp.swapaxes(done_repeat, 0, 1)  * 100.0
     # Geometric mean with an offset of 1%
-    return jnp.exp(jnp.mean(jnp.log(1 + achievements))) - 1.0
+    return jnp.exp(jnp.mean(jnp.log(1 + achievements), keepdims=True)) - 1.0
