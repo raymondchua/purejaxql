@@ -204,10 +204,6 @@ def make_train(config):
                 eps = jnp.full(config["NUM_ENVS"], eps_scheduler(train_state.n_updates))
                 new_action = jax.vmap(eps_greedy_exploration)(_rngs, q_vals, eps)
 
-                print("q_vals shape: ", q_vals.shape)
-                print("new_action shape: ", new_action.shape)
-                print("rng_s shape: ", rng_s.shape)
-
                 new_obs, new_env_state, reward, new_done, info = env.step(
                     rng_s, env_state, new_action, env_params
                 )
@@ -435,8 +431,8 @@ def make_train(config):
                         metrics.update({k: v for k, v in to_log.items()})
                         batch_log(metrics["update_steps"], metrics, config)
 
-                        for k, v in metrics.items():
-                            print(f"{k}: {v}")
+                        # for k, v in metrics.items():
+                        #     print(f"{k}: {v}")
 
                 jax.debug.callback(callback, metrics, original_rng)
 
