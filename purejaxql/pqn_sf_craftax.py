@@ -380,16 +380,9 @@ def make_train(config):
                                     + (1 - minibatch.done) * config["GAMMA"] * q_next
                             )
 
-                            print("concat obs shape: ", jnp.concatenate((minibatch.obs, minibatch.next_obs)).shape)
-                            print("concat task shape: ", jnp.concatenate((multi_train_state.task_state.params["w"], multi_train_state.task_state.params["w"])).shape)
-                            print("q lambda target shape", target.shape)
-
-
                         # prepare basis features for reward prediction
                         basis_features = jnp.split(basis_features, 2)
                         basis_features_next_obs = jax.lax.stop_gradient(basis_features[1])
-
-                        print("basis features next obs shape", basis_features_next_obs.shape)
 
                         chosen_action_qvals = jnp.take_along_axis(
                             q_vals,
@@ -522,8 +515,8 @@ def make_train(config):
                         metrics.update({k: v for k, v in to_log.items()})
                         batch_log(metrics["update_steps"], metrics, config)
 
-                        for k, v in metrics.items():
-                            print(f"{k}: {v}")
+                        # for k, v in metrics.items():
+                        #     print(f"{k}: {v}")
 
                         # to_log = create_log_dict(metrics, config)
                         # batch_log(update_step, to_log, config)
