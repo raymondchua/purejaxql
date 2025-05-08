@@ -91,7 +91,6 @@ class SFNetwork(nn.Module):
         for act in range(self.action_dim):
             sf = nn.Dense(features=self.sf_dim)(features_critic_sf)
             sf = normalize(sf)
-            sf = nn.relu(sf)
             sf_all.append(sf)
 
         sf_action = jnp.stack(sf_all, axis=2)  # (batch_size, sf_dim, action_dim)
